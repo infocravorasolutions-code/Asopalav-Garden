@@ -1,0 +1,248 @@
+/* Custom styles for Sabarmati River Map */
+
+.custom-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Ensure map container takes full height */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+}
+
+/* Custom popup styles */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+}
+
+/* Map controls styling */
+.map-controls {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Statistics panel styling */
+.map-statistics {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Live data indicator styling */
+.live-indicator {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+/* Pulse animation for current location marker */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Loading overlay */
+.map-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Full screen mode styles */
+.fullscreen-map {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background: white;
+  overflow: hidden;
+}
+
+.fullscreen-map .map-container {
+  height: calc(100vh - 60px);
+  width: 100%;
+}
+
+.fullscreen-map .leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+/* Ensure full-screen map takes complete viewport */
+.fullscreen-map-container {
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  background: white;
+}
+
+.fullscreen-map-container .map-wrapper {
+  height: calc(100vh - 60px);
+  width: 100%;
+}
+
+/* Full screen map specific styles */
+.fullscreen-map .map-container {
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  background: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.fullscreen-map .map-header {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: white;
+}
+
+.fullscreen-map .map-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.fullscreen-map .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* Force full screen height */
+.fullscreen-container {
+  height: 100vh !important;
+  width: 100vw !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 9999 !important;
+  background: white !important;
+  overflow: hidden !important;
+}
+
+.fullscreen-container .map-wrapper {
+  height: 100vh !important;
+  width: 100vw !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.fullscreen-container .map-header {
+  flex-shrink: 0 !important;
+  background: white !important;
+}
+
+.fullscreen-container .map-content {
+  flex: 1 !important;
+  min-height: 0 !important;
+  position: relative !important;
+}
+
+.fullscreen-container .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* Full screen controls */
+.fullscreen-controls {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+}
+
+.fullscreen-controls button {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.fullscreen-controls button:hover {
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .map-controls,
+  .map-statistics,
+  .map-legend {
+    position: relative;
+    margin: 8px;
+    width: calc(100% - 16px);
+  }
+  
+  .map-controls {
+    top: 8px;
+    right: 8px;
+    left: 8px;
+  }
+  
+  .map-statistics {
+    top: auto;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+  }
+  
+  .live-indicator {
+    position: relative;
+    margin: 8px;
+  }
+
+  .fullscreen-controls {
+    top: 10px;
+    right: 10px;
+    flex-direction: column;
+  }
+
+  .fullscreen-controls button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
