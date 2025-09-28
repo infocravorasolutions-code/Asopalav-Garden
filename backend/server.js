@@ -13,11 +13,12 @@ import adminRoutes from './routes/admin.routes.js';
 import employeeRoutes from './routes/employee.routes.js';
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import attendenceRoutes from "./routes/attendence.routes.js";
-import companyRoutes from "./routes/company.routes.js"
+import companyRoutes from "./routes/company.routes.js";
+// Export routes removed - functionality moved to frontend
 // Settings routes removed - now using static configuration
 import { autoStepOut, updateStepInUserLocations, updateAllEmployeeLocations } from './controller/cron.controller.js';
 import Employee from "./models/employee.models.js";
-import LocationRouter from "./routes/location.routes.js";
+// Location routes removed - using manual location fields
 import { initializeSocket, startSocketHealthCheck } from './socket/socketServer.js';
 
 dotenv.config();
@@ -44,10 +45,11 @@ app.use("/api/employee", employeeRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/attendence", attendenceRoutes);
 app.use("/api", companyRoutes);
+// Export routes removed - functionality moved to frontend
 
 // Settings routes removed - now using static configuration
 app.use("/api/auth", authRouter);
-app.use("/api/location", LocationRouter)
+// Location routes removed - using manual location fields
 
 // Cron jobs
 cron.schedule("*/30 * * * *", autoStepOut); // Auto step-out every 30 minutes

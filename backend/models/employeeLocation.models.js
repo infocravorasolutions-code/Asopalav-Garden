@@ -39,10 +39,6 @@ const employeeLocationSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  isInGeoFence: {
-    type: Boolean,
-    default: false
-  },
   companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
 
   attendanceId: {
@@ -52,7 +48,7 @@ const employeeLocationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['working', 'offline', 'out_of_area', 'tracking', 'tracking_outside'],
+    enum: ['working', 'offline', 'tracking'],
     default: 'tracking'
   },
   batteryLevel: {
@@ -89,7 +85,6 @@ const employeeLocationSchema = new mongoose.Schema({
 // Indexes for efficient queries
 employeeLocationSchema.index({ employeeId: 1, timestamp: -1 });
 employeeLocationSchema.index({ isOnline: 1, status: 1 });
-employeeLocationSchema.index({ isInGeoFence: 1 });
 employeeLocationSchema.index({ latitude: 1, longitude: 1, timestamp: -1 });
 employeeLocationSchema.index({ lastSeen: -1 });
 employeeLocationSchema.index({ employeeCode: 1 });
@@ -105,17 +100,6 @@ employeeLocationSchema.virtual('formattedLocation').get(function () {
   };
 });
 
-// Virtual for distance info
-employeeLocationSchema.virtual('distanceInfo').get(function () {
-  if (!this.geoFenceValidation) return null;
-
-  return {
-    toGeofence: this.geoFenceValidation.distance,
-    toStart: this.geoFenceValidation.distanceToStart,
-    toEnd: this.geoFenceValidation.distanceToEnd,
-    nearestPoint: this.geoFenceValidation.nearestPoint
-  };
-});
 
 // Instance method to check if location is fresh (within last 15 minutes)
 employeeLocationSchema.methods.isFresh = function () {
@@ -136,29 +120,10 @@ employeeLocationSchema.statics.findOnline = function () {
   return this.find({
     isOnline: true,
     lastSeen: { $gte: fifteenMinutesAgo },
-    status: { $in: ['working', 'out_of_area', 'tracking', 'tracking_outside'] }
+    status: { $in: ['working', 'tracking'] }
   }).populate('employeeId', 'name empCode designation email');
 };
 
-// Static method to find employees in geofence
-employeeLocationSchema.statics.findInGeofence = function () {
-  const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-  return this.find({
-    isOnline: true,
-    isInGeoFence: true,
-    lastSeen: { $gte: fifteenMinutesAgo }
-  }).populate('employeeId', 'name empCode designation email');
-};
-
-// Static method to find employees outside geofence
-employeeLocationSchema.statics.findOutsideGeofence = function () {
-  const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-  return this.find({
-    isOnline: true,
-    isInGeoFence: false,
-    lastSeen: { $gte: fifteenMinutesAgo }
-  }).populate('employeeId', 'name empCode designation email');
-};
 
 // Pre-save middleware to update timestamps
 employeeLocationSchema.pre('save', function (next) {
@@ -171,10 +136,10 @@ employeeLocationSchema.pre('save', function (next) {
 
 // Pre-save middleware to validate coordinates
 employeeLocationSchema.pre('save', function (next) {
-  if (this.latitude < -90 || this.latitude > 90) {
+  if (this.latitude !== null && this.latitude !== undefined && (this.latitude < -90 || this.latitude > 90)) {
     return next(new Error('Invalid latitude: must be between -90 and 90'));
   }
-  if (this.longitude < -180 || this.longitude > 180) {
+  if (this.longitude !== null && this.longitude !== undefined && (this.longitude < -180 || this.longitude > 180)) {
     return next(new Error('Invalid longitude: must be between -180 and 180'));
   }
   next();

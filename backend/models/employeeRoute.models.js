@@ -36,10 +36,6 @@ const employeeRouteSchema = new mongoose.Schema({
       type: Number,
       default: null
     },
-    isInGeoFence: {
-      type: Boolean,
-      default: false
-    }
   }],
   startTime: {
     type: Date,
@@ -85,20 +81,17 @@ employeeRouteSchema.virtual('formattedRoute').get(function () {
     lng: point.longitude,
     address: point.address,
     timestamp: point.timestamp,
-    isInGeoFence: point.isInGeoFence
   }));
 });
 
 // Instance method to add a route point
-employeeRouteSchema.methods.addRoutePoint = function (latitude, longitude, address, accuracy, geoFenceValidation) {
+employeeRouteSchema.methods.addRoutePoint = function (latitude, longitude, address, accuracy) {
   this.routePoints.push({
     latitude,
     longitude,
     address: address || 'Location not available',
     timestamp: new Date(),
-    accuracy,
-    isInGeoFence: geoFenceValidation?.isValid || false,
-    geoFenceValidation
+    accuracy
   });
 
   // Update total distance if we have more than one point
@@ -152,15 +145,6 @@ employeeRouteSchema.statics.findActiveRoute = function (employeeId, attendanceId
   });
 };
 
-// Static method to find routes within geo-fence
-employeeRouteSchema.statics.findRoutesInGeoFence = function (employeeId, startTime, endTime) {
-  return this.find({
-    employeeId,
-    startTime: { $gte: startTime },
-    endTime: { $lte: endTime },
-    'routePoints.isInGeoFence': true
-  }).populate('employeeId', 'name empCode designation');
-};
 
 // Static method to get route statistics
 employeeRouteSchema.statics.getRouteStats = function (employeeId, startTime, endTime) {

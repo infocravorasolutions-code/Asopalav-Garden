@@ -60,7 +60,6 @@ export const updateAllEmployeeLocations = async () => {
                 longitude: latestLocation.longitude,
                 address: latestLocation.address,
                 lastSeen: new Date(),
-                isInGeoFence: latestLocation.isInGeoFence,
                 status: latestLocation.status,
                 lastCronUpdate: new Date()
               }
@@ -105,7 +104,6 @@ export const updateStepInUserLocations = async () => {
             longitude: latestLocation.longitude,
             address: latestLocation.address,
             lastSeen: latestLocation.lastSeen,
-            isInGeoFence: latestLocation.isInGeoFence,
             status: latestLocation.status
           };
 

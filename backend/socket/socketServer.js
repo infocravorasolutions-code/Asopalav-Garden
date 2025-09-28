@@ -75,7 +75,6 @@ export const initializeSocket = (server) => {
             longitude: data.longitude,
             address: data.address || 'Location not available'
           },
-          isInGeoFence: data.isInGeoFence || false,
           status: data.status || 'tracking',
           batteryLevel: data.batteryLevel,
           accuracy: data.accuracy,
@@ -91,7 +90,6 @@ export const initializeSocket = (server) => {
             longitude: data.longitude,
             address: data.address || 'Location not available'
           },
-          isInGeoFence: data.isInGeoFence || false,
           status: data.status || 'tracking',
           timestamp: new Date()
         });
@@ -160,25 +158,6 @@ export const initializeSocket = (server) => {
       }
     });
 
-    // Handle geo-fence alerts
-    socket.on('geofence-alert', (data) => {
-      try {
-        console.log('🚨 [Socket] Geo-fence alert:', data);
-
-        // Broadcast to admin room
-        socket.to('admin-room').emit('geofence-alert', {
-          employeeId: socket.userId,
-          employeeName: socket.userName,
-          alertType: data.alertType, // 'violation', 'entry', 'exit'
-          location: data.location,
-          timestamp: new Date(),
-          message: data.message
-        });
-
-      } catch (error) {
-        console.error('❌ [Socket] Error handling geo-fence alert:', error);
-      }
-    });
 
     // Handle disconnection
     socket.on('disconnect', async (reason) => {
@@ -253,18 +232,10 @@ export const sendOnlineEmployeesToAdmin = async () => {
       },
       isOnline: emp.isOnline,
       lastSeen: emp.lastSeen,
-      isInGeoFence: emp.isInGeoFence,
       status: emp.getCurrentStatus(),
       batteryLevel: emp.batteryLevel,
       accuracy: emp.accuracy,
       timestamp: emp.timestamp,
-      geoFenceValidation: emp.geoFenceValidation ? {
-        isValid: emp.geoFenceValidation.isValid,
-        reason: emp.geoFenceValidation.reason,
-        source: emp.geoFenceValidation.source,
-        distance: emp.geoFenceValidation.distance,
-        nearestPoint: emp.geoFenceValidation.nearestPoint
-      } : null
     }));
 
     if (io) {
@@ -302,7 +273,6 @@ export const sendOnlineEmployeesToSocket = async (socket) => {
       },
       isOnline: emp.isOnline,
       lastSeen: emp.lastSeen,
-      isInGeoFence: emp.isInGeoFence,
       status: emp.getCurrentStatus(),
       batteryLevel: emp.batteryLevel,
       accuracy: emp.accuracy,
@@ -341,20 +311,6 @@ export const broadcastLocationUpdate = (employeeId, locationData) => {
   }
 };
 
-/**
- * Broadcast geo-fence alert
- */
-export const broadcastGeoFenceAlert = (employeeId, alertData) => {
-  if (io) {
-    io.to('admin-room').emit('geofence-alert', {
-      employeeId,
-      ...alertData,
-      timestamp: new Date()
-    });
-
-    console.log('🚨 [Socket] Broadcasted geo-fence alert for employee:', employeeId);
-  }
-};
 
 /**
  * Mark employee as online in database
@@ -517,7 +473,6 @@ export default {
   sendOnlineEmployeesToAdmin,
   sendOnlineEmployeesToSocket,
   broadcastLocationUpdate,
-  broadcastGeoFenceAlert,
   getSocketServer,
   sendToUser,
   sendToAdmins,

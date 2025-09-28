@@ -4,8 +4,6 @@ import Location from "../models/location.model.js";
 import EmployeeLocation from "../models/employeeLocation.models.js";
 import EmployeeRoute from "../models/employeeRoute.models.js";
 
-
-
 // Default shift configurations
 const DEFAULT_SHIFT_TIMES = {
   morning: {
@@ -25,8 +23,7 @@ const DEFAULT_SHIFT_TIMES = {
   }
 };
 
-
-// Mark step in with geo-fencing validation
+// Mark step in without geo-fencing validation
 export const markStepIn = async (req, res) => {
   try {
     // For manager step-in: employeeId comes from body, managerId from JWT token
@@ -39,19 +36,11 @@ export const markStepIn = async (req, res) => {
     const finalEmployeeId = isManagerStepIn ? employeeId : authenticatedUserId;
     const finalManagerId = isManagerStepIn ? authenticatedUserId : managerId;
 
-
     // Validate required fields
     if (!finalEmployeeId || !finalManagerId) {
       return res.status(400).json({
         success: false,
         message: "Employee ID and Manager ID are required"
-      });
-    }
-
-    if (!latitude || !longitude) {
-      return res.status(400).json({
-        success: false,
-        message: "Location coordinates are required for geo-fenced attendance"
       });
     }
 
@@ -67,14 +56,14 @@ export const markStepIn = async (req, res) => {
     const stepIn = new Date();
     const stepInImage = req.file ? req.file.filename : null;
 
-    // Create attendance record with geo-fencing data
+    // Create attendance record
     const attendance = new Attendance({
       employeeId: finalEmployeeId,
       managerId: finalManagerId,
       stepIn,
       stepInImage,
-      longitude: parseFloat(longitude),
-      latitude: parseFloat(latitude),
+      longitude: longitude ? parseFloat(longitude) : null,
+      latitude: latitude ? parseFloat(latitude) : null,
       address: address || 'Location not available',
       note,
       shift,
@@ -84,25 +73,25 @@ export const markStepIn = async (req, res) => {
     await attendance.save();
     await Employee.findByIdAndUpdate(finalEmployeeId, { isWorking: true });
 
-    // Create route tracking for this attendance
+    // Create route tracking for this attendance (optional)
     try {
       const route = new EmployeeRoute({
         employeeId: finalEmployeeId,
         attendanceId: attendance._id,
         startTime: stepIn,
         routePoints: [{
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude),
+          latitude: latitude ? parseFloat(latitude) : null,
+          longitude: longitude ? parseFloat(longitude) : null,
           address: address || 'Location not available',
           timestamp: stepIn,
-          isInGeoFence: true,
         }]
       });
       await route.save();
     } catch (routeError) {
+      console.log('Route tracking failed:', routeError.message);
     }
 
-    // Update employee location status
+    // Update employee location status (optional)
     try {
       const employee = await Employee.findById(finalEmployeeId);
       await EmployeeLocation.findOneAndUpdate(
@@ -111,12 +100,11 @@ export const markStepIn = async (req, res) => {
           employeeId: finalEmployeeId,
           employeeName: employee.name,
           employeeCode: employee.empCode,
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude),
+          latitude: latitude ? parseFloat(latitude) : null,
+          longitude: longitude ? parseFloat(longitude) : null,
           address: address || 'Location not available',
           isOnline: true,
           lastSeen: new Date(),
-          isInGeoFence: true,
           attendanceId: attendance._id,
           status: 'working',
           timestamp: new Date()
@@ -124,14 +112,12 @@ export const markStepIn = async (req, res) => {
         { upsert: true, new: true }
       );
     } catch (locationError) {
+      console.log('Location update failed:', locationError.message);
     }
-
 
     res.status(201).json({
       success: true,
-      message: isManagerStepIn
-        ? "Step In marked successfully by manager - no location restriction"
-        : "Step In marked successfully - location validated",
+      message: "Step In marked successfully",
       attendance: {
         _id: attendance._id,
         employeeId: attendance.employeeId,
@@ -276,7 +262,6 @@ export const updateAttendance = async (req, res) => {
   }
 };
 
-
 export const bulkUpdateAttendance = async (req, res) => {
   try {
     const { attendanceIds, stepIn, stepOut, shift, status } = req.body;
@@ -333,8 +318,7 @@ export const bulkUpdateAttendance = async (req, res) => {
   }
 };
 
-
-// Mark step out with geo-fencing validation
+// Mark step out without geo-fencing validation
 export const markStepOut = async (req, res) => {
   try {
     // Use authenticated user's ID from JWT token
@@ -353,18 +337,6 @@ export const markStepOut = async (req, res) => {
         success: false,
         message: "Either employeeId or attendanceId is required"
       });
-    }
-
-    // Validate location coordinates if provided
-    if (latitude && longitude) {
-      if (isNaN(latitude) || isNaN(longitude) ||
-        latitude < -90 || latitude > 90 ||
-        longitude < -180 || longitude > 180) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid coordinates provided"
-        });
-      }
     }
 
     const stepOut = new Date();
@@ -390,7 +362,6 @@ export const markStepOut = async (req, res) => {
 
     const totalTime = Math.round((stepOut - attendance.stepIn) / 60000);
 
-
     // Update attendance record
     attendance.stepOut = stepOut;
     attendance.stepOutImage = stepOutImage;
@@ -405,7 +376,6 @@ export const markStepOut = async (req, res) => {
         latitude: parseFloat(latitude),
         address: address || 'Location not available'
       };
-      attendance.stepOutGeoFenceValidation = stepOutGeoFenceValidation;
     }
 
     await attendance.save();
@@ -426,8 +396,7 @@ export const markStepOut = async (req, res) => {
             parseFloat(latitude),
             parseFloat(longitude),
             address || 'Location not available',
-            null,
-            stepOutGeoFenceValidation
+            null
           );
         }
 
@@ -452,7 +421,6 @@ export const markStepOut = async (req, res) => {
             latitude: parseFloat(latitude),
             longitude: parseFloat(longitude),
             address: address || 'Location not available',
-            isInGeoFence: stepOutGeoFenceValidation?.isValid || false,
           })
         }
       );
@@ -626,9 +594,6 @@ export const deleteAttendance = async (req, res) => {
   }
 };
 
-
-
-
 export const locationWiseAttendence = async (req, res) => {
   try {
     const { date } = req.query;
@@ -758,96 +723,6 @@ export const locationWiseAttendence = async (req, res) => {
   }
 };
 
-/* 
-Expected Output Structure:
-[
-  {
-    "_id": "location_id_1",
-    "name": "Location 1",
-    "address": "Address 1",
-    "managers": [
-      {
-        "_id": "manager_id_1",
-        "name": "Manager Name",
-        "location": "location_id_1",
-        "employees": [
-          {
-            "_id": "employee_id_1",
-            "name": "Employee Name",
-            "managerId": "manager_id_1",
-            "attendance": {
-              "attendanceId": "attendance_record_id",
-              "stepIn": "2025-08-30T09:00:00.000Z",
-              "stepOut": "2025-08-30T18:00:00.000Z",
-              "totalTime": 480, // in minutes or seconds as per your preference
-              "stepInImage": "https://example.com/stepin.jpg",
-              "stepOutImage": "https://example.com/stepout.jpg",
-              "longitude": 72.8777,
-              "latitude": 23.0225,
-              "address": "Office Address",
-              "shift": "morning", // morning, evening, night
-              "status": "present", // present, absent, weekoff
-              "location": "location_id_1",
-              "note": "On time",
-              "createdAt": "2025-08-30T09:00:00.000Z",
-              "updatedAt": "2025-08-30T18:00:00.000Z"
-            }
-          },
-          {
-            "_id": "employee_id_2",
-            "name": "Another Employee",
-            "managerId": "manager_id_1",
-            "attendance": {
-              "attendanceId": null,
-              "stepIn": null,
-              "stepOut": null,
-              "totalTime": 0,
-              "stepInImage": null,
-              "stepOutImage": null,
-              "longitude": null,
-              "latitude": null,
-              "address": null,
-              "shift": null,
-              "status": "absent", // Default when no record found
-              "location": null,
-              "note": null,
-              "createdAt": null,
-              "updatedAt": null
-            }
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "_id": "location_id_2", 
-    "name": "Location 2",
-    "address": "Address 2",
-    "managers": [] // Empty array if no managers found
-  }
-]
-
-Usage Examples:
-1. Current date: GET /api/location-wise-attendance
-2. Specific date: GET /api/location-wise-attendance?date=2025-08-15
-3. Date format: YYYY-MM-DD (e.g., 2025-08-30)
-
-Attendance Model Fields Included:
-- employeeId, managerId (used for lookups)
-- stepIn, stepOut (entry/exit times)
-- totalTime (working duration)
-- stepInImage, stepOutImage (photo evidence)
-- longitude, latitude, address (location data)
-- shift (morning/evening/night)
-- status (present/absent/weekoff)
-- location (location reference)
-- note (additional comments)
-- timestamps (createdAt, updatedAt)
-*/
-
-/**
- * Get geo-fenced attendance data for admin dashboard
- */
 // Get employee routes for admin map visualization
 export const getEmployeeRoutes = async (req, res) => {
   try {
@@ -889,7 +764,6 @@ export const getEmployeeRoutes = async (req, res) => {
         longitude: point.longitude,
         address: point.address,
         timestamp: point.timestamp,
-        isInGeoFence: point.isInGeoFence,
         accuracy: point.accuracy
       })),
       duration: route.duration,
@@ -911,7 +785,6 @@ export const getEmployeeRoutes = async (req, res) => {
     });
   }
 };
-
 
 // Get live step-ins within the last 24 hours
 export const getLiveStepIns = async (req, res) => {
@@ -952,7 +825,6 @@ export const getLiveStepIns = async (req, res) => {
       status: stepIn.status,
       note: stepIn.note,
       totalTime: stepIn.totalTime,
-      stepOutGeoFenceValidation: stepIn.stepOutGeoFenceValidation,
       createdAt: stepIn.createdAt,
       updatedAt: stepIn.updatedAt
     }));

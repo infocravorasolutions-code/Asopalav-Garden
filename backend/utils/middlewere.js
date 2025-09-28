@@ -106,6 +106,7 @@ export const authenticateUser = async (req, res, next) => {
       role: user.role || decoded.userType, // fallback if no explicit role
       userType: decoded.userType,
       company: company ? { id: company._id, name: company.name, code: company.code } : null,
+      companyId: decoded.companyId || (company ? company._id : null), // Add companyId from JWT or populated company
     };
 
     // Read-only restriction

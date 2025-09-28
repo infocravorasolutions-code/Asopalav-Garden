@@ -1,0 +1,335 @@
+/* Company Theme CSS Variables */
+:root {
+  --company-primary: #3B82F6;
+  --company-secondary: #1E40AF;
+  --company-accent: #F59E0B;
+  --company-background: #F8FAFC;
+  --company-text: #1F2937;
+  --company-font: 'Inter', sans-serif;
+  --company-border-radius: 8px;
+}
+
+/* Apply company font to body */
+body {
+  font-family: var(--company-font);
+}
+
+/* Company-themed button styles */
+.btn-primary {
+  background-color: var(--company-primary);
+  border-color: var(--company-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--company-secondary);
+  border-color: var(--company-secondary);
+}
+
+.btn-secondary {
+  background-color: var(--company-secondary);
+  border-color: var(--company-secondary);
+  color: white;
+}
+
+.btn-accent {
+  background-color: var(--company-accent);
+  border-color: var(--company-accent);
+  color: white;
+}
+
+/* Company-themed card styles */
+.card-company {
+  border-left: 4px solid var(--company-primary);
+}
+
+.card-company .card-header {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+/* Company-themed input styles */
+.input-company:focus {
+  border-color: var(--company-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Company-themed header styles */
+.header-company {
+  background: linear-gradient(135deg, var(--company-primary), var(--company-secondary));
+  color: white;
+}
+
+/* Company-themed sidebar styles */
+.sidebar-company {
+  background-color: var(--company-secondary);
+  color: white;
+}
+
+.sidebar-company .nav-item:hover {
+  background-color: var(--company-primary);
+}
+
+/* Company-themed table styles */
+.table-company th {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+.table-company tr:nth-child(even) {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Company-themed badge styles */
+.badge-primary {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+.badge-secondary {
+  background-color: var(--company-secondary);
+  color: white;
+}
+
+.badge-accent {
+  background-color: var(--company-accent);
+  color: white;
+}
+
+/* Company-themed progress bar */
+.progress-company {
+  background-color: var(--company-primary);
+}
+
+/* Company-themed alert styles */
+.alert-company {
+  border-left: 4px solid var(--company-primary);
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* Company-themed modal styles */
+.modal-company .modal-header {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+/* Company-themed navigation styles */
+.nav-company .nav-link.active {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+.nav-company .nav-link:hover {
+  background-color: var(--company-secondary);
+  color: white;
+}
+
+/* Company-themed form styles */
+.form-company .form-label {
+  color: var(--company-text);
+  font-weight: 600;
+}
+
+.form-company .form-control:focus {
+  border-color: var(--company-primary);
+  box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+}
+
+/* Company-themed status indicators */
+.status-online {
+  color: #10B981;
+}
+
+.status-offline {
+  color: #EF4444;
+}
+
+.status-working {
+  color: var(--company-primary);
+}
+
+.status-break {
+  color: var(--company-accent);
+}
+
+/* Company-themed loading spinner */
+.spinner-company {
+  border-color: var(--company-primary);
+  border-top-color: transparent;
+}
+
+/* Company-themed toast notifications */
+.toast-company {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+/* Company-themed dropdown styles */
+.dropdown-company .dropdown-item:hover {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+/* Company-themed pagination */
+.pagination-company .page-item.active .page-link {
+  background-color: var(--company-primary);
+  border-color: var(--company-primary);
+}
+
+.pagination-company .page-link:hover {
+  color: var(--company-primary);
+}
+
+/* Company-themed tabs */
+.tabs-company .nav-tabs .nav-link.active {
+  background-color: var(--company-primary);
+  border-color: var(--company-primary);
+  color: white;
+}
+
+.tabs-company .nav-tabs .nav-link:hover {
+  border-color: var(--company-primary);
+  color: var(--company-primary);
+}
+
+/* Company-themed accordion */
+.accordion-company .accordion-header button {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+.accordion-company .accordion-header button:hover {
+  background-color: var(--company-secondary);
+}
+
+/* Company-themed breadcrumb */
+.breadcrumb-company .breadcrumb-item.active {
+  color: var(--company-primary);
+}
+
+/* Company-themed tooltip */
+.tooltip-company .tooltip-inner {
+  background-color: var(--company-primary);
+}
+
+.tooltip-company .arrow::before {
+  border-top-color: var(--company-primary);
+}
+
+/* Company-themed popover */
+.popover-company .popover-header {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+/* Company-themed list group */
+.list-group-company .list-group-item.active {
+  background-color: var(--company-primary);
+  border-color: var(--company-primary);
+}
+
+/* Company-themed jumbotron */
+.jumbotron-company {
+  background: linear-gradient(135deg, var(--company-primary), var(--company-secondary));
+  color: white;
+}
+
+/* Company-themed footer */
+.footer-company {
+  background-color: var(--company-secondary);
+  color: white;
+}
+
+/* Company-themed sidebar toggle */
+.sidebar-toggle-company {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+/* Company-themed search box */
+.search-company:focus {
+  border-color: var(--company-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Company-themed filter buttons */
+.filter-company.active {
+  background-color: var(--company-primary);
+  color: white;
+}
+
+/* Company-themed export buttons */
+.export-company {
+  background-color: var(--company-accent);
+  color: white;
+}
+
+.export-company:hover {
+  background-color: #D97706;
+}
+
+/* Company-themed print styles */
+@media print {
+  .print-company {
+    color: var(--company-text) !important;
+  }
+  
+  .print-company .header {
+    background-color: var(--company-primary) !important;
+    color: white !important;
+  }
+}
+
+/* Company-themed dark mode support */
+.theme-dark {
+  --company-background: #1F2937;
+  --company-text: #F9FAFB;
+}
+
+.theme-dark body {
+  background-color: var(--company-background);
+  color: var(--company-text);
+}
+
+/* Company-themed responsive adjustments */
+@media (max-width: 768px) {
+  .company-mobile {
+    padding: 1rem;
+  }
+  
+  .company-mobile .header {
+    padding: 0.5rem;
+  }
+}
+
+/* Company-themed animation */
+@keyframes company-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.company-pulse {
+  animation: company-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Company-themed gradient backgrounds */
+.bg-company-gradient {
+  background: linear-gradient(135deg, var(--company-primary), var(--company-secondary));
+}
+
+.bg-company-gradient-light {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(30, 64, 175, 0.1));
+}
+
+/* Company-themed shadows */
+.shadow-company {
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1), 0 2px 4px -1px rgba(59, 130, 246, 0.06);
+}
+
+.shadow-company-lg {
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1), 0 4px 6px -2px rgba(59, 130, 246, 0.05);
+}

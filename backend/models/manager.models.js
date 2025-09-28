@@ -31,10 +31,26 @@ const managerSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "Admin"
   },
-  location: {
-    type: Types.ObjectId,
-    ref: "Location",
-    required: true
+  // Manual location fields instead of location reference
+  locationName: {
+    type: String,
+    default: "Office"
+  },
+  locationAddress: {
+    type: String,
+    default: ""
+  },
+  locationLatitude: {
+    type: Number,
+    default: 0
+  },
+  locationLongitude: {
+    type: Number,
+    default: 0
+  },
+  locationRadius: {
+    type: Number,
+    default: 100 // in meters
   },
   isActive: {
     type: Boolean,
