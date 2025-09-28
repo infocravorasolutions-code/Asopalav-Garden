@@ -30,19 +30,63 @@ export const initializeSocket = (server) => {
     pingInterval: 25000
   });
 
-  // No authentication middleware - open connection for all users
+  // Authentication middleware
+  io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+
+    if (!token) {
+      // Allow connection without token for notifications
+      socket.userId = null;
+      socket.userType = 'guest';
+      return next();
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.userId = decoded.id;
+      socket.userType = decoded.userType || decoded.role;
+      socket.userName = decoded.name;
+      socket.companyId = decoded.companyId;
+      next();
+    } catch (error) {
+      console.error('❌ [Socket] Authentication failed:', error.message);
+      socket.userId = null;
+      socket.userType = 'guest';
+      next();
+    }
+  });
 
   // Connection handler
   io.on('connection', (socket) => {
     console.log('🔌 [Socket] User connected:', {
       socketId: socket.id,
+      userId: socket.userId,
+      userType: socket.userType,
       timestamp: new Date()
     });
+
+    // Join user to their specific room for notifications
+    if (socket.userId) {
+      socket.join(`user_${socket.userId}`);
+      console.log(`👤 [Socket] User joined personal room: user_${socket.userId}`);
+    }
+
+    // Join users to role-based rooms
+    if (socket.userType === 'admin' || socket.userType === 'superadmin') {
+      socket.join('admin-room');
+      console.log('👑 [Socket] Admin joined admin-room');
+    } else if (socket.userType === 'manager') {
+      socket.join('manager-room');
+      console.log('👨‍💼 [Socket] Manager joined manager-room');
+    } else if (socket.userType === 'employee') {
+      socket.join('employee-room');
+      console.log('👷 [Socket] Employee joined employee-room');
+    }
 
     // Join all users to a general room for location updates
     socket.join('location-updates');
     console.log('📍 [Socket] User joined location-updates room');
-    
+
     // Send current online employees to newly connected user
     sendOnlineEmployeesToAdmin();
 
@@ -102,9 +146,9 @@ export const initializeSocket = (server) => {
 
       } catch (error) {
         console.error('❌ [Socket] Error handling location update:', error);
-        socket.emit('error', { 
+        socket.emit('error', {
           message: 'Failed to process location update',
-          error: error.message 
+          error: error.message
         });
       }
     });
@@ -151,12 +195,13 @@ export const initializeSocket = (server) => {
 
       } catch (error) {
         console.error('❌ [Socket] Error getting online employees:', error);
-        socket.emit('error', { 
+        socket.emit('error', {
           message: 'Failed to get online employees',
-          error: error.message 
+          error: error.message
         });
       }
     });
+
 
 
     // Handle disconnection
@@ -347,8 +392,8 @@ const markEmployeeOffline = async (employeeId) => {
   try {
     await EmployeeLocation.findOneAndUpdate(
       { employeeId },
-      { 
-        isOnline: false, 
+      {
+        isOnline: false,
         status: 'offline',
         lastSeen: new Date()
       }
@@ -400,7 +445,7 @@ export const sendToManagers = (event, data) => {
  */
 export const startSocketHealthCheck = () => {
   console.log('🏥 [Socket Health] Starting socket health check every 10 minutes...');
-  
+
   socketHealthCheckInterval = setInterval(() => {
     try {
       if (!io) {

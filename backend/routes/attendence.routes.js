@@ -11,7 +11,10 @@ import {
   locationWiseAttendence,
   checkEmployeeStatus,
   getEmployeeRoutes,
-  getLiveStepIns
+  getLiveStepIns,
+  exportAttendanceExcel,
+  exportAttendancePDF,
+  getAttendanceSummary
 } from "../controller/attendence.controller.js";
 import { authenticateUser } from "../utils/middlewere.js";
 
@@ -45,13 +48,26 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
 
 // Check employee status
 router.get("/status/:employeeId", authenticateUser, checkEmployeeStatus);
 
 // Step in: upload single image
-router.post("/step-in", authenticateUser,upload.single("stepInImage"), markStepIn);
+router.post("/step-in", authenticateUser, upload.single("stepInImage"), markStepIn);
 
 // Update attendance by attendance ID (supports all fields including stepOut)
 router.put("/:attendanceId", authenticateUser, upload.single("stepInImage"), updateAttendance);
@@ -59,8 +75,8 @@ router.put("/:attendanceId", authenticateUser, upload.single("stepInImage"), upd
 // bulk update
 router.post("/bulk-update", authenticateUser, bulkUpdateAttendance);
 
-// Step out: parse FormData with no file
-router.post("/step-out", authenticateUser, upload.none(), markStepOut);
+// Step out: upload single image
+router.post("/step-out", authenticateUser, upload.single("stepOutImage"), markStepOut);
 
 // Get all attendance records
 router.get("/", authenticateUser, getAllAttendance);
@@ -80,5 +96,12 @@ router.get("/routes", authenticateUser, getEmployeeRoutes);
 
 // Live step-ins endpoint
 router.get("/live-stepins", authenticateUser, getLiveStepIns);
+
+// Export endpoints
+router.get("/export/excel", authenticateUser, exportAttendanceExcel);
+router.get("/export/pdf", authenticateUser, exportAttendancePDF);
+
+// Summary endpoint
+router.get("/summary", authenticateUser, getAttendanceSummary);
 
 export default router;

@@ -1,0 +1,473 @@
+import React, { useState, useEffect } from 'react';
+import { Calendar, Download, Filter, Search, FileText } from 'lucide-react';
+import { adminAPI, api } from '../../services/api';
+import { showSuccess, showError } from '../../utils/toast';
+
+const TraditionalMusterRollReport = () => {
+  const [reportData, setReportData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    startDate: '',
+    endDate: '',
+    shift: '',
+    status: '',
+    employeeId: ''
+  });
+  const companyinfo = JSON.parse(localStorage.getItem('company'));
+  const [companyInfo] = useState({
+    name: 'PANTHER SECURE',
+    location: 'RIVERFRONT AHMEDABAD UNIT',
+    month: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
+  });
+
+  useEffect(() => {
+    fetchReportData();
+  }, []);
+
+  const fetchReportData = async () => {
+    setLoading(true);
+    try {
+      // Fetch employees first
+      const employeesResponse = await api.get('/api/employee/all');
+      const employees = employeesResponse.data.data;
+
+      // Fetch attendance data for the current month
+      const currentDate = new Date();
+      const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+      const attendanceResponse = await adminAPI.getAttendance()
+      const allAttendanceData = attendanceResponse.attendance || [];
+
+      // Filter attendance data by date range
+      const attendanceData = allAttendanceData.filter(att => {
+        const attDate = new Date(att.stepIn);
+        return attDate >= startDate && attDate <= endDate;
+      });
+
+      // Process data to create muster roll format
+      const processedData = employees.map((employee, index) => {
+        const employeeAttendance = attendanceData.filter(att => {
+          // Handle both populated and non-populated employeeId
+          const attEmployeeId = att.employeeId._id || att.employeeId;
+          return attEmployeeId.toString() === employee._id.toString();
+        });
+
+        // Create attendance object for each day of the month
+        const attendance = {};
+        const daysInMonth = endDate.getDate();
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const dayAttendance = employeeAttendance.find(att => {
+            const attDate = new Date(att.stepIn);
+            return attDate.getDate() === day &&
+              attDate.getMonth() === currentDate.getMonth() &&
+              attDate.getFullYear() === currentDate.getFullYear();
+          });
+
+          attendance[day] = dayAttendance ? 'P' : '';
+        }
+
+        // Calculate total present days
+        const totalDays = Object.values(attendance).filter(day => day === 'P').length;
+
+        return {
+          srNo: index + 1,
+          empCode: employee.employeeId || `EMP${employee._id.slice(-6)}`,
+          name: employee.name,
+          designation: employee.designation || 'employee',
+          shift: employee.shift || 'Morning',
+          uan: employee.uan || '000000000000',
+          esic: employee.esic || '0000000000',
+          attendance,
+          totalDays
+        };
+      });
+
+      setReportData(processedData);
+      console.log("processedData ==> ", processedData);
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+      showError('Failed to fetch report data');
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleGenerateReport = async () => {
+    setLoading(true);
+    try {
+      // Fetch employees
+      const employeesResponse = await api.get('/api/employee/all');
+      let employees = employeesResponse.data.data;
+
+      // Apply filters
+      if (filters.shift) {
+        employees = employees.filter(emp => emp.shift === filters.shift.toLowerCase());
+      }
+      if (filters.employeeId) {
+        employees = employees.filter(emp =>
+          emp.employeeId?.includes(filters.employeeId) ||
+          emp._id.includes(filters.employeeId)
+        );
+      }
+
+      // Fetch attendance data with date filters
+      const startDate = filters.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const endDate = filters.endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+
+      const attendanceResponse = await adminAPI.getAttendance()
+      const allAttendanceData = attendanceResponse.attendance || [];
+
+      // Filter attendance data by date range and status
+      const attendanceData = allAttendanceData.filter(att => {
+        const attDate = new Date(att.stepIn);
+        const dateMatch = attDate >= new Date(startDate) && attDate <= new Date(endDate);
+        const statusMatch = !filters.status || att.status === filters.status;
+        return dateMatch && statusMatch;
+      });
+
+      // Process data to create muster roll format
+      const processedData = employees.map((employee, index) => {
+        const employeeAttendance = attendanceData.filter(att => {
+          // Handle both populated and non-populated employeeId
+          const attEmployeeId = att.employeeId._id || att.employeeId;
+          return attEmployeeId.toString() === employee._id.toString();
+        });
+
+        // Create attendance object for each day of the selected period
+        const attendance = {};
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const daysInPeriod = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+        for (let day = 1; day <= daysInPeriod; day++) {
+          const dayDate = new Date(start);
+          dayDate.setDate(start.getDate() + day - 1);
+
+          const dayAttendance = employeeAttendance.find(att => {
+            const attDate = new Date(att.stepIn);
+            return attDate.toDateString() === dayDate.toDateString();
+          });
+
+          attendance[day] = dayAttendance ? 'P' : '';
+        }
+
+        // Calculate total present days
+        const totalDays = Object.values(attendance).filter(day => day === 'P').length;
+
+        return {
+          srNo: index + 1,
+          empCode: employee.employeeId || `EMP${employee._id.slice(-6)}`,
+          name: employee.name,
+          designation: employee.designation || 'employee',
+          shift: employee.shift || 'Morning',
+          uan: employee.uan || '000000000000',
+          esic: employee.esic || '0000000000',
+          attendance,
+          totalDays
+        };
+      });
+
+      setReportData(processedData);
+      showSuccess('Report generated successfully');
+    } catch (error) {
+      showError('Failed to generate report');
+      console.error('Error generating report:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      // Create CSV content from current report data
+      const csvContent = generateCSVContent();
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `muster-roll-report-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      showSuccess('Report exported to CSV successfully');
+    } catch (error) {
+      showError('Failed to export report to CSV');
+      console.error('Error exporting to CSV:', error);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      // For PDF export, we'll use the browser's print functionality
+      // This will allow users to save as PDF using their browser's print dialog
+      window.print();
+      showSuccess('Use your browser\'s print dialog to save as PDF');
+    } catch (error) {
+      showError('Failed to export report to PDF');
+      console.error('Error exporting to PDF:', error);
+    }
+  };
+
+  const generateCSVContent = () => {
+    const startDate = filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const endDate = filters.endDate ? new Date(filters.endDate) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+    const daysInPeriod = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    const maxDays = Math.min(daysInPeriod, 31);
+
+    const headers = [
+      'SR NO', 'EMP CODE', 'NAME OF EMPLOYEE', 'DESIGNATION', 'SHIFT', 'UAN', 'ESIC',
+      ...Array.from({ length: maxDays }, (_, i) => `Day ${i + 1}`),
+      'TOTAL DAYS'
+    ];
+
+    const rows = reportData.map(employee => {
+      const row = [
+        employee.srNo,
+        employee.empCode,
+        employee.name,
+        employee.designation,
+        employee.shift,
+        employee.uan,
+        employee.esic,
+        ...Array.from({ length: maxDays }, (_, i) => employee.attendance[i + 1] || ''),
+        employee.totalDays
+      ];
+      return row.join(',');
+    });
+
+    return [headers.join(','), ...rows].join('\n');
+  };
+
+  const renderDayColumns = () => {
+    const days = [];
+    const startDate = filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const endDate = filters.endDate ? new Date(filters.endDate) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+    const daysInPeriod = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+    for (let i = 1; i <= Math.min(daysInPeriod, 31); i++) {
+      days.push(
+        <th key={i} className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">
+          {i}
+        </th>
+      );
+    }
+    return days;
+  };
+
+  const renderAttendanceCell = (day, attendance) => {
+    const isPresent = attendance[day] === 'P';
+    return (
+      <td key={day} className="border border-gray-300 px-1 py-1 text-center text-xs">
+        {isPresent && (
+          <span className="inline-flex w-4 h-4 bg-green-500 text-white rounded-full text-xs font-bold items-center justify-center">
+            P
+          </span>
+        )}
+      </td>
+    );
+  };
+
+  return (
+    <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Traditional Muster Roll Report Preview</h1>
+
+        {/* Filters */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <input
+                type="date"
+                name="startDate"
+                value={filters.startDate}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <input
+                type="date"
+                name="endDate"
+                value={filters.endDate}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Shift</label>
+              <select
+                name="shift"
+                value={filters.shift}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Shifts</option>
+                <option value="Morning">Morning</option>
+                <option value="Evening">Evening</option>
+                <option value="Night">Night</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                name="status"
+                value={filters.status}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Status</option>
+                <option value="present">Present</option>
+                <option value="absent">Absent</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
+              <input
+                type="text"
+                name="employeeId"
+                value={filters.employeeId}
+                onChange={handleFilterChange}
+                placeholder="Enter Employee ID"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={handleGenerateReport}
+                disabled={loading}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center justify-center"
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <>
+                    <Filter className="w-4 h-4 mr-2" />
+                    Generate
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Export Buttons */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={handleExportExcel}
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export Excel
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Export PDF
+          </button>
+        </div>
+      </div>
+
+      {/* Report Content */}
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        {/* Report Header */}
+        <div className="bg-gray-50 p-4 border-b">
+          <div className="text-center">
+            <h2 className="text-lg font-bold text-gray-800 mb-2">
+              Form XVI 1 [See Rule 78(1) (a) (1)] Muster Roll
+            </h2>
+            <h3 className="text-xl font-bold text-gray-800 mb-1">{companyinfo.name}</h3>
+            <p className="text-sm text-gray-600">
+              DEPLOYMENT OF SECURITY PERSON AT {companyinfo.location} ON {companyinfo.month}
+            </p>
+          </div>
+        </div>
+
+        {/* Report Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">SR NO</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">EMP CODE</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">NAME OF EMPLOYEE</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">DESIGNATION</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">SHIFT</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">UAN</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">ESIC</th>
+                {renderDayColumns()}
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">TOTAL DAYS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={7 + Math.min(31, (filters.startDate && filters.endDate ?
+                    Math.ceil((new Date(filters.endDate) - new Date(filters.startDate)) / (1000 * 60 * 60 * 24)) + 1 : 30)) + 1}
+                    className="border border-gray-300 px-4 py-8 text-center">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <span className="text-sm text-gray-600">Loading report data...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : reportData.length === 0 ? (
+                <tr>
+                  <td colSpan={7 + Math.min(31, (filters.startDate && filters.endDate ?
+                    Math.ceil((new Date(filters.endDate) - new Date(filters.startDate)) / (1000 * 60 * 60 * 24)) + 1 : 30)) + 1}
+                    className="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                    No data available for the selected criteria
+                  </td>
+                </tr>
+              ) : (
+                reportData.map((employee) => {
+                  const startDate = filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+                  const endDate = filters.endDate ? new Date(filters.endDate) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+                  const daysInPeriod = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+                  return (
+                    <tr key={employee.srNo} className="hover:bg-gray-50">
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs">{employee.srNo}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono">{employee.empCode}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-xs">{employee.name}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs">{employee.designation}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs">{employee.shift}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono">{employee.uan}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono">{employee.esic}</td>
+                      {Array.from({ length: Math.min(daysInPeriod, 31) }, (_, i) => i + 1).map(day =>
+                        renderAttendanceCell(day, employee.attendance)
+                      )}
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-bold text-blue-600">
+                        {employee.totalDays}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TraditionalMusterRollReport;

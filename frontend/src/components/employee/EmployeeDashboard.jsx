@@ -1,95 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
-import { 
-  Clock, 
-  CheckCircle, 
-  AlertTriangle,
+import {
+  Clock,
   MapPin,
+  CheckCircle,
+  XCircle,
   Calendar,
-  BarChart3,
-  Timer,
-  TrendingUp,
   User,
-  LogIn,
-  LogOut,
-  History
+  Building,
+  Phone,
+  Mail,
+  Navigation,
+  Battery,
+  Wifi,
+  WifiOff,
+  Camera
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
-import Loading from '../ui/Loading';
+import StepInModal from './StepInModal';
+import StepOutModal from './StepOutModal';
+import MyAttendance from './MyAttendance';
+import { attendanceAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 const EmployeeDashboard = () => {
-  const { user, company } = useAuth();
-  const { theme } = useCompanyTheme();
-  const [dashboardData, setDashboardData] = useState(null);
-  const [attendanceHistory, setAttendanceHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isWorking, setIsWorking] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState(null);
+  const { user } = useAuth();
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [attendanceStatus, setAttendanceStatus] = useState('not_checked_in');
+  const [location, setLocation] = useState(null);
+  const [batteryLevel, setBatteryLevel] = useState(null);
 
+  // Modal states
+  const [isStepInModalOpen, setIsStepInModalOpen] = useState(false);
+  const [isStepOutModalOpen, setIsStepOutModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Navigation state
+
+  // Update time every second
   useEffect(() => {
-    loadDashboardData();
-    loadAttendanceHistory();
-    checkCurrentStatus();
-    getCurrentLocation();
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
-  const loadDashboardData = async () => {
-    setLoading(true);
-    try {
-      // Simulate API call - replace with actual API
-      setTimeout(() => {
-        setDashboardData({
-          totalDays: 22,
-          presentDays: 20,
-          absentDays: 2,
-          lateDays: 3,
-          averageHours: 8.2,
-          thisMonthHours: 164.5,
-          lastCheckIn: '2024-01-15 09:00:00',
-          lastCheckOut: '2024-01-15 18:00:00'
-        });
-        setLoading(false);
-      }, 1500);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      setLoading(false);
-    }
-  };
+  // Check online status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
 
-  const loadAttendanceHistory = async () => {
-    try {
-      // Simulate attendance history - replace with actual API
-      setTimeout(() => {
-        setAttendanceHistory([
-          { date: '2024-01-15', checkIn: '09:00', checkOut: '18:00', hours: 8.5, status: 'present', location: 'Office' },
-          { date: '2024-01-14', checkIn: '09:15', checkOut: '17:45', hours: 8.5, status: 'present', location: 'Office' },
-          { date: '2024-01-13', checkIn: '09:30', checkOut: '18:15', hours: 8.75, status: 'late', location: 'Office' },
-          { date: '2024-01-12', checkIn: '08:55', checkOut: '18:05', hours: 9.17, status: 'present', location: 'Office' },
-          { date: '2024-01-11', checkIn: null, checkOut: null, hours: 0, status: 'absent', location: 'N/A' }
-        ]);
-      }, 1000);
-    } catch (error) {
-      console.error('Error loading attendance history:', error);
-    }
-  };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
-  const checkCurrentStatus = async () => {
-    try {
-      // Check if employee is currently working
-      // This would be an actual API call
-      setIsWorking(false); // Simulate not working
-    } catch (error) {
-      console.error('Error checking status:', error);
-    }
-  };
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
+  // Get battery level if available
+  useEffect(() => {
+    if ('getBattery' in navigator) {
+      navigator.getBattery().then((battery) => {
+        setBatteryLevel(Math.round(battery.level * 100));
+      });
+    }
+  }, []);
+
+  // Get current location
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setCurrentLocation({
+          setLocation({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracy: position.coords.accuracy
@@ -102,294 +89,399 @@ const EmployeeDashboard = () => {
     }
   };
 
-  const handleStepIn = async () => {
+  // Step in function
+  const handleStepIn = async (stepInData) => {
+    setIsLoading(true);
     try {
-      if (!currentLocation) {
-        alert('Location access required for attendance. Please enable location services.');
-        return;
+      // Create FormData for file upload
+      const formData = new FormData();
+
+      // Add the image file
+      if (stepInData.stepInImage) {
+        formData.append('stepInImage', stepInData.stepInImage);
       }
 
-      // Implement step in functionality
-      console.log('Stepping in with location:', currentLocation);
-      // Add actual API call here
-      setIsWorking(true);
+      // Add other data
+      formData.append('address', stepInData.address || '');
+      formData.append('shift', stepInData.shift || 'morning');
+      formData.append('status', stepInData.status || 'present');
+      formData.append('latitude', stepInData.latitude || '');
+      formData.append('longitude', stepInData.longitude || '');
+      formData.append('note', stepInData.note || '');
+
+      // For employee step-in, don't send employeeId and companyId as they come from JWT token
+      const response = await attendanceAPI.stepIn(formData);
+
+      setAttendanceStatus('checked_in');
+      toast.success('Successfully checked in!');
+      console.log('Step in response:', response);
     } catch (error) {
-      console.error('Error stepping in:', error);
-      alert('Failed to step in. Please try again.');
+      console.error('Error during step in:', error);
+      toast.error('Failed to check in. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleStepOut = async () => {
+  // Step out function
+  const handleStepOut = async (stepOutData) => {
+    setIsLoading(true);
     try {
-      if (!currentLocation) {
-        alert('Location access required for attendance. Please enable location services.');
-        return;
+      // Create FormData for file upload
+      const formData = new FormData();
+
+      // Add the image file
+      if (stepOutData.stepOutImage) {
+        formData.append('stepOutImage', stepOutData.stepOutImage);
       }
 
-      // Implement step out functionality
-      console.log('Stepping out with location:', currentLocation);
-      // Add actual API call here
-      setIsWorking(false);
+      // Add other data
+      formData.append('address', stepOutData.stepOutLocation || '');
+      formData.append('status', stepOutData.status || 'absent');
+      formData.append('latitude', stepOutData.coordinates?.latitude || '');
+      formData.append('longitude', stepOutData.coordinates?.longitude || '');
+      formData.append('note', stepOutData.note || '');
+
+      // For employee step-out, don't send employeeId and companyId as they come from JWT token
+      const response = await attendanceAPI.stepOut(formData);
+
+      setAttendanceStatus('checked_out');
+      toast.success('Successfully checked out!');
+      console.log('Step out response:', response);
     } catch (error) {
-      console.error('Error stepping out:', error);
-      alert('Failed to step out. Please try again.');
+      console.error('Error during step out:', error);
+      toast.error('Failed to check out. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loading text="Loading dashboard..." size="lg" />
-      </div>
-    );
-  }
+  // Open step in modal
+  const openStepInModal = () => {
+    setIsStepInModalOpen(true);
+  };
 
-  const stats = [
-    {
-      title: 'Present Days',
-      value: dashboardData?.presentDays || 0,
-      total: dashboardData?.totalDays || 0,
-      icon: CheckCircle,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      borderColor: 'border-green-200'
-    },
-    {
-      title: 'Absent Days',
-      value: dashboardData?.absentDays || 0,
-      total: dashboardData?.totalDays || 0,
-      icon: AlertTriangle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-200'
-    },
-    {
-      title: 'Late Days',
-      value: dashboardData?.lateDays || 0,
-      total: dashboardData?.totalDays || 0,
-      icon: Clock,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
-      borderColor: 'border-yellow-200'
-    },
-    {
-      title: 'Avg Hours/Day',
-      value: dashboardData?.averageHours || 0,
-      total: 8,
-      icon: Timer,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200'
+  // Open step out modal
+  const openStepOutModal = () => {
+    setIsStepOutModalOpen(true);
+  };
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'checked_in':
+        return 'text-green-600 bg-green-100';
+      case 'checked_out':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
-  ];
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'checked_in':
+        return 'Checked In';
+      case 'checked_out':
+        return 'Checked Out';
+      default:
+        return 'Not Checked In';
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Welcome, {user?.name}!
-            </h1>
-            <p className="text-gray-600 mt-1">
-              {company?.name} - Employee Portal
-            </p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            Welcome, {user?.name || 'Employee'}
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
+            {formatDate(currentTime)} • {formatTime(currentTime)}
+          </p>
+        </div>
+        <div className="flex items-center space-x-2 mt-4 sm:mt-0">
+          <div className={`flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(attendanceStatus)}`}>
+            <div className={`w-2 h-2 rounded-full mr-2 ${attendanceStatus === 'checked_in' ? 'bg-green-500' :
+              attendanceStatus === 'checked_out' ? 'bg-red-500' : 'bg-gray-400'
+              }`}></div>
+            {getStatusText(attendanceStatus)}
           </div>
-          <div className="flex items-center space-x-2">
-            {currentLocation && (
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <MapPin className="w-4 h-4" />
-                <span>Location: {currentLocation.latitude.toFixed(4)}, {currentLocation.longitude.toFixed(4)}</span>
-              </div>
+          <div className="flex items-center text-sm text-gray-500">
+            {isOnline ? (
+              <Wifi className="h-4 w-4 text-green-500 mr-1" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-red-500 mr-1" />
             )}
+            {isOnline ? 'Online' : 'Offline'}
           </div>
         </div>
       </div>
 
-      {/* Step In/Out Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Clock className="w-5 h-5" />
-            <span>Attendance</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className={`w-4 h-4 rounded-full ${isWorking ? 'bg-green-500' : 'bg-gray-400'}`} />
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {isWorking ? 'Currently Working' : 'Not Working'}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {isWorking ? 'You are currently checked in' : 'You are not checked in'}
-                </p>
+
+
+      <>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Check In</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-2">
+                    {attendanceStatus === 'checked_in' ? 'Done' : 'Ready'}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-green-100">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              {!isWorking ? (
+              {attendanceStatus !== 'checked_in' && (
                 <Button
-                  onClick={handleStepIn}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  disabled={!currentLocation}
+                  onClick={openStepInModal}
+                  className="w-full mt-4"
+                  disabled={!isOnline}
                 >
-                  <LogIn className="w-4 h-4 mr-2" />
+                  <Camera className="h-4 w-4 mr-2" />
                   Step In
                 </Button>
-              ) : (
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Check Out</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-2">
+                    {attendanceStatus === 'checked_out' ? 'Done' : 'Ready'}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-red-100">
+                  <XCircle className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+              {attendanceStatus === 'checked_in' && (
                 <Button
-                  onClick={handleStepOut}
+                  onClick={openStepOutModal}
                   variant="outline"
-                  className="border-red-300 text-red-600 hover:bg-red-50"
-                  disabled={!currentLocation}
+                  className="w-full mt-4"
+                  disabled={!isOnline}
                 >
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <Camera className="h-4 w-4 mr-2" />
                   Step Out
                 </Button>
               )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          const percentage = stat.total > 0 ? Math.round((stat.value / stat.total) * 100) : 0;
-          return (
-            <Card key={index} className={`${stat.borderColor} border-2`}>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                    {stat.total > 0 && (
-                      <p className="text-xs text-gray-500">{percentage}% of total</p>
-                    )}
-                  </div>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Location</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {location ? 'Located' : 'Not Located'}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                <div className="p-3 rounded-lg bg-blue-100">
+                  <MapPin className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+              <Button
+                onClick={getCurrentLocation}
+                variant="outline"
+                className="w-full mt-4"
+                disabled={!isOnline}
+              >
+                <Navigation className="h-4 w-4 mr-2" />
+                Get Location
+              </Button>
+            </CardContent>
+          </Card>
 
-      {/* Monthly Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5" />
-              <span>This Month</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-600">Total Hours</span>
-                <span className="text-lg font-bold text-blue-600">{dashboardData?.thisMonthHours || 0}h</span>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Battery</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-2">
+                    {batteryLevel ? `${batteryLevel}%` : 'N/A'}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-yellow-100">
+                  <Battery className="h-6 w-6 text-yellow-600" />
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-600">Average per Day</span>
-                <span className="text-lg font-bold text-green-600">{dashboardData?.averageHours || 0}h</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-500 h-2 rounded-full" 
-                  style={{ width: `${Math.min((dashboardData?.thisMonthHours || 0) / 176 * 100, 100)}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500">Target: 176 hours (22 days × 8 hours)</p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="w-5 h-5" />
-              <span>Performance</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-600">Attendance Rate</span>
-                <span className="text-lg font-bold text-green-600">
-                  {dashboardData?.totalDays > 0 ? Math.round((dashboardData.presentDays / dashboardData.totalDays) * 100) : 0}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-600">Punctuality</span>
-                <span className="text-lg font-bold text-blue-600">
-                  {dashboardData?.totalDays > 0 ? Math.round(((dashboardData.totalDays - dashboardData.lateDays) / dashboardData.totalDays) * 100) : 0}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-green-500 h-2 rounded-full" 
-                  style={{ width: `${dashboardData?.totalDays > 0 ? (dashboardData.presentDays / dashboardData.totalDays) * 100 : 0}%` }}
-                ></div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Attendance History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <History className="w-5 h-5" />
-            <span>Recent Attendance</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {attendanceHistory.map((record, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <div className={`w-3 h-3 rounded-full ${
-                    record.status === 'present' ? 'bg-green-500' : 
-                    record.status === 'late' ? 'bg-yellow-500' : 
-                    record.status === 'absent' ? 'bg-red-500' : 'bg-gray-500'
-                  }`} />
+        {/* Employee Information */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <User className="h-5 w-5 mr-2" />
+                Personal Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <User className="h-5 w-5 text-gray-400" />
                   <div>
-                    <h4 className="font-medium text-gray-900">{record.date}</h4>
-                    <p className="text-sm text-gray-600">{record.location}</p>
+                    <p className="text-sm font-medium text-gray-900">{user?.name || 'N/A'}</p>
+                    <p className="text-sm text-gray-500">Full Name</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">
-                      {record.checkIn ? `In: ${record.checkIn}` : 'Not checked in'}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {record.checkOut ? `Out: ${record.checkOut}` : 'Still working'}
-                    </p>
+                <div className="flex items-center space-x-3">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{user?.email || 'N/A'}</p>
+                    <p className="text-sm text-gray-500">Email Address</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">{record.hours}h</p>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      record.status === 'present' ? 'bg-green-100 text-green-800' : 
-                      record.status === 'late' ? 'bg-yellow-100 text-yellow-800' : 
-                      record.status === 'absent' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {record.status}
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{user?.mobile || 'N/A'}</p>
+                    <p className="text-sm text-gray-500">Mobile Number</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Building className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{user?.designation || 'N/A'}</p>
+                    <p className="text-sm text-gray-500">Designation</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Clock className="h-5 w-5 mr-2" />
+                Today's Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Current Time</span>
+                  <span className="font-semibold">{formatTime(currentTime)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Date</span>
+                  <span className="font-semibold">{formatDate(currentTime)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Status</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(attendanceStatus)}`}>
+                    {getStatusText(attendanceStatus)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Connection</span>
+                  <span className={`flex items-center ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
+                    {isOnline ? (
+                      <Wifi className="h-4 w-4 mr-1" />
+                    ) : (
+                      <WifiOff className="h-4 w-4 mr-1" />
+                    )}
+                    {isOnline ? 'Online' : 'Offline'}
+                  </span>
+                </div>
+                {location && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Location</span>
+                    <span className="font-semibold text-sm">
+                      {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
                     </span>
                   </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Activity */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Calendar className="h-5 w-5 mr-2" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div>
+                  <p className="text-sm font-medium">System Online</p>
+                  <p className="text-xs text-gray-500">All services operational</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div>
+                  <p className="text-sm font-medium">Location Services</p>
+                  <p className="text-xs text-gray-500">
+                    {location ? 'Location detected' : 'Location not available'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                <div>
+                  <p className="text-sm font-medium">Battery Status</p>
+                  <p className="text-xs text-gray-500">
+                    {batteryLevel ? `${batteryLevel}% remaining` : 'Battery level not available'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </>
+
+
+
+      {/* Step In Modal */}
+      <StepInModal
+        isOpen={isStepInModalOpen}
+        onClose={() => setIsStepInModalOpen(false)}
+        onSubmit={handleStepIn}
+        loading={isLoading}
+      />
+
+      {/* Step Out Modal */}
+      <StepOutModal
+        isOpen={isStepOutModalOpen}
+        onClose={() => setIsStepOutModalOpen(false)}
+        onSubmit={handleStepOut}
+        loading={isLoading}
+      />
     </div>
   );
 };

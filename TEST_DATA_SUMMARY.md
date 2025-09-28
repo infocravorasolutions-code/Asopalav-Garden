@@ -102,11 +102,7 @@ ReadOnly Admin:
 - sneha@neelkanthlandscape.com / readonly123
 ```
 
-### **Manager Logins**
-```
-- vikram@neelkanthlandscape.com / manager123
-- sunita@harikrishnanursery.com / manager123
-- ravi@asopalavgarden.com / manager123
+
 ```
 
 ### **Employee Logins**

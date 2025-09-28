@@ -104,35 +104,35 @@ export const loginManager = async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log("Manager login attempt:", { email });
-    
+
     const manager = await Manager.findOne({ email });
     if (!manager) {
       console.log("Manager not found for email:", email);
       return res.status(404).json({ message: "Manager not found" });
     }
-    
+
     console.log("Manager found:", manager.name, "Company ID:", manager.companyId);
-    
+
     const isPasswordValid = await bcrypt.compare(password, manager.password);
     if (!isPasswordValid) {
       console.log("Invalid password for manager:", email);
       return res.status(401).json({ message: "Invalid password" });
     }
-    
+
     // Get company details
     let company = null;
     if (manager.companyId) {
       company = await Company.findById(manager.companyId);
       console.log("Company found:", company ? company.name : "No company");
     }
-    
-    const token = jwt.sign({ 
-      id: manager._id, 
-      email: manager.email, 
-      userType: 'manager', 
-      companyId: manager.companyId 
+
+    const token = jwt.sign({
+      id: manager._id,
+      email: manager.email,
+      userType: 'manager',
+      companyId: manager.companyId
     }, JWT_SECRET, { expiresIn: '1y' });
-    
+
     console.log("Manager login successful:", manager.name);
     res.status(200).json({ message: "Login successful", token, manager, company });
   }
@@ -144,8 +144,13 @@ export const loginManager = async (req, res) => {
 
 export const getAllManagers = async (req, res) => {
   try {
-    const managers = await Manager.find().populate("companyId", "name code address timezone");
-    console.log("managers", managers)
+    const { id: userId, companyId } = req.user;
+
+    const managers = await Manager.find({
+      companyId: companyId,
+      _id: { $ne: userId } // Exclude current user
+    }).populate("companyId", "name code address timezone");
+
     res.status(200).json({ message: "success", data: managers });
   } catch (error) {
     console.error("Error fetching managers:", error);
@@ -153,21 +158,22 @@ export const getAllManagers = async (req, res) => {
   }
 };
 
+
 // for company relation
 
 export const createManager = async (req, res) => {
   try {
-    const { 
-      email, 
-      password, 
-      name, 
-      mobile, 
-      address, 
-      locationName, 
-      locationAddress, 
-      locationLatitude, 
-      locationLongitude, 
-      locationRadius 
+    const {
+      email,
+      password,
+      name,
+      mobile,
+      address,
+      locationName,
+      locationAddress,
+      locationLatitude,
+      locationLongitude,
+      locationRadius
     } = req.body;
 
     // Validate required fields
@@ -179,9 +185,12 @@ export const createManager = async (req, res) => {
 
     // Get adminId from the authenticated user
     const adminId = req.user.id;
-    const checkCompanyOfAdmin = companyModels.findById({ companyId: req.user.id })
-    console.log("checkCompanyOfAdmin ==> ", checkCompanyOfAdmin);
-    
+    const companyId = req.user.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "User must be associated with a company to create managers" });
+    }
+
     const newManager = new Manager({
       email,
       password: hashedPassword,
@@ -189,7 +198,7 @@ export const createManager = async (req, res) => {
       mobile,
       address,
       createdBy: adminId,
-      companyId: req.user.companyId,
+      companyId: companyId,
       // Manual location fields
       locationName: locationName || "Office",
       locationAddress: locationAddress || "",
@@ -199,12 +208,23 @@ export const createManager = async (req, res) => {
     });
 
     await newManager.save();
-    res.status(201).json({ message: "Manager created successfully", manager: newManager, company: checkCompanyOfAdmin });
+
+    // Populate the created manager with company info
+    const populatedManager = await Manager.findById(newManager._id)
+      .populate("companyId", "name code address timezone");
+
+    res.status(201).json({
+      message: "Manager created successfully",
+      manager: populatedManager
+    });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ message: "Email already exists" });
     }
     console.error("Error creating manager:", error);
-    res.status(500).json({ message: "Error creating manager", error });
+    res.status(500).json({
+      message: "Error creating manager",
+      error: error.message
+    });
   }
 };

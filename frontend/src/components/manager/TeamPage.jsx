@@ -53,12 +53,12 @@ const TeamPage = () => {
     setError(null);
     try {
       const token = localStorage.getItem('authToken');
-      
+
       // Choose endpoint based on filter
-      const endpoint = showOnlyMyTeam ? 
-        'http://localhost:5678/api/employee/team' : 
+      const endpoint = showOnlyMyTeam ?
+        'http://localhost:5678/api/employee/team' :
         'http://localhost:5678/api/employee/all';
-      
+
       const response = await fetch(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -148,11 +148,8 @@ const TeamPage = () => {
 
       const method = modalMode === 'create' ? 'POST' : 'PUT';
 
-      // For create mode, set the managerId to current user
-      const requestData = modalMode === 'create' ? {
-        ...formData,
-        managerId: user?.id
-      } : formData;
+      // Backend will automatically set managerId based on who is creating the employee
+      const requestData = formData;
 
       console.log('Saving team member:', { modalMode, requestData, url, method });
 
@@ -229,35 +226,7 @@ const TeamPage = () => {
       sortable: false,
       filter: false
     },
-    {
-      headerName: 'Manager Assignment',
-      field: 'managerAssignment',
-      width: 180,
-      cellRenderer: (params) => {
-        const isAssignedToCurrentManager = params.data.managerId && params.data.managerId._id === user?.id;
-        const managerName = params.data.managerId ? 
-          (typeof params.data.managerId === 'object' ? params.data.managerId.name : 'Unknown Manager') : 
-          'Unassigned';
-        
-        return (
-          <div className="text-left">
-            {isAssignedToCurrentManager ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-green-700 text-sm font-medium">Assigned to You</span>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <span className="text-orange-700 text-sm font-medium">
-                  {managerName === 'Unassigned' ? 'Unassigned' : `Assigned to ${managerName}`}
-                </span>
-              </div>
-            )}
-          </div>
-        );
-      }
-    },
+
     {
       headerName: 'Name',
       field: 'name',
@@ -336,11 +305,10 @@ const TeamPage = () => {
         const status = params.value || (params.data.active ? 'Active' : 'Inactive');
         return (
           <div className="text-left">
-            <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-              status === 'Active'
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}>
+            <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${status === 'Active'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+              }`}>
               {status}
             </span>
           </div>
@@ -406,7 +374,7 @@ const TeamPage = () => {
 
         <div className="flex items-center gap-2">
           {/* Filter Toggle */}
-          <div className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg">
+          {/* <div className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg">
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -418,8 +386,8 @@ const TeamPage = () => {
                 Show only my team
               </span>
             </label>
-          </div>
-          
+          </div> */}
+
           <button
             onClick={handleRefresh}
             disabled={loading}

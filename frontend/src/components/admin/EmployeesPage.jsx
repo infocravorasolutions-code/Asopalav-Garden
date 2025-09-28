@@ -15,51 +15,7 @@ const EmployeesPage = () => {
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-  // Dummy employees data (used as fallback)
-  const dummyEmployees = [
-    {
-      _id: 'emp1',
-      name: 'Alice Johnson',
-      email: 'alice.j@neelkanthlandscape.com',
-      mobile: '+91 98765 11111',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      shift: 'morning',
-      position: 'Landscape Designer',
-      empCode: 'NEEL001',
-      status: 'Active',
-      createdAt: '2024-01-01T10:00:00Z',
-      createdByRole: 'admin',
-      createdById: { name: 'Admin User' }
-    },
-    {
-      _id: 'emp2',
-      name: 'Bob Williams',
-      email: 'bob.w@neelkanthlandscape.com',
-      mobile: '+91 98765 22222',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      shift: 'evening',
-      position: 'Garden Supervisor',
-      empCode: 'NEEL002',
-      status: 'Inactive',
-      createdAt: '2024-01-05T11:30:00Z',
-      createdByRole: 'admin',
-      createdById: { name: 'Admin User' }
-    },
-    {
-      _id: 'emp3',
-      name: 'Charlie Brown',
-      email: 'charlie.b@neelkanthlandscape.com',
-      mobile: '+91 98765 33333',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      shift: 'night',
-      position: 'Maintenance Staff',
-      empCode: 'NEEL003',
-      status: 'Active',
-      createdAt: '2024-01-10T14:00:00Z',
-      createdByRole: 'admin',
-      createdById: { name: 'Admin User' }
-    },
-  ];
+
 
   const fetchEmployees = async () => {
     setLoading(true);
@@ -95,8 +51,6 @@ const EmployeesPage = () => {
     } catch (error) {
       console.error('Error fetching employees:', error);
       setError(error.message);
-      // Use dummy data as fallback
-      setEmployees(dummyEmployees);
     } finally {
       setLoading(false);
     }
@@ -309,11 +263,10 @@ const EmployeesPage = () => {
         const status = params.value || (params.data.active ? 'Active' : 'Inactive');
         return (
           <div className="text-left">
-            <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-              status === 'Active'
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}>
+            <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${status === 'Active'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+              }`}>
               {status}
             </span>
           </div>
@@ -326,7 +279,7 @@ const EmployeesPage = () => {
       width: 150,
       cellRenderer: (params) => (
         <div className="text-gray-600 text-sm text-left">
-          {params.data.createdById ? 
+          {params.data.createdById ?
             (typeof params.data.createdById === 'object' ? params.data.createdById.name : params.data.createdById)
             : 'Admin'}
         </div>

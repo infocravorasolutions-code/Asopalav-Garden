@@ -11,7 +11,7 @@ export const requireRole = (roles) => {
     }
 
     const userRole = req.user.role;
-    
+
     if (!roles.includes(userRole)) {
       return res.status(403).json({
         success: false,
@@ -67,7 +67,7 @@ export const requireCompanyAccess = (req, res, next) => {
 
   // Other users can only access their company data
   const requestedCompanyId = req.params.companyId || req.body.companyId || req.query.companyId;
-  
+
   if (requestedCompanyId && requestedCompanyId !== req.user.companyId.toString()) {
     return res.status(403).json({
       success: false,
@@ -119,11 +119,19 @@ export const canManageManagers = (req, res, next) => {
     });
   }
 
-  // Only superadmin can manage managers
-  if (req.user.role !== 'superadmin') {
+  // Readonly admins cannot manage managers
+  if (req.user.role === 'readonly') {
     return res.status(403).json({
       success: false,
-      message: 'Only superadmin can manage managers'
+      message: 'Read-only admin cannot manage managers'
+    });
+  }
+
+  // Only superadmin and admin can manage managers
+  if (!['superadmin', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Insufficient permissions to manage managers'
     });
   }
 

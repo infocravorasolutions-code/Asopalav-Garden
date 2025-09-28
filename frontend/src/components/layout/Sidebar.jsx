@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
+import {
   Home,
   Users,
+  User,
   UserPlus,
   Clock,
+  Calendar,
   MapPin,
   BarChart3,
   FileText,
@@ -15,7 +17,6 @@ import {
   X,
   Building,
   UserCheck,
-  Calendar,
   TrendingUp,
   Shield,
   UserCog
@@ -26,7 +27,7 @@ import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 const Sidebar = ({ isOpen, onToggle, userType }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const { companyName, logoUrl, primaryColor } = useCompanyTheme();
   const [isMobile, setIsMobile] = useState(false);
 
@@ -35,7 +36,7 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1024);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -52,7 +53,7 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
           path: '/admin/dashboard',
           color: 'blue'
         },
-     
+
         {
           id: 'managers',
           label: 'Managers',
@@ -75,13 +76,13 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
           color: 'orange'
         },
         {
-          id: 'attendance-reports',
-          label: 'Attendance Reports',
+          id: 'muster-roll',
+          label: 'Muster Roll Report',
           icon: FileText,
-          path: '/admin/reports/attendance',
+          path: '/admin/traditional-muster-roll',
           color: 'indigo'
         },
-       
+
       ];
     } else if (userType === 'manager') {
       return [
@@ -99,16 +100,33 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
           path: '/manager/team',
           color: 'purple'
         },
-     
+
+        {
+          id: 'step-in-out',
+          label: 'Step In/Step Out',
+          icon: Clock,
+          path: '/manager/step-in-out',
+          color: 'green'
+        }
+
+
+      ];
+    } else if (userType === 'employee') {
+      return [
+        {
+          id: 'dashboard',
+          label: 'Dashboard',
+          icon: Home,
+          path: '/employee/dashboard',
+          color: 'blue'
+        },
         {
           id: 'attendance',
-          label: 'Attendance',
+          label: 'My Attendance',
           icon: Clock,
-          path: '/manager/attendance',
-          color: 'orange'
-        },
-      
- 
+          path: '/employee/attendance',
+          color: 'green'
+        }
       ];
     }
     return [];
@@ -141,16 +159,15 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
       <button
         key={item.id}
         onClick={() => handleNavigation(item.path)}
-        className={`w-full flex items-center px-4 py-3 text-sm sm:text-base font-medium rounded-lg transition-all duration-200 group min-w-0 ${
-          isItemActive
-            ? (item.color === 'blue' ? 'bg-blue-500/20 text-blue-600 border-l-4 border-blue-500' :
-               item.color === 'green' ? 'bg-green-500/20 text-green-600 border-l-4 border-green-500' :
-               item.color === 'purple' ? 'bg-purple-500/20 text-purple-600 border-l-4 border-purple-500' :
-               item.color === 'orange' ? 'bg-orange-500/20 text-orange-600 border-l-4 border-orange-500' :
-               item.color === 'indigo' ? 'bg-indigo-500/20 text-indigo-600 border-l-4 border-indigo-500' :
-               'bg-gray-500/20 text-gray-600 border-l-4 border-gray-500')
-            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-        }`}
+        className={`w-full flex items-center px-4 py-3 text-sm sm:text-base font-medium rounded-lg transition-all duration-200 group min-w-0 ${isItemActive
+          ? (item.color === 'blue' ? 'bg-blue-500/20 text-blue-600 border-l-4 border-blue-500' :
+            item.color === 'green' ? 'bg-green-500/20 text-green-600 border-l-4 border-green-500' :
+              item.color === 'purple' ? 'bg-purple-500/20 text-purple-600 border-l-4 border-purple-500' :
+                item.color === 'orange' ? 'bg-orange-500/20 text-orange-600 border-l-4 border-orange-500' :
+                  item.color === 'indigo' ? 'bg-indigo-500/20 text-indigo-600 border-l-4 border-indigo-500' :
+                    'bg-gray-500/20 text-gray-600 border-l-4 border-gray-500')
+          : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+          }`}
       >
         <div className="flex items-center space-x-3 min-w-0 flex-1">
           <span className="truncate">{item.label}</span>
@@ -163,7 +180,7 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
     <>
       {/* Mobile Overlay */}
       {isOpen && isMobile && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={onToggle}
         />
@@ -186,13 +203,13 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
                 className="w-10 h-10 rounded-lg object-cover"
               />
             ) : (
-              <div 
+              <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: primaryColor + '20' }}
               >
-                <Building 
-                  className="h-6 w-6" 
-                  style={{ color: primaryColor }} 
+                <Building
+                  className="h-6 w-6"
+                  style={{ color: primaryColor }}
                 />
               </div>
             )}
@@ -213,23 +230,23 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
           </button>
         </div>
 
-<div className='flex flex-col justify-between items-between
+        <div className='flex flex-col justify-between items-between
 '>
-        {/* Navigation */}
-        <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
-          {navigationItems.map(item => renderMenuItem(item))}
-        </nav>
+          {/* Navigation */}
+          <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
+            {navigationItems.map(item => renderMenuItem(item))}
+          </nav>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-gray-200">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors min-w-0"
-          >
-            <LogOut className="h-5 w-5 flex-shrink-0" />
-            <span className="truncate">Logout</span>
-          </button>
-        </div>
+          {/* Footer */}
+          <div className="p-6 border-t border-gray-200">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors min-w-0"
+            >
+              <LogOut className="h-5 w-5 flex-shrink-0" />
+              <span className="truncate">Logout</span>
+            </button>
+          </div>
         </div>
       </div>
     </>

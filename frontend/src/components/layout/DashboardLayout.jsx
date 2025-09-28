@@ -21,7 +21,7 @@ const DashboardLayout = ({ children }) => {
         setSidebarOpen(false);
       }
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -46,7 +46,7 @@ const DashboardLayout = ({ children }) => {
   // Determine user type from user data
   const getUserType = () => {
     if (!user) return 'admin';
-    
+
     // Check if user has role property
     if (user.role) {
       if (user.role === 'superadmin' || user.role === 'readonly') {
@@ -54,12 +54,12 @@ const DashboardLayout = ({ children }) => {
       }
       return user.role;
     }
-    
+
     // Check if user has userType property
     if (user.userType) {
       return user.userType;
     }
-    
+
     // Default to admin
     return 'admin';
   };
@@ -70,14 +70,14 @@ const DashboardLayout = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50 relative">
       {/* Sidebar */}
-      <Sidebar 
-        isOpen={sidebarOpen} 
+      <Sidebar
+        isOpen={sidebarOpen}
         onToggle={toggleSidebar}
         userType={userType}
       />
 
       {/* Mobile Header */}
-      <MobileHeader 
+      <MobileHeader
         onMenuToggle={toggleSidebar}
         userType={userType}
         userName={userName}
@@ -99,40 +99,39 @@ const DashboardLayout = ({ children }) => {
                       className="w-8 h-8 rounded-lg object-cover"
                     />
                   ) : (
-                    <div 
+                    <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center"
                       style={{ backgroundColor: primaryColor + '20' }}
                     >
-                      <User 
-                        className="h-5 w-5" 
-                        style={{ color: primaryColor }} 
+                      <User
+                        className="h-5 w-5"
+                        style={{ color: primaryColor }}
                       />
                     </div>
                   )}
-                  
+
                   <div>
                     <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
-                      {userType === 'admin' ? 'Admin Dashboard' : 'Manager Dashboard'}
+                      {userType === 'admin' ? 'Admin Dashboard' : userType === 'manager' ? 'Manager Dashboard' : 'Employee Dashboard'}
                     </h1>
                     <p className="text-xs sm:text-sm text-gray-500">
                       {companyName} • Welcome back, {userName}
                     </p>
                   </div>
                 </div>
-                
+
                 {/* User Info and Actions */}
                 <div className="flex items-center space-x-4">
                   {/* Notifications */}
-                  {/* <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
+                  <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
                     <Bell className="h-5 w-5 text-gray-600" />
-                    <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-                  </button> */}
-                  
+                  </button>
+
                   {/* Settings */}
                   {/* <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
                     <Settings className="h-5 w-5 text-gray-600" />
                   </button> */}
-                  
+
                   {/* User Menu */}
                   <div className="relative user-menu">
                     <button
@@ -142,14 +141,14 @@ const DashboardLayout = ({ children }) => {
                       <div className="text-right">
                         <p className="text-xs sm:text-sm font-medium text-gray-900">{userName}</p>
                         <p className="text-xs text-gray-500 capitalize">
-                          {userType === 'admin' ? 'Administrator' : 'Manager'}
+                          {userType ? userType : 'No role found'}
                         </p>
                       </div>
-                      <div 
+                      <div
                         className="w-10 h-10 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: primaryColor + '20' }}
                       >
-                        <span 
+                        <span
                           className="text-sm font-semibold"
                           style={{ color: primaryColor }}
                         >
@@ -157,7 +156,7 @@ const DashboardLayout = ({ children }) => {
                         </span>
                       </div>
                     </button>
-                    
+
                     {/* User Dropdown Menu */}
                     {showUserMenu && (
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
@@ -173,7 +172,7 @@ const DashboardLayout = ({ children }) => {
                           <Settings className="h-4 w-4" />
                           <span>Settings</span>
                         </button>
-                        <button 
+                        <button
                           onClick={logout}
                           className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
                         >

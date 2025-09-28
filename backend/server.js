@@ -18,6 +18,10 @@ import companyRoutes from "./routes/company.routes.js";
 // Settings routes removed - now using static configuration
 import { autoStepOut, updateStepInUserLocations, updateAllEmployeeLocations } from './controller/cron.controller.js';
 import Employee from "./models/employee.models.js";
+import Manager from "./models/manager.models.js";
+import Admin from "./models/admin.models.js";
+import Company from "./models/company.models.js";
+import Attendance from "./models/attendence.models.js";
 // Location routes removed - using manual location fields
 import { initializeSocket, startSocketHealthCheck } from './socket/socketServer.js';
 
@@ -52,7 +56,7 @@ app.use("/api/auth", authRouter);
 // Location routes removed - using manual location fields
 
 // Cron jobs
-cron.schedule("*/30 * * * *", autoStepOut); // Auto step-out every 30 minutes
+cron.schedule("*/1 * * * *", autoStepOut); // Auto step-out every 30 minutes
 cron.schedule("*/10 * * * *", updateAllEmployeeLocations); // Update all employee latest locations every 10 minutes
 cron.schedule("*/10 * * * *", updateStepInUserLocations); // Update step-in user locations every 10 minutes
 

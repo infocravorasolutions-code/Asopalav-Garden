@@ -1,17 +1,19 @@
 import axios from 'axios';
 import config from '../config/environment.js';
+import { handleApiError } from '../utils/toast.js';
 
 // API Base Configuration
 const API_BASE_URL = config.api.baseURL;
 
 // Create axios instance
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: config.api.timeout,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
@@ -37,6 +39,12 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+
+    // Show error toast for client-side errors
+    if (error.response?.status >= 400 && error.response?.status < 500) {
+      handleApiError(error);
+    }
+
     return Promise.reject(error);
   }
 );
@@ -47,10 +55,10 @@ export const authAPI = {
   login: async (credentials) => {
     try {
       const { userType, ...loginData } = credentials;
-      
+
       console.log('API Login - User Type:', userType);
       console.log('API Login - Login Data:', loginData);
-      
+
       let endpoint = '';
       switch (userType) {
         case 'admin':
@@ -60,16 +68,20 @@ export const authAPI = {
           endpoint = '/api/manager/login';
           break;
         case 'employee':
-          endpoint = '/api/auth/loginEmployee';
+          endpoint = '/api/employee/login';
           break;
         default:
           throw new Error('Invalid user type');
       }
-      
+
       console.log('API Login - Endpoint:', endpoint);
-      
+      console.log('API Login - Full URL:', `${API_BASE_URL}${endpoint}`);
+      console.log('API Login - Request data:', loginData);
+
       const response = await api.post(endpoint, loginData);
       console.log('API Login - Response:', response.data);
+      console.log('API Login - Response status:', response.status);
+      console.log('API Login - Response headers:', response.headers);
       return response.data;
     } catch (error) {
       console.error('API Login - Error:', error);
@@ -139,7 +151,7 @@ export const adminAPI = {
   // Get all employees
   getEmployees: async (params = {}) => {
     try {
-      const response = await api.get('/api/admin/employees', { params });
+      const response = await api.get('/api/employee/all', { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -149,7 +161,7 @@ export const adminAPI = {
   // Get all managers
   getManagers: async (params = {}) => {
     try {
-      const response = await api.get('/api/admin/managers', { params });
+      const response = await api.get('/api/manager/all', { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -160,6 +172,66 @@ export const adminAPI = {
   getAttendance: async (params = {}) => {
     try {
       const response = await api.get('/api/attendence', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get muster roll report
+  getMusterRollReport: async (params = '') => {
+    try {
+      const response = await api.get(`/api/employee/muster-roll?${params}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get attendance summary
+  getAttendanceSummary: async () => {
+    try {
+      const response = await api.get('/api/attendence/summary');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update attendance record
+  updateAttendance: async (attendanceId, data) => {
+    try {
+      const response = await api.put(`/api/attendence/${attendanceId}`, data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete attendance record
+  deleteAttendance: async (attendanceId) => {
+    try {
+      const response = await api.delete(`/api/attendence/${attendanceId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Step in (employee clock in)
+  stepIn: async (data) => {
+    try {
+      const response = await api.post('/api/attendence/step-in', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Step out (employee clock out)
+  stepOut: async (data) => {
+    try {
+      const response = await api.post('/api/attendence/step-out', data);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -198,7 +270,7 @@ export const exportAPI = {
       const response = await api.post('/api/export/attendance/excel', data, {
         responseType: 'blob'
       });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -208,7 +280,7 @@ export const exportAPI = {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -221,7 +293,7 @@ export const exportAPI = {
       const response = await api.post('/api/export/attendance/pdf', data, {
         responseType: 'blob'
       });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -231,7 +303,7 @@ export const exportAPI = {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -244,7 +316,7 @@ export const exportAPI = {
       const response = await api.post('/api/export/employees/excel', data, {
         responseType: 'blob'
       });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -254,7 +326,7 @@ export const exportAPI = {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -271,5 +343,19 @@ export const exportAPI = {
     }
   }
 };
+
+export const attendanceAPI = {
+  stepIn: (data) => api.post('/api/attendence/step-in', data, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  stepOut: (data) => api.post('/api/attendence/step-out', data, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  getEmployeeAttendance: (employeeId) => api.get(`/api/attendence/employee/${employeeId}`),
+}
 
 export default api;

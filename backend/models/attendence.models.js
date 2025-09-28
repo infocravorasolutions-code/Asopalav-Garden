@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
 
 const AttendanceSchema = new mongoose.Schema({
-    employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    managerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    managerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Manager' },
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
     stepIn: { type: Date },
     stepOut: { type: Date },
     stepInImage: { type: String },

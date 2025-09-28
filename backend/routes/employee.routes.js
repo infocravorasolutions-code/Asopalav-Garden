@@ -9,19 +9,25 @@ import {
     deleteEmployee,
     getAllEmployees,
     getEmployeesByManager,
-    loginEmployee
-} from "../controller/employee.controller.js";   
+    loginEmployee,
+    getMusterRollReport,
+    exportMusterRollExcel,
+    exportMusterRollPDF
+} from "../controller/employee.controller.js";
 
 import { authenticateUser } from "../utils/middlewere.js";
 import { requireRole, canManageEmployees } from "../utils/roleMiddleware.js";
 
 // Define routes
-router.post("/", authenticateUser, canManageEmployees, createEmployee);    
+router.post("/", authenticateUser, canManageEmployees, createEmployee);
 router.post("/login", loginEmployee);
 router.get("/all", authenticateUser, requireRole(['superadmin', 'admin']), getAllEmployees);
 router.get("/team", authenticateUser, requireRole(['manager']), getEmployeesByManager);
+router.get("/muster-roll", authenticateUser, requireRole(['superadmin', 'admin']), getMusterRollReport);
+router.get("/muster-roll/export/excel", authenticateUser, requireRole(['superadmin', 'admin']), exportMusterRollExcel);
+router.get("/muster-roll/export/pdf", authenticateUser, requireRole(['superadmin', 'admin']), exportMusterRollPDF);
 router.get("/:id", authenticateUser, getEmployee);
-router.put("/:id", authenticateUser, canManageEmployees, updateEmployee);  
+router.put("/:id", authenticateUser, canManageEmployees, updateEmployee);
 router.delete("/:id", authenticateUser, canManageEmployees, deleteEmployee);
 
 export default router;
