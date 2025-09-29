@@ -23,6 +23,7 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Loading from '../ui/Loading';
 import { adminAPI, api } from '../../services/api';
+import CopyCellRenderer from '../ui/CopyCellRenderer';
 import toast from 'react-hot-toast';
 
 const AttendanceManagement = () => {
@@ -68,10 +69,14 @@ const AttendanceManagement = () => {
                                 {employee?.name?.charAt(0) || 'N/A'}
                             </span>
                         </div>
-                        <div>
+                        <div className="flex-1">
                             <div className="font-medium text-gray-900">{employee?.name || 'N/A'}</div>
                             <div className="text-sm text-gray-500">{employee?.empCode || 'N/A'}</div>
                         </div>
+                        <CopyCellRenderer
+                            value={`${employee?.name || 'N/A'} (${employee?.empCode || 'N/A'})`}
+                            field="employee"
+                        />
                     </div>
                 );
             },
@@ -87,6 +92,10 @@ const AttendanceManagement = () => {
                     <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
                         <span>{date.toLocaleDateString()}</span>
+                        <CopyCellRenderer
+                            value={date.toLocaleDateString()}
+                            field="date"
+                        />
                     </div>
                 );
             },
@@ -106,9 +115,15 @@ const AttendanceManagement = () => {
                     }
                 };
                 return (
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getShiftColor(shift)}`}>
-                        {shift || 'N/A'}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getShiftColor(shift)}`}>
+                            {shift || 'N/A'}
+                        </span>
+                        <CopyCellRenderer
+                            value={shift || 'N/A'}
+                            field="shift"
+                        />
+                    </div>
                 );
             },
             width: 100
@@ -118,7 +133,13 @@ const AttendanceManagement = () => {
             field: 'stepIn',
             cellRenderer: (params) => {
                 const stepIn = params.data.stepIn;
-                return stepIn ? new Date(stepIn).toLocaleTimeString() : 'N/A';
+                const timeString = stepIn ? new Date(stepIn).toLocaleTimeString() : 'N/A';
+                return (
+                    <CopyCellRenderer
+                        value={timeString}
+                        field="clock_in"
+                    />
+                );
             },
             width: 120
         },
@@ -127,7 +148,13 @@ const AttendanceManagement = () => {
             field: 'stepOut',
             cellRenderer: (params) => {
                 const stepOut = params.data.stepOut;
-                return stepOut ? new Date(stepOut).toLocaleTimeString() : 'N/A';
+                const timeString = stepOut ? new Date(stepOut).toLocaleTimeString() : 'N/A';
+                return (
+                    <CopyCellRenderer
+                        value={timeString}
+                        field="clock_out"
+                    />
+                );
             },
             width: 120
         },

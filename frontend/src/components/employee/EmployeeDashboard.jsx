@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   Clock,
@@ -14,7 +14,8 @@ import {
   Battery,
   Wifi,
   WifiOff,
-  Camera
+  Camera,
+  RefreshCw
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
@@ -28,7 +29,8 @@ const EmployeeDashboard = () => {
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [attendanceStatus, setAttendanceStatus] = useState('not_checked_in');
+  const [attendanceStatus, setAttendanceStatus] = useState('');
+  console.log(attendanceStatus, 'attendanceStatus')
   const [location, setLocation] = useState(null);
   const [batteryLevel, setBatteryLevel] = useState(null);
 
@@ -37,16 +39,79 @@ const EmployeeDashboard = () => {
   const [isStepOutModalOpen, setIsStepOutModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Navigation state
+  // Navigation state (for future use)
+  // const [activeTab, setActiveTab] = useState('dashboard');
 
   // Update time every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+  // useEffect(() => {
+  //   const timer = setInterval(() => {
+  //     setCurrentTime(new Date());
+  //   }, 1000);
 
-    return () => clearInterval(timer);
+  //   return () => clearInterval(timer);
+  // }, []);
+
+  // Fetch current attendance status
+  const fetchCurrentAttendanceStatus = useCallback(async () => {
+    debugger
+    if (!user?._id) return;
+
+    try {
+      console.log('🔍 [EmployeeDashboard] Fetching current attendance status for employee:', user._id);
+      const response = await attendanceAPI.getEmployeeAttendance(user._id);
+      console.log('📊 [EmployeeDashboard] Attendance response:', response);
+
+      if (response?.data?.attendance && Array.isArray(response.data.attendance)) {
+        const today = new Date().toDateString();
+
+        // Find today's attendance record
+        const todayAttendance = response.data.attendance.find(record => {
+          const recordDate = new Date(record.stepIn).toDateString();
+          return recordDate === today;
+        });
+
+        if (todayAttendance) {
+          if (todayAttendance.stepIn && !todayAttendance.stepOut) {
+            setAttendanceStatus('checked_in');
+            console.log('✅ [EmployeeDashboard] Employee is currently checked in');
+          } else if (todayAttendance.stepIn && todayAttendance.stepOut) {
+            setAttendanceStatus('checked_out');
+            console.log('✅ [EmployeeDashboard] Employee is currently checked out');
+          } else {
+            setAttendanceStatus('not_checked_in');
+            console.log('✅ [EmployeeDashboard] Employee has not checked in today');
+          }
+        } else {
+          setAttendanceStatus('not_checked_in');
+          console.log('✅ [EmployeeDashboard] No attendance record for today');
+        }
+      } else {
+        setAttendanceStatus('not_checked_in');
+        console.log('✅ [EmployeeDashboard] No attendance data found');
+      }
+    } catch (error) {
+      console.error('❌ [EmployeeDashboard] Error fetching attendance status:', error);
+      setAttendanceStatus('not_checked_in');
+    }
   }, []);
+
+  // Fetch attendance status on component mount and when user changes
+  useEffect(() => {
+    if (user?._id) {
+      fetchCurrentAttendanceStatus();
+    }
+  }, [user?._id, fetchCurrentAttendanceStatus]);
+
+  // Auto-refresh attendance status every 30 seconds
+  // useEffect(() => {
+  //   if (!user?.id) return;
+
+  //   const interval = setInterval(() => {
+  //     fetchCurrentAttendanceStatus();
+  //   }, 30000); // 30 seconds
+
+  //   return () => clearInterval(interval);
+  // }, [user?.id, fetchCurrentAttendanceStatus]);
 
   // Check online status
   useEffect(() => {
@@ -112,9 +177,11 @@ const EmployeeDashboard = () => {
       // For employee step-in, don't send employeeId and companyId as they come from JWT token
       const response = await attendanceAPI.stepIn(formData);
 
-      setAttendanceStatus('checked_in');
+      // setAttendanceStatus('checked_in');
       toast.success('Successfully checked in!');
       console.log('Step in response:', response);
+      // Refresh attendance status to ensure UI is up to date
+      await fetchCurrentAttendanceStatus();
     } catch (error) {
       console.error('Error during step in:', error);
       toast.error('Failed to check in. Please try again.');
@@ -148,6 +215,8 @@ const EmployeeDashboard = () => {
       setAttendanceStatus('checked_out');
       toast.success('Successfully checked out!');
       console.log('Step out response:', response);
+      // Refresh attendance status to ensure UI is up to date
+      await fetchCurrentAttendanceStatus();
     } catch (error) {
       console.error('Error during step out:', error);
       toast.error('Failed to check out. Please try again.');
@@ -224,6 +293,13 @@ const EmployeeDashboard = () => {
               }`}></div>
             {getStatusText(attendanceStatus)}
           </div>
+          <button
+            onClick={fetchCurrentAttendanceStatus}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Refresh attendance status"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
           <div className="flex items-center text-sm text-gray-500">
             {isOnline ? (
               <Wifi className="h-4 w-4 text-green-500 mr-1" />

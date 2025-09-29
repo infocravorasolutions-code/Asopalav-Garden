@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { UserPlus, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 import StandaloneAgGrid from '../ui/StandaloneAgGrid';
 import EmployeeModal from './EmployeeModal';
+import CopyCellRenderer from '../ui/CopyCellRenderer';
+import toast from 'react-hot-toast';
 
 const EmployeesPage = () => {
   const { user } = useAuth();
   const { primaryColor } = useCompanyTheme();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -19,7 +20,6 @@ const EmployeesPage = () => {
 
   const fetchEmployees = async () => {
     setLoading(true);
-    setError(null);
     try {
       const token = localStorage.getItem('authToken');
       const response = await fetch('http://localhost:5678/api/employee/all', {
@@ -50,7 +50,7 @@ const EmployeesPage = () => {
       }
     } catch (error) {
       console.error('Error fetching employees:', error);
-      setError(error.message);
+      toast.error(`Failed to fetch employees: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -61,13 +61,13 @@ const EmployeesPage = () => {
   }, [user?.companyId]);
 
   // Event handlers for CRUD operations
-  const handleEdit = (employee) => {
+  const handleEdit = useCallback((employee) => {
     setSelectedEmployee(employee);
     setModalMode('edit');
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (employee) => {
+  const handleDelete = useCallback(async (employee) => {
     if (window.confirm(`Are you sure you want to delete ${employee.name}?`)) {
       try {
         const token = localStorage.getItem('authToken');
@@ -83,16 +83,17 @@ const EmployeesPage = () => {
           // Remove from local state
           setEmployees(prev => prev.filter(e => e._id !== employee._id));
           console.log('Employee deleted successfully');
+          toast.success('Employee deleted successfully!');
         } else {
           const errorData = await response.json();
           throw new Error(errorData.message || 'Failed to delete employee');
         }
       } catch (error) {
         console.error('Error deleting employee:', error);
-        alert(`Failed to delete employee: ${error.message}`);
+        toast.error(`Failed to delete employee: ${error.message}`);
       }
     }
-  };
+  }, []);
 
   const handleCreateEmployee = () => {
     setSelectedEmployee(null);
@@ -137,6 +138,7 @@ const EmployeesPage = () => {
         console.log('Employee saved successfully');
 
         // Refresh the employees list to ensure we have the latest data
+        toast.success(modalMode === 'create' ? 'Employee created successfully!' : 'Employee updated successfully!');
         setTimeout(() => {
           fetchEmployees();
         }, 500);
@@ -147,7 +149,7 @@ const EmployeesPage = () => {
       }
     } catch (error) {
       console.error('Error saving employee:', error);
-      alert(`Failed to save employee: ${error.message}`);
+      toast.error(`Failed to save employee: ${error.message}`);
       throw error;
     }
   };
@@ -190,9 +192,7 @@ const EmployeesPage = () => {
       field: 'name',
       width: 180,
       cellRenderer: (params) => (
-        <div className="font-semibold text-gray-900 text-base text-left">
-          {params.value}
-        </div>
+        <CopyCellRenderer value={params.value} field="name" />
       )
     },
     {
@@ -200,9 +200,7 @@ const EmployeesPage = () => {
       field: 'email',
       width: 250,
       cellRenderer: (params) => (
-        <div className="text-gray-600 text-sm truncate text-left" title={params.value}>
-          {params.value}
-        </div>
+        <CopyCellRenderer value={params.value} field="email" />
       )
     },
     {
@@ -210,9 +208,7 @@ const EmployeesPage = () => {
       field: 'mobile',
       width: 150,
       cellRenderer: (params) => (
-        <div className="text-gray-600 text-sm text-left">
-          {params.value || 'Not Set'}
-        </div>
+        <CopyCellRenderer value={params.value || 'Not Set'} field="mobile" />
       )
     },
     {
@@ -220,9 +216,7 @@ const EmployeesPage = () => {
       field: 'position',
       width: 150,
       cellRenderer: (params) => (
-        <div className="text-gray-600 text-sm text-left">
-          {params.value || 'Not Set'}
-        </div>
+        <CopyCellRenderer value={params.value || 'Not Set'} field="position" />
       )
     },
     {

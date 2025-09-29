@@ -13,6 +13,19 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // Create Employee
 export const createEmployee = async (req, res) => {
   try {
+    console.log("🚀 [createEmployee] Starting employee creation process");
+    console.log("📥 [createEmployee] Request body:", {
+      name: req.body.name,
+      email: req.body.email,
+      empCode: req.body.empCode,
+      designation: req.body.designation,
+      category: req.body.category,
+      shift: req.body.shift,
+      hasPassword: !!req.body.password,
+      hasMobile: !!req.body.mobile,
+      hasAddress: !!req.body.address
+    });
+
     const {
       name,
       email,
@@ -28,7 +41,6 @@ export const createEmployee = async (req, res) => {
       accountNumber,
       ifscCode,
       photo,
-      managerId
     } = req.body;
 
     // Validate required fields
@@ -41,6 +53,7 @@ export const createEmployee = async (req, res) => {
     // Get creator info from authenticated user
     const createdBy = req.user.id;
     const userRole = req.user.role || req.user.userType;
+    // const managerId = req.user.id
     // Map superadmin to admin for createdByRole since schema only allows ['admin', 'manager']
     const createdByRole = userRole === 'superadmin' ? 'admin' : userRole;
     const companyId = req.user.companyId;
@@ -50,14 +63,42 @@ export const createEmployee = async (req, res) => {
     }
 
     // Determine manager ID based on who is creating the employee
-    let finalManagerId = managerId; // Default to provided managerId (for admin creating employee)
+    console.log("🔍 [createEmployee] User details:", {
+      userId: req.user.id,
+      userRole: userRole,
+      companyId: companyId,
+      bodyManagerId: req.body.managerId
+    });
+
+    let finalManagerId = null;
 
     // If a manager is creating the employee, set managerId to the logged-in manager's ID
     if (userRole === 'manager') {
       finalManagerId = createdBy; // Set managerId to the logged-in manager's ID
+      console.log("👨‍💼 [createEmployee] Manager creating employee - setting managerId to:", finalManagerId);
+    } else if (userRole === 'admin' || userRole === 'superadmin') {
+      // Admin can create employee with or without managerId
+      finalManagerId = req.body.managerId || null;
+      console.log("👨‍💻 [createEmployee] Admin creating employee - managerId from body:", finalManagerId);
+    } else {
+      console.log("❌ [createEmployee] Invalid user role for creating employee:", userRole);
+      return res.status(403).json({ message: "Insufficient permissions to create employee" });
     }
 
-    console.log("Creating employee for company:", companyId, "by:", createdByRole, "managerId:", finalManagerId);
+    console.log("✅ [createEmployee] Final managerId decision:", finalManagerId);
+
+    console.log("🏗️ [createEmployee] Creating employee with data:", {
+      name,
+      email,
+      empCode,
+      designation,
+      category,
+      shift,
+      companyId,
+      managerId: finalManagerId,
+      createdBy,
+      createdByRole
+    });
 
     const newEmployee = new Employee({
       name,
@@ -83,7 +124,9 @@ export const createEmployee = async (req, res) => {
       active: true
     });
 
+    console.log("💾 [createEmployee] Saving employee to database...");
     await newEmployee.save();
+    console.log("✅ [createEmployee] Employee saved successfully with ID:", newEmployee._id);
 
     // Populate the created employee with company and manager info
     const populatedEmployee = await Employee.findById(newEmployee._id)
@@ -96,10 +139,48 @@ export const createEmployee = async (req, res) => {
       employee: populatedEmployee
     });
   } catch (error) {
+    console.error("❌ [createEmployee] Error occurred:", {
+      errorCode: error.code,
+      errorName: error.name,
+      errorMessage: error.message,
+      stack: error.stack
+    });
+
     if (error.code === 11000) {
-      return res.status(400).json({ message: "Email already exists" });
+      console.log("📧 [createEmployee] Duplicate key error:", error.message);
+
+      // Check if it's a duplicate email
+      if (error.message.includes('email')) {
+        console.log("📧 [createEmployee] Duplicate email error - email already exists");
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      // Check if it's a duplicate empCode
+      if (error.message.includes('empCode')) {
+        console.log("🏷️ [createEmployee] Duplicate employee code error - empCode already exists");
+        return res.status(400).json({ message: "Employee code already exists" });
+      }
+
+      // Check if it's a duplicate companyId (should not happen after index fix)
+      if (error.message.includes('companyId')) {
+        console.log("🏢 [createEmployee] Duplicate company error - this should not happen after index fix");
+        return res.status(500).json({ message: "Database configuration error - please contact administrator" });
+      }
+
+      // Generic duplicate key error
+      console.log("🔑 [createEmployee] Generic duplicate key error");
+      return res.status(400).json({ message: "Duplicate key error - please check your input" });
     }
-    console.error("Error creating employee:", error);
+
+    if (error.name === 'ValidationError') {
+      console.log("📝 [createEmployee] Validation error:", error.errors);
+      return res.status(400).json({
+        message: "Validation error",
+        errors: Object.values(error.errors).map(err => err.message)
+      });
+    }
+
+    console.error("💥 [createEmployee] Unexpected error creating employee:", error);
     res.status(500).json({ message: "Error creating employee", error: error.message });
   }
 };

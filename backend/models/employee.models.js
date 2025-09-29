@@ -6,10 +6,10 @@ const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['system', 'admin', 'manager', 'employee'], required: true },
-    managerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // only for employees
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    managerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Manager' }, // only for employees
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
     createdByRole: { type: String, enum: ['admin', 'manager'], default: 'admin' }, // Track who created the employee
-    createdById: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // ID of the creator
+    createdById: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' }, // ID of the creator
 
     // Employee Code
     empCode: { type: String, required: true },

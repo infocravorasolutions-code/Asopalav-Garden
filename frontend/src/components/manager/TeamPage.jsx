@@ -419,13 +419,13 @@ const TeamPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600">
-              {employees.filter(emp => emp.managerId && emp.managerId._id === user?.id).length}
+              {employees.filter(emp => emp.managerId && emp.managerId._id === user?._id).length}
             </div>
             <div className="text-sm text-gray-600">Assigned to You</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-orange-600">
-              {employees.filter(emp => emp.managerId && emp.managerId._id !== user?.id).length}
+              {employees.filter(emp => emp.managerId && emp.managerId._id !== user?._id).length}
             </div>
             <div className="text-sm text-gray-600">Assigned to Others</div>
           </div>

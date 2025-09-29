@@ -175,7 +175,8 @@ const StepInModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
                 shift: getCurrentShift(), // Auto-detect shift based on current time
                 status: 'present', // Always present for step-in
                 latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude
+                longitude: currentLocation.longitude,
+                stepOut: null
             };
 
             await onSubmit(stepInData);

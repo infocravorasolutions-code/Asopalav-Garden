@@ -320,8 +320,9 @@ const EmployeeModal = ({
     try {
       await onSave(formData);
       onClose(); // Close modal on successful save
-    } catch (error) {
-      console.error("Modal save error:", error);
+    } catch {
+      // Error is already handled by the parent component (EmployeesPage)
+      // No need to log or display here to avoid duplicate error messages
     } finally {
       setLoading(false);
     }

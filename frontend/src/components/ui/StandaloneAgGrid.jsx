@@ -4,14 +4,15 @@ import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { Search, Edit, Trash2 } from 'lucide-react';
+import CopyCellRenderer from './CopyCellRenderer';
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const StandaloneAgGrid = ({ 
-  data = [], 
-  loading = false, 
-  onEdit, 
+const StandaloneAgGrid = ({
+  data = [],
+  loading = false,
+  onEdit,
   onDelete,
   columnDefs = [],
   title = "Data Grid",
@@ -24,7 +25,7 @@ const StandaloneAgGrid = ({
   // Update filtered data when data or search changes
   useEffect(() => {
     if (searchText.trim()) {
-      const filtered = data.filter(item => 
+      const filtered = data.filter(item =>
         (item.name && item.name.toLowerCase().includes(searchText.toLowerCase())) ||
         (item.email && item.email.toLowerCase().includes(searchText.toLowerCase())) ||
         (item.locationName && item.locationName.toLowerCase().includes(searchText.toLowerCase()))
@@ -63,7 +64,7 @@ const StandaloneAgGrid = ({
         field: 'name',
         width: 180,
         cellRenderer: (params) => (
-          <div className="font-semibold text-gray-900 text-base">{params.value}</div>
+          <CopyCellRenderer value={params.value} field="name" />
         )
       },
       {
@@ -71,9 +72,7 @@ const StandaloneAgGrid = ({
         field: 'email',
         width: 250,
         cellRenderer: (params) => (
-          <div className="text-gray-600 text-sm truncate" title={params.value}>
-            {params.value}
-          </div>
+          <CopyCellRenderer value={params.value} field="email" />
         )
       },
       {
@@ -150,10 +149,10 @@ const StandaloneAgGrid = ({
 
 
       {/* AG Grid */}
-      <div 
-        className="ag-theme-alpine" 
-        style={{ 
-          height: '430px', 
+      <div
+        className="ag-theme-alpine"
+        style={{
+          height: '430px',
           width: '100%',
           minHeight: '400px'
         }}
@@ -168,7 +167,7 @@ const StandaloneAgGrid = ({
           suppressRowClickSelection={true}
           rowSelection="multiple"
           animateRows={true}
-          rowStyle={{ 
+          rowStyle={{
             fontSize: '14px',
             justifyContent: 'flex-start',
             alignItems: 'center'
