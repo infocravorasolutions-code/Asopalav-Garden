@@ -14,6 +14,7 @@ import employeeRoutes from './routes/employee.routes.js';
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import attendenceRoutes from "./routes/attendence.routes.js";
 import companyRoutes from "./routes/company.routes.js";
+import superAdminRoutes from "./routes/superadmin.routes.js";
 // Export routes removed - functionality moved to frontend
 // Settings routes removed - now using static configuration
 import { autoStepOut, updateStepInUserLocations, updateAllEmployeeLocations } from './controller/cron.controller.js';
@@ -50,6 +51,7 @@ app.use("/api/employee", employeeRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/attendence", attendenceRoutes);
 app.use("/api", companyRoutes);
+app.use("/api/superadmin", superAdminRoutes);
 // Export routes removed - functionality moved to frontend
 
 // Settings routes removed - now using static configuration
@@ -165,6 +167,8 @@ mongoose.connect(MONGO_URI)
 app.get('/', (req, res) => {
   res.send('Welcome to the Labor Management API');
 });
+
+// module.exports = app;
 
 // importEmployees()
 

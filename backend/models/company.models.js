@@ -5,7 +5,7 @@ const CompanySchema = new mongoose.Schema({
     code: { type: String, required: true, unique: true },
     address: String,
     timezone: { type: String, default: 'Asia/Kolkata' },
-    
+
     // Company branding and theme
     logo: { type: String }, // URL or path to logo
     logoUrl: { type: String }, // Full URL to logo
@@ -15,14 +15,14 @@ const CompanySchema = new mongoose.Schema({
     backgroundColor: { type: String, default: '#F8FAFC' }, // Background color
     textColor: { type: String, default: '#1F2937' }, // Text color
     fontFamily: { type: String, default: 'Inter' }, // Font family
-    
+
     // Company details
     phone: { type: String },
     email: { type: String },
     website: { type: String },
     industry: { type: String },
     description: { type: String },
-    
+
     // Theme settings
     theme: {
         mode: { type: String, enum: ['light', 'dark'], default: 'light' },
@@ -30,7 +30,7 @@ const CompanySchema = new mongoose.Schema({
         shadow: { type: String, default: 'sm' },
         spacing: { type: String, default: 'comfortable' }
     },
-    
+
     // Company settings
     settings: {
         allowEmployeeRegistration: { type: Boolean, default: false },
@@ -42,6 +42,13 @@ const CompanySchema = new mongoose.Schema({
             start: { type: String, default: '09:00' },
             end: { type: String, default: '18:00' }
         }
+    },
+
+    // Track who created the company
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SuperAdmin',
+        required: false
     }
 }, { timestamps: true });
 

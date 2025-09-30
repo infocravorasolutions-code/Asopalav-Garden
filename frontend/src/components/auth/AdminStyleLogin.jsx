@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { clearAuthData } from '../../utils/authUtils';
+import { showSuccess, showError } from '../../utils/toast';
 import {
     Eye,
     EyeOff,
@@ -15,7 +16,9 @@ import {
     ArrowRight,
     Clock,
     BarChart3,
-    TrendingUp
+    TrendingUp,
+    Crown,
+    Settings
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
@@ -83,6 +86,36 @@ const AdminStyleLogin = () => {
         clearError();
 
         try {
+            // Handle SuperAdmin login separately
+            if (userType === 'superadmin') {
+                const response = await fetch(`http://localhost:5678/api/superadmin/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: formData.email,
+                        password: formData.password
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Store SuperAdmin token and user data
+                    localStorage.setItem('superadmin_token', data.token);
+                    localStorage.setItem('superadmin_user', JSON.stringify(data.user));
+                    localStorage.setItem('user_role', 'superadmin');
+
+                    showSuccess('SuperAdmin login successful!');
+                    navigate('/superadmin/dashboard');
+                } else {
+                    showError(data.message || 'SuperAdmin login failed');
+                }
+                return;
+            }
+
+            // Handle regular user login
             const loginData = {
                 ...formData,
                 userType: userType
@@ -112,6 +145,7 @@ const AdminStyleLogin = () => {
             }
         } catch (error) {
             console.error('Login error:', error);
+            showError('Network error. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -172,6 +206,8 @@ const AdminStyleLogin = () => {
                 return Users;
             case 'employee':
                 return User;
+            case 'superadmin':
+                return Crown;
             default:
                 return Shield;
         }
@@ -248,11 +284,13 @@ const AdminStyleLogin = () => {
                                 </div> */}
                                 <CardTitle className="text-2xl font-bold text-gray-900">
                                     {userType === 'admin' ? 'Admin Access' :
-                                        userType === 'manager' ? 'Manager Portal' : 'Employee Login'}
+                                        userType === 'manager' ? 'Manager Portal' :
+                                            userType === 'superadmin' ? 'SuperAdmin Portal' : 'Employee Login'}
                                 </CardTitle>
                                 <p className="text-gray-600 mt-2">
                                     {userType === 'admin' ? 'Enterprise Dashboard Access' :
-                                        userType === 'manager' ? 'Team Management Portal' : 'Personal Workspace'}
+                                        userType === 'manager' ? 'Team Management Portal' :
+                                            userType === 'superadmin' ? 'System Administration Access' : 'Personal Workspace'}
                                 </p>
                             </CardHeader>
 
@@ -260,11 +298,12 @@ const AdminStyleLogin = () => {
                                 {/* User Type Selector */}
                                 <div className="space-y-3">
                                     <label className="text-sm font-medium text-gray-700">Login As</label>
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="grid grid-cols-2 gap-2">
                                         {[
                                             { key: 'admin', label: 'Admin', icon: Shield, color: 'blue' },
                                             { key: 'manager', label: 'Manager', icon: Users, color: 'purple' },
-                                            { key: 'employee', label: 'Employee', icon: User, color: 'green' }
+                                            { key: 'employee', label: 'Employee', icon: User, color: 'green' },
+                                            { key: 'superadmin', label: 'SuperAdmin', icon: Crown, color: 'red' }
                                         ].map(({ key, label, icon, color }) => (
                                             <button
                                                 key={key}
@@ -406,7 +445,8 @@ const AdminStyleLogin = () => {
                                     <div className="text-center">
                                         <p className="text-xs text-gray-500">
                                             {userType === 'admin' ? 'Need help? Contact your system administrator' :
-                                                userType === 'manager' ? 'Need help? Contact your admin' : 'Need help? Contact your manager or HR'}
+                                                userType === 'manager' ? 'Need help? Contact your admin' :
+                                                    userType === 'superadmin' ? 'System administration access - highest privileges' : 'Need help? Contact your manager or HR'}
                                         </p>
                                     </div>
                                 </div>

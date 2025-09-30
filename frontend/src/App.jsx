@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -28,6 +28,9 @@ import EnhancedEmployeeLogin from './components/auth/EnhancedEmployeeLogin';
 import SimpleLogin from './components/auth/SimpleLogin';
 import MyAttendance from './components/employee/MyAttendance';
 import ForgotPassword from './components/auth/ForgotPassword';
+import SuperAdminLogin from './components/auth/SuperAdminLogin';
+import SuperAdminForgotPassword from './components/auth/SuperAdminForgotPassword';
+import SuperAdminDashboard from './components/superadmin/SuperAdminDashboard';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -59,6 +62,34 @@ const PublicRoute = ({ children }) => {
   // For login pages, don't redirect based on authentication
   // Let the login component handle the redirect after successful login
   return children;
+};
+
+// SuperAdmin Protected Route Component
+const SuperAdminProtectedRoute = ({ children }) => {
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('superadmin_token');
+    const userRole = localStorage.getItem('user_role');
+
+    if (token && userRole === 'superadmin') {
+      setIsAuthenticated(true);
+    } else {
+      setIsAuthenticated(false);
+    }
+    setLoading(false);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loading text="Loading..." size="lg" />
+      </div>
+    );
+  }
+
+  return isAuthenticated ? children : <Navigate to="/superadmin/login" replace />;
 };
 
 // Main App Routes
@@ -226,8 +257,33 @@ const AppRoutes = () => {
         }
       />
 
+      {/* SuperAdmin Routes */}
+      <Route
+        path="/superadmin/login"
+        element={
+          <PublicRoute>
+            <SuperAdminLogin />
+          </PublicRoute>
+        }
+      />
 
+      <Route
+        path="/superadmin/forgot-password"
+        element={
+          <PublicRoute>
+            <SuperAdminForgotPassword />
+          </PublicRoute>
+        }
+      />
 
+      <Route
+        path="/superadmin/dashboard"
+        element={
+          <SuperAdminProtectedRoute>
+            <SuperAdminDashboard />
+          </SuperAdminProtectedRoute>
+        }
+      />
 
       {/* Simple Login route */}
       <Route path="/simple-login" element={<SimpleLogin />} />
