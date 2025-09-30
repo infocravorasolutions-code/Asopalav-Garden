@@ -27,6 +27,14 @@ const managerSchema = new Schema({
     type: String,
     default: "manager"
   },
+  resetPasswordToken: {
+    type: String,
+    default: undefined
+  },
+  resetPasswordExpiry: {
+    type: Date,
+    default: undefined
+  },
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: "Admin"

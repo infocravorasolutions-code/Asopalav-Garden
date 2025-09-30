@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  User, 
-  AlertCircle, 
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  User,
+  AlertCircle,
   CheckCircle,
   Clock,
   MapPin,
@@ -25,12 +25,12 @@ import Loading from '../ui/Loading';
 const EnhancedEmployeeLogin = () => {
   const { login, isAuthenticated, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
@@ -52,7 +52,7 @@ const EnhancedEmployeeLogin = () => {
       ...prev,
       [field]: e.target.value
     }));
-    
+
     // Clear validation error for this field
     if (validationErrors[field]) {
       setValidationErrors(prev => ({
@@ -64,36 +64,36 @@ const EnhancedEmployeeLogin = () => {
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (!formData.email) {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Please enter a valid email address';
     }
-    
+
     if (!formData.password) {
       errors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       errors.password = 'Password must be at least 6 characters';
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSubmitting(true);
     clearError();
-    
+
     try {
       const result = await login(formData);
-      
+
       if (result.success) {
         navigate('/employee/dashboard');
       } else {
@@ -126,38 +126,38 @@ const EnhancedEmployeeLogin = () => {
           backgroundRepeat: 'repeat'
         }}></div>
       </div>
-      
+
       {/* Floating Elements */}
       <div className="absolute top-20 left-20 w-20 h-20 bg-green-100 rounded-full opacity-20 animate-pulse"></div>
       <div className="absolute top-40 right-20 w-16 h-16 bg-blue-100 rounded-full opacity-20 animate-pulse delay-1000"></div>
       <div className="absolute bottom-20 left-40 w-12 h-12 bg-purple-100 rounded-full opacity-20 animate-pulse delay-2000"></div>
-      
+
       <div className="relative z-10 flex items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl w-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            
+
             {/* Left Side - Employee Features */}
             <div className="hidden lg:block space-y-8">
               <div className="space-y-6">
                 <div className="flex items-center space-x-3">
                   <div className="p-3 bg-gradient-to-r from-green-600 to-blue-600 rounded-xl">
-                    <User className="h-8 w-8 text-white" />
+                    <User className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                   </div>
                   <div>
                     <h1 className="text-3xl font-bold text-gray-900">Employee Portal</h1>
                     <p className="text-gray-600">Your Personal Attendance Hub</p>
                   </div>
                 </div>
-                
+
                 <h2 className="text-4xl font-bold text-gray-900 leading-tight">
                   Track your attendance
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600">
                     {" "}with ease
                   </span>
                 </h2>
-                
+
                 <p className="text-lg text-gray-600 leading-relaxed">
-                  Access your personal dashboard, track your attendance, view your schedule, 
+                  Access your personal dashboard, track your attendance, view your schedule,
                   and manage your work hours all in one place. Built for modern employees.
                 </p>
               </div>
@@ -166,37 +166,37 @@ const EnhancedEmployeeLogin = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="flex items-start space-x-3 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-white/20">
                   <div className="p-2 bg-green-100 rounded-lg">
-                    <Clock className="h-5 w-5 text-green-600" />
+                    <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Quick Check-in</h3>
                     <p className="text-sm text-gray-600">One-tap attendance with GPS</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-white/20">
                   <div className="p-2 bg-blue-100 rounded-lg">
-                    <MapPin className="h-5 w-5 text-blue-600" />
+                    <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Location Tracking</h3>
                     <p className="text-sm text-gray-600">Secure location-based attendance</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-white/20">
                   <div className="p-2 bg-purple-100 rounded-lg">
-                    <Calendar className="h-5 w-5 text-purple-600" />
+                    <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Schedule View</h3>
                     <p className="text-sm text-gray-600">Your work schedule at a glance</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-white/20">
                   <div className="p-2 bg-orange-100 rounded-lg">
-                    <TrendingUp className="h-5 w-5 text-orange-600" />
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Personal Stats</h3>
@@ -210,8 +210,8 @@ const EnhancedEmployeeLogin = () => {
             <div className="w-full max-w-md mx-auto">
               <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
                 <CardHeader className="text-center pb-2">
-                  <div className="mx-auto h-16 w-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-                    <User className="h-8 w-8 text-white" />
+                  <div className="mx-auto h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+                    <User className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                   </div>
                   <CardTitle className="text-2xl font-bold text-gray-900">
                     Employee Login
@@ -220,14 +220,14 @@ const EnhancedEmployeeLogin = () => {
                     Access your personal dashboard
                   </p>
                 </CardHeader>
-                
+
                 <CardContent className="pt-0">
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Global Error */}
                     {error && (
                       <div className="bg-red-50 border border-red-200 rounded-xl p-4 animate-in slide-in-from-top-2 duration-300">
                         <div className="flex items-center">
-                          <AlertCircle className="h-5 w-5 text-red-500 mr-3 flex-shrink-0" />
+                          <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 mr-3 flex-shrink-0" />
                           <span className="text-red-700 text-sm">{error}</span>
                         </div>
                       </div>
@@ -236,7 +236,7 @@ const EnhancedEmployeeLogin = () => {
                     {/* Email */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-700 flex items-center">
-                        <Mail className="h-4 w-4 mr-2" />
+                        <Mail className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                         Email Address
                       </label>
                       <Input
@@ -254,7 +254,7 @@ const EnhancedEmployeeLogin = () => {
                     {/* Password */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-700 flex items-center">
-                        <Lock className="h-4 w-4 mr-2" />
+                        <Lock className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                         Password
                       </label>
                       <div className="relative">
@@ -271,7 +271,7 @@ const EnhancedEmployeeLogin = () => {
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors p-1 rounded w-6 h-6"
                           disabled={isSubmitting}
                         >
                           {showPassword ? (
@@ -301,7 +301,7 @@ const EnhancedEmployeeLogin = () => {
                       ) : (
                         <div className="flex items-center justify-center">
                           Sign In
-                          <ArrowRight className="h-4 w-4 ml-2" />
+                          <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 ml-2" />
                         </div>
                       )}
                     </Button>
@@ -317,7 +317,7 @@ const EnhancedEmployeeLogin = () => {
                         Forgot your password?
                       </a>
                     </div>
-                    
+
                     <div className="text-center">
                       <p className="text-xs text-gray-500">
                         Need help? Contact your manager or HR
@@ -330,7 +330,7 @@ const EnhancedEmployeeLogin = () => {
               {/* Demo Credentials */}
               <div className="mt-6 p-4 bg-green-50 rounded-xl border border-green-200">
                 <h4 className="text-sm font-semibold text-green-900 mb-2 flex items-center">
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                   Demo Credentials
                 </h4>
                 <div className="space-y-1 text-xs text-green-700">

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { getCompanyLogo } from '../utils/companyLogoUtils';
 
 const CompanyThemeContext = createContext();
 
@@ -34,38 +35,38 @@ export const CompanyThemeProvider = ({ children }) => {
   // Update theme when company data changes
   useEffect(() => {
     try {
-    if (company && isAuthenticated) {
-      const newTheme = {
-        primaryColor: company.primaryColor || '#3B82F6',
-        secondaryColor: company.secondaryColor || '#1E40AF',
-        accentColor: company.accentColor || '#F59E0B',
-        backgroundColor: company.backgroundColor || '#F8FAFC',
-        textColor: company.textColor || '#1F2937',
-        fontFamily: company.fontFamily || 'Inter',
-        logo: company.logo || null,
-        logoUrl: company.logoUrl || null,
-        companyName: company.name || 'Company',
-        companyCode: company.code || '',
-        mode: company.theme?.mode || 'light',
-        borderRadius: company.theme?.borderRadius || '8px',
-        shadow: company.theme?.shadow || 'sm',
-        spacing: company.theme?.spacing || 'comfortable',
-        // Additional company details
-        phone: company.phone || '',
-        email: company.email || '',
-        website: company.website || '',
-        industry: company.industry || '',
-        description: company.description || '',
-        address: company.address || '',
-        timezone: company.timezone || 'Asia/Kolkata',
-        settings: company.settings || {}
-      };
-      
-      setTheme(newTheme);
-      
-      // Apply theme to document root
-      applyThemeToDocument(newTheme);
-    }
+      if (company && isAuthenticated) {
+        const newTheme = {
+          primaryColor: company.primaryColor || '#3B82F6',
+          secondaryColor: company.secondaryColor || '#1E40AF',
+          accentColor: company.accentColor || '#F59E0B',
+          backgroundColor: company.backgroundColor || '#F8FAFC',
+          textColor: company.textColor || '#1F2937',
+          fontFamily: company.fontFamily || 'Inter',
+          logo: company.logo || null,
+          logoUrl: getCompanyLogo(company.code, company.logoUrl) || null,
+          companyName: company.name || 'Company',
+          companyCode: company.code || '',
+          mode: company.theme?.mode || 'light',
+          borderRadius: company.theme?.borderRadius || '8px',
+          shadow: company.theme?.shadow || 'sm',
+          spacing: company.theme?.spacing || 'comfortable',
+          // Additional company details
+          phone: company.phone || '',
+          email: company.email || '',
+          website: company.website || '',
+          industry: company.industry || '',
+          description: company.description || '',
+          address: company.address || '',
+          timezone: company.timezone || 'Asia/Kolkata',
+          settings: company.settings || {}
+        };
+
+        setTheme(newTheme);
+
+        // Apply theme to document root
+        applyThemeToDocument(newTheme);
+      }
     } catch (error) {
       console.error('Error updating company theme:', error);
     }
@@ -75,7 +76,7 @@ export const CompanyThemeProvider = ({ children }) => {
   const applyThemeToDocument = (themeData) => {
     try {
       const root = document.documentElement;
-      
+
       // Set CSS custom properties
       root.style.setProperty('--company-primary', themeData.primaryColor);
       root.style.setProperty('--company-secondary', themeData.secondaryColor);
@@ -84,10 +85,10 @@ export const CompanyThemeProvider = ({ children }) => {
       root.style.setProperty('--company-text', themeData.textColor);
       root.style.setProperty('--company-font', themeData.fontFamily);
       root.style.setProperty('--company-border-radius', themeData.borderRadius);
-      
+
       // Apply font family to body
       document.body.style.fontFamily = themeData.fontFamily;
-      
+
       // Apply theme mode class
       document.body.className = `theme-${themeData.mode}`;
     } catch (error) {

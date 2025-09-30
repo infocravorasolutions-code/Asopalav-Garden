@@ -1,5 +1,6 @@
 import Employee from "../models/employee.models.js";
 import Company from "../models/company.models.js";
+import Manager from "../models/manager.models.js";
 import Attendance from "../models/attendence.models.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -23,7 +24,9 @@ export const createEmployee = async (req, res) => {
       shift: req.body.shift,
       hasPassword: !!req.body.password,
       hasMobile: !!req.body.mobile,
-      hasAddress: !!req.body.address
+      hasAddress: !!req.body.address,
+      assignedManager: req.body.assignedManager,
+      managerId: req.body.managerId
     });
 
     const {
@@ -51,7 +54,7 @@ export const createEmployee = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Get creator info from authenticated user
-    const createdBy = req.user.id;
+    let createdBy = req.user.id;
     const userRole = req.user.role || req.user.userType;
     // const managerId = req.user.id
     // Map superadmin to admin for createdByRole since schema only allows ['admin', 'manager']
@@ -67,7 +70,8 @@ export const createEmployee = async (req, res) => {
       userId: req.user.id,
       userRole: userRole,
       companyId: companyId,
-      bodyManagerId: req.body.managerId
+      bodyManagerId: req.body.managerId,
+      assignedManager: req.body.assignedManager
     });
 
     let finalManagerId = null;
@@ -75,11 +79,40 @@ export const createEmployee = async (req, res) => {
     // If a manager is creating the employee, set managerId to the logged-in manager's ID
     if (userRole === 'manager') {
       finalManagerId = createdBy; // Set managerId to the logged-in manager's ID
+
+      // Get the admin who created this manager for the createdBy field
+      const manager = await Manager.findById(createdBy);
+      if (manager && manager.createdBy) {
+        createdBy = manager.createdBy; // Set createdBy to the admin who created the manager
+        console.log("👨‍💼 [createEmployee] Manager creating employee - setting createdBy to admin:", createdBy);
+      }
+
       console.log("👨‍💼 [createEmployee] Manager creating employee - setting managerId to:", finalManagerId);
     } else if (userRole === 'admin' || userRole === 'superadmin') {
       // Admin can create employee with or without managerId
-      finalManagerId = req.body.managerId || null;
-      console.log("👨‍💻 [createEmployee] Admin creating employee - managerId from body:", finalManagerId);
+      // Check if assignedManager is provided (new field) or managerId (existing field)
+      const managerId = req.body.assignedManager || req.body.managerId;
+
+      if (managerId) {
+        // Validate that the manager belongs to the same company and was created by this admin
+        const manager = await Manager.findOne({
+          _id: managerId,
+          companyId: companyId,
+          createdBy: createdBy
+        });
+
+        if (!manager) {
+          return res.status(400).json({
+            message: "Manager not found or does not belong to your company"
+          });
+        }
+
+        finalManagerId = managerId;
+        console.log("👨‍💻 [createEmployee] Admin creating employee - assigned manager:", manager.name);
+      } else {
+        finalManagerId = null;
+        console.log("👨‍💻 [createEmployee] Admin creating employee - no manager assigned");
+      }
     } else {
       console.log("❌ [createEmployee] Invalid user role for creating employee:", userRole);
       return res.status(403).json({ message: "Insufficient permissions to create employee" });
@@ -133,6 +166,13 @@ export const createEmployee = async (req, res) => {
       .populate("companyId", "name code")
       .populate("managerId", "name email")
       .populate("createdById", "name email");
+
+    console.log("✅ [createEmployee] Employee created successfully:", {
+      employeeId: populatedEmployee._id,
+      name: populatedEmployee.name,
+      managerId: populatedEmployee.managerId,
+      managerName: populatedEmployee.managerId?.name || 'No manager assigned'
+    });
 
     res.status(201).json({
       message: "Employee created successfully",
@@ -262,7 +302,76 @@ export const getEmployee = async (req, res) => {
 export const updateEmployee = async (req, res) => {
   try {
     const updateData = { ...req.body };
-    console.log("Updating employee:", req.params.id, updateData);
+
+    // Get current user info for validation
+    const currentUserId = req.user.id;
+    const currentUserRole = req.user.role || req.user.userType;
+    const companyId = req.user.companyId;
+
+    console.log("🔄 [updateEmployee] Starting employee update process");
+    console.log("📥 [updateEmployee] Request body:", {
+      employeeId: req.params.id,
+      updateData: updateData,
+      assignedManager: updateData.assignedManager,
+      managerId: updateData.managerId,
+      userRole: currentUserRole,
+      userId: currentUserId,
+      companyId: companyId
+    });
+
+    if (!companyId) {
+      return res.status(400).json({ message: "User must be associated with a company to update employees" });
+    }
+
+    // Handle manager assignment if provided
+    if (updateData.assignedManager || updateData.managerId) {
+      const managerId = updateData.assignedManager || updateData.managerId;
+
+      if (managerId) {
+        console.log("🔍 [updateEmployee] Validating manager assignment:", managerId);
+
+        // Different validation logic based on user role
+        let manager;
+        if (currentUserRole === 'manager') {
+          // For managers, they can only assign themselves or other managers from the same company
+          manager = await Manager.findOne({
+            _id: managerId,
+            companyId: companyId
+          });
+        } else {
+          // For admins, they can only assign managers they created
+          manager = await Manager.findOne({
+            _id: managerId,
+            companyId: companyId,
+            createdBy: currentUserId
+          });
+        }
+
+        if (!manager) {
+          return res.status(400).json({
+            message: "Manager not found or does not belong to your company"
+          });
+        }
+
+        // Set the managerId in updateData
+        updateData.managerId = managerId;
+        console.log("✅ [updateEmployee] Manager validation passed:", manager.name);
+      } else {
+        // If empty string or null, remove manager assignment
+        updateData.managerId = null;
+        console.log("🔄 [updateEmployee] Removing manager assignment");
+      }
+    }
+
+    // Handle status to active field conversion
+    if (updateData.status !== undefined) {
+      updateData.active = updateData.status === 'Active';
+      delete updateData.status; // Remove status field as it's not part of the schema
+      console.log("🔄 [updateEmployee] Converted status to active:", {
+        status: updateData.status,
+        active: updateData.active
+      });
+    }
 
     // Only hash password if it's being updated
     if (updateData.password) {
@@ -270,12 +379,17 @@ export const updateEmployee = async (req, res) => {
       delete updateData.password; // Remove plain password
     }
 
-    // Remove undefined values
+    // Remove undefined values and clean up assignedManager field
     Object.keys(updateData).forEach(key => {
       if (updateData[key] === undefined) {
         delete updateData[key];
       }
     });
+
+    // Remove assignedManager field as it's not part of the schema
+    delete updateData.assignedManager;
+
+    console.log("💾 [updateEmployee] Final update data:", updateData);
 
     const updatedEmployee = await Employee.findByIdAndUpdate(
       req.params.id,
@@ -290,10 +404,16 @@ export const updateEmployee = async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    console.log("Employee updated successfully:", updatedEmployee.name);
+    console.log("✅ [updateEmployee] Employee updated successfully:", {
+      employeeId: updatedEmployee._id,
+      name: updatedEmployee.name,
+      managerId: updatedEmployee.managerId,
+      managerName: updatedEmployee.managerId?.name || 'No manager assigned'
+    });
+
     res.status(200).json({ message: "Employee updated successfully", employee: updatedEmployee });
   } catch (error) {
-    console.error("Error updating employee:", error);
+    console.error("❌ [updateEmployee] Error updating employee:", error);
     res.status(500).json({ message: "Error updating employee", error: error.message });
   }
 };

@@ -20,6 +20,7 @@ import {
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
+import CompanyLogo from '../ui/CompanyLogo';
 
 const AdminStyleLogin = () => {
     const { login, isAuthenticated, loading, error, clearError } = useAuth();
@@ -28,7 +29,7 @@ const AdminStyleLogin = () => {
     const [userType, setUserType] = useState('admin');
     console.log("userType ==> ", userType);
     const [formData, setFormData] = useState({
-        company: '',
+        company: 'NEELKANTH',
         email: '',
         password: ''
     });
@@ -39,7 +40,7 @@ const AdminStyleLogin = () => {
     const handleUserTypeChange = (type) => {
         console.log('User type changed to:', type);
         setUserType(type);
-        setFormData({ company: '', email: '', password: '' });
+        setFormData({ company: 'NEELKANTH', email: '', password: '' });
         setValidationErrors({});
         clearError();
     };
@@ -227,10 +228,24 @@ const AdminStyleLogin = () => {
                         <Card className="shadow-xl">
                             <CardHeader className="text-center pb-6">
                                 <div className="flex justify-center mb-4">
-                                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                                        <IconComponent className="h-8 w-8 text-blue-600" />
+                                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <IconComponent className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
                                     </div>
                                 </div>
+                                {/* Company Logo Display */}
+                                {/* <div className="flex justify-center mb-4">
+                                    <CompanyLogo
+                                        companyCode={formData.company}
+                                        size="lg"
+                                        className="shadow-lg"
+                                        style={{
+                                            minWidth: '64px',
+                                            minHeight: '64px',
+                                            maxWidth: '64px',
+                                            maxHeight: '64px'
+                                        }}
+                                    />
+                                </div> */}
                                 <CardTitle className="text-2xl font-bold text-gray-900">
                                     {userType === 'admin' ? 'Admin Access' :
                                         userType === 'manager' ? 'Manager Portal' : 'Employee Login'}
@@ -260,7 +275,7 @@ const AdminStyleLogin = () => {
                                                     : 'text-gray-600 hover:bg-gray-50 border-2 border-gray-200'
                                                     }`}
                                             >
-                                                {React.createElement(icon, { className: "h-5 w-5" })}
+                                                {React.createElement(icon, { className: "h-4 w-4 sm:h-5 sm:w-5" })}
                                                 <span>{label}</span>
                                             </button>
                                         ))}
@@ -271,7 +286,7 @@ const AdminStyleLogin = () => {
                                 {error && (
                                     <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                                         <div className="flex items-center">
-                                            <AlertCircle className="h-5 w-5 text-red-400 mr-3 flex-shrink-0" />
+                                            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-400 mr-3 flex-shrink-0" />
                                             <span className="text-red-700 text-sm font-medium">{error}</span>
                                         </div>
                                     </div>
@@ -279,10 +294,10 @@ const AdminStyleLogin = () => {
 
                                 <form onSubmit={handleSubmit} className="space-y-6">
                                     {/* Company Code - Only for Admin */}
-                                    {userType === 'admin' && (
+                                    {/* {userType === 'admin' && (
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-700 flex items-center">
-                                                <Building className="h-4 w-4 mr-2 text-blue-500" />
+                                                <Building className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-blue-500" />
                                                 Company Code
                                             </label>
                                             <Input
@@ -297,12 +312,12 @@ const AdminStyleLogin = () => {
                                                 <p className="text-red-600 text-sm">{validationErrors.company}</p>
                                             )}
                                         </div>
-                                    )}
+                                    )} */}
 
                                     {/* Email */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700 flex items-center">
-                                            <Mail className="h-4 w-4 mr-2 text-green-500" />
+                                            <Mail className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-green-500" />
                                             Email Address
                                         </label>
                                         <Input
@@ -321,31 +336,37 @@ const AdminStyleLogin = () => {
                                     {/* Password */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700 flex items-center">
-                                            <Lock className="h-4 w-4 mr-2 text-purple-500" />
+                                            <Lock className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-purple-500" />
                                             Password
                                         </label>
-                                        <div className="relative">
+                                        <div className="relative w-full flex" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', paddingBottom: '15px' }}>
                                             <Input
                                                 type={showPassword ? 'text' : 'password'}
                                                 placeholder="Enter your password"
                                                 value={formData.password}
                                                 onChange={handleInputChange('password')}
                                                 disabled={isSubmitting}
-                                                className={`pr-10 ${validationErrors.password ? 'border-red-300 focus:border-red-500' : ''}`}
+                                                className={`w-full pr-10 ${validationErrors.password ? 'border-red-300 focus:border-red-500' : ''}`}
                                             />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                                disabled={isSubmitting}
-                                            >
-                                                {showPassword ? (
-                                                    <EyeOff className="h-5 w-5" />
-                                                ) : (
-                                                    <Eye className="h-5 w-5" />
-                                                )}
-                                            </button>
+                                            <div style={{ display: 'flex', position: 'relative' }}>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    disabled={isSubmitting}
+                                                    className="absolute 20 ml-5 top-5 focus:border-none -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                                >
+                                                    {showPassword ? (
+                                                        <EyeOff className="h-5 w-5" />
+                                                    ) : (
+                                                        <Eye className="h-5 w-5" />
+                                                    )}
+                                                </button>
+                                            </div>
+
                                         </div>
+
+
                                         {validationErrors.password && (
                                             <p className="text-red-600 text-sm">{validationErrors.password}</p>
                                         )}

@@ -1,7 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Search,
     Filter,
@@ -16,7 +13,9 @@ import {
     Calendar,
     TrendingUp,
     X,
-    Save
+    Save,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
@@ -26,15 +25,30 @@ import { adminAPI, api } from '../../services/api';
 import CopyCellRenderer from '../ui/CopyCellRenderer';
 import toast from 'react-hot-toast';
 
+
 const AttendanceManagement = () => {
     const [attendanceData, setAttendanceData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: 0,
+        limit: 50,
+        hasNextPage: false,
+        hasPrevPage: false
+    });
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState({
-        dateRange: '',
+        manager: '',
+        employee: '',
         shift: '',
-        status: ''
+        status: '',
+        startDate: '',
+        endDate: ''
     });
+    const [showFilters, setShowFilters] = useState(false);
+    const [managers, setManagers] = useState([]);
+    const [employees, setEmployees] = useState([]);
     const [summary, setSummary] = useState({
         totalRecords: 0,
         present: 0,
@@ -55,189 +69,24 @@ const AttendanceManagement = () => {
         note: ''
     });
 
-    // AG Grid column definitions
-    const columnDefs = useMemo(() => [
-        {
-            headerName: 'Employee',
-            field: 'employee',
-            cellRenderer: (params) => {
-                const employee = params.data.employeeId;
-                return (
-                    <div className="flex items-center space-x-3 py-2">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-semibold text-sm">
-                                {employee?.name?.charAt(0) || 'N/A'}
-                            </span>
-                        </div>
-                        <div className="flex-1">
-                            <div className="font-medium text-gray-900">{employee?.name || 'N/A'}</div>
-                            <div className="text-sm text-gray-500">{employee?.empCode || 'N/A'}</div>
-                        </div>
-                        <CopyCellRenderer
-                            value={`${employee?.name || 'N/A'} (${employee?.empCode || 'N/A'})`}
-                            field="employee"
-                        />
-                    </div>
-                );
-            },
-            width: 200,
-            pinned: 'left'
-        },
-        {
-            headerName: 'Date',
-            field: 'date',
-            cellRenderer: (params) => {
-                const date = new Date(params.data.stepIn);
-                return (
-                    <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <span>{date.toLocaleDateString()}</span>
-                        <CopyCellRenderer
-                            value={date.toLocaleDateString()}
-                            field="date"
-                        />
-                    </div>
-                );
-            },
-            width: 120
-        },
-        {
-            headerName: 'Shift',
-            field: 'shift',
-            cellRenderer: (params) => {
-                const shift = params.data.shift;
-                const getShiftColor = (shift) => {
-                    switch (shift) {
-                        case 'morning': return 'bg-blue-100 text-blue-800';
-                        case 'evening': return 'bg-orange-100 text-orange-800';
-                        case 'night': return 'bg-purple-100 text-purple-800';
-                        default: return 'bg-gray-100 text-gray-800';
-                    }
-                };
-                return (
-                    <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getShiftColor(shift)}`}>
-                            {shift || 'N/A'}
-                        </span>
-                        <CopyCellRenderer
-                            value={shift || 'N/A'}
-                            field="shift"
-                        />
-                    </div>
-                );
-            },
-            width: 100
-        },
-        {
-            headerName: 'CLOCK IN',
-            field: 'stepIn',
-            cellRenderer: (params) => {
-                const stepIn = params.data.stepIn;
-                const timeString = stepIn ? new Date(stepIn).toLocaleTimeString() : 'N/A';
-                return (
-                    <CopyCellRenderer
-                        value={timeString}
-                        field="clock_in"
-                    />
-                );
-            },
-            width: 120
-        },
-        {
-            headerName: 'CLOCK OUT',
-            field: 'stepOut',
-            cellRenderer: (params) => {
-                const stepOut = params.data.stepOut;
-                const timeString = stepOut ? new Date(stepOut).toLocaleTimeString() : 'N/A';
-                return (
-                    <CopyCellRenderer
-                        value={timeString}
-                        field="clock_out"
-                    />
-                );
-            },
-            width: 120
-        },
-        {
-            headerName: 'STATUS',
-            field: 'status',
-            cellRenderer: (params) => {
-                const status = params.data.status;
-                const getStatusColor = (status) => {
-                    switch (status) {
-                        case 'present': return 'bg-green-100 text-green-800';
-                        case 'absent': return 'bg-red-100 text-red-800';
-                        case 'late': return 'bg-orange-100 text-orange-800';
-                        case 'half-day': return 'bg-blue-100 text-blue-800';
-                        default: return 'bg-gray-100 text-gray-800';
-                    }
-                };
-                return (
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
-                        {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'N/A'}
-                    </span>
-                );
-            },
-            width: 120
-        },
-        {
-            headerName: 'LOCATION',
-            field: 'address',
-            cellRenderer: (params) => {
-                const address = params.data.address;
-                return address || 'N/A';
-            },
-            width: 300
-        },
-        {
-            headerName: 'ACTIONS',
-            field: 'actions',
-            cellRenderer: (params) => {
-                return (
-                    <div className="flex items-center space-x-2">
-                        <button
-                            onClick={() => handleEditAttendance(params.data)}
-                            className="p-1 text-blue-600 hover:bg-blue-100 rounded"
-                            title="Edit"
-                        >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                            </svg>
-                        </button>
-                        <button
-                            onClick={() => handleDeleteAttendance(params.data)}
-                            className="p-1 text-red-600 hover:bg-red-100 rounded"
-                            title="Delete"
-                        >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clipRule="evenodd" />
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                );
-            },
-            width: 100,
-            pinned: 'right'
-        }
-    ], []);
 
-    // AG Grid options
-    const gridOptions = {
-        defaultColDef: {
-            sortable: true,
-            filter: true,
-            resizable: true,
-        },
-        pagination: true,
-        paginationPageSize: 20,
-        rowHeight: 60,
-        suppressRowHoverHighlight: false,
-        animateRows: true,
+    // Fetch managers and employees for filter dropdowns
+    const fetchFilterData = async () => {
+        try {
+            // Fetch managers
+            const managersResponse = await adminAPI.getManagers();
+            setManagers(managersResponse.managers || []);
+
+            // Fetch employees
+            const employeesResponse = await adminAPI.getEmployees();
+            setEmployees(employeesResponse.employees || []);
+        } catch (error) {
+            console.error('Error fetching filter data:', error);
+        }
     };
 
     // Fetch attendance data
-    const fetchAttendanceData = async () => {
+    const fetchAttendanceData = useCallback(async (page = 1) => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -245,19 +94,37 @@ const AttendanceManagement = () => {
                 if (value) params.append(key, value);
             });
 
+            // Add pagination parameters
+            params.append('page', page.toString());
+            params.append('limit', pagination.limit.toString());
+
+            console.log('🔍 [AttendanceManagement] Fetching attendance data...');
             const response = await adminAPI.getAttendance(params);
+            console.log('📥 [AttendanceManagement] API Response:', response);
+
             const data = response.attendance || [];
+            console.log('📊 [AttendanceManagement] Attendance data:', data);
+            console.log('📊 [AttendanceManagement] Data length:', data.length);
+
             setAttendanceData(data);
+
+            // Update pagination state
+            if (response.pagination) {
+                setPagination(response.pagination);
+            }
 
             // Calculate summary
             const summary = calculateSummary(data);
             setSummary(summary);
+            console.log('📈 [AttendanceManagement] Summary calculated:', summary);
         } catch (error) {
-            console.error('Error fetching attendance data:', error);
+            console.error('❌ [AttendanceManagement] Error fetching attendance data:', error);
+            console.error('❌ [AttendanceManagement] Error details:', error.response?.data || error.message);
+            toast.error('Failed to fetch attendance data. Please check console for details.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [filters, pagination.limit]);
 
     // Calculate summary statistics
     const calculateSummary = (data) => {
@@ -283,9 +150,16 @@ const AttendanceManagement = () => {
 
     // Filter data based on search term
     const filteredData = useMemo(() => {
-        if (!searchTerm) return attendanceData;
+        console.log('🔍 [AttendanceManagement] Filtering data...');
+        console.log('📊 [AttendanceManagement] Original data length:', attendanceData.length);
+        console.log('🔍 [AttendanceManagement] Search term:', searchTerm);
 
-        return attendanceData.filter(record => {
+        if (!searchTerm) {
+            console.log('📊 [AttendanceManagement] No search term, returning all data:', attendanceData.length);
+            return attendanceData;
+        }
+
+        const filtered = attendanceData.filter(record => {
             const employee = record.employeeId;
             const searchLower = searchTerm.toLowerCase();
             return (
@@ -294,6 +168,9 @@ const AttendanceManagement = () => {
                 record.address?.toLowerCase().includes(searchLower)
             );
         });
+
+        console.log('📊 [AttendanceManagement] Filtered data length:', filtered.length);
+        return filtered;
     }, [attendanceData, searchTerm]);
 
     // Export to Excel
@@ -334,25 +211,43 @@ const AttendanceManagement = () => {
                 if (value) params.append(key, value);
             });
 
-            const response = await api.get(`/api/attendence/export/pdf?${params.toString()}`, {
-                responseType: 'blob'
+            // Add timestamp to prevent caching issues
+            params.append('_t', Date.now().toString());
+
+            const response = await api.get(`/api/admin/attendance/export/pdf?${params.toString()}`, {
+                responseType: 'blob',
+                timeout: 30000 // 30 second timeout
             });
 
             if (response.status === 200) {
+                // Create a unique filename with timestamp
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const fileName = `attendance_${timestamp}.pdf`;
+
                 const blob = new Blob([response.data], { type: 'application/pdf' });
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `attendance_${new Date().toISOString().split('T')[0]}.pdf`;
+                link.download = fileName;
+                link.style.display = 'none';
                 document.body.appendChild(link);
                 link.click();
-                link.remove();
-                window.URL.revokeObjectURL(url);
+
+                // Clean up after a short delay
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
                 toast.success('Attendance data exported to PDF successfully!');
             }
         } catch (error) {
             console.error('Error exporting to PDF:', error);
-            toast.error('Failed to export attendance data to PDF');
+            if (error.code === 'ECONNABORTED') {
+                toast.error('PDF generation timed out. Please try again.');
+            } else {
+                toast.error('Failed to export attendance data to PDF');
+            }
         }
     };
 
@@ -406,33 +301,91 @@ const AttendanceManagement = () => {
         }
     };
 
+    // Handle filter changes
+    const handleFilterChange = (key, value) => {
+        setFilters(prev => ({
+            ...prev,
+            [key]: value
+        }));
+    };
+
+    // Clear all filters
+    const clearFilters = () => {
+        setFilters({
+            manager: '',
+            employee: '',
+            shift: '',
+            status: '',
+            startDate: '',
+            endDate: ''
+        });
+    };
+
+    // Apply filters
+    const applyFilters = () => {
+        fetchAttendanceData();
+        setShowFilters(false);
+    };
+
     // Load data on component mount
     useEffect(() => {
+        fetchFilterData();
         fetchAttendanceData();
-    }, []);
+    }, [fetchAttendanceData]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Attendance Management</h1>
-                    <p className="text-sm sm:text-base text-gray-600 mt-2">
+            <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">Attendance Management</h1>
+                    <p className="text-sm sm:text-base text-gray-600 mt-1">
                         Monitor and manage employee attendance records
                     </p>
                 </div>
-                <div className="flex space-x-2 mt-4 sm:mt-0">
+
+                {/* Mobile Layout - Stacked buttons */}
+                <div className="flex flex-col space-y-2 sm:hidden">
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            onClick={() => fetchAttendanceData()}
+                            variant="outline"
+                            className="flex items-center justify-center space-x-2 touch-manipulation min-h-[44px] flex-1"
+                        >
+                            <RefreshCw className="h-4 w-4" />
+                            <span>Refresh</span>
+                        </Button>
+                        <Button
+                            onClick={exportToExcel}
+                            className="flex items-center justify-center space-x-2 touch-manipulation min-h-[44px] flex-1"
+                        >
+                            <FileText className="h-4 w-4" />
+                            <span>Excel</span>
+                        </Button>
+                    </div>
+                    <Button
+                        onClick={exportToPDF}
+                        variant="outline"
+                        className="flex items-center justify-center space-x-2 touch-manipulation min-h-[44px] w-full"
+                    >
+                        <Download className="h-4 w-4" />
+                        <span>Export PDF</span>
+                    </Button>
+                </div>
+
+                {/* Desktop Layout - Horizontal buttons */}
+                <div className="hidden sm:flex items-center space-x-2">
                     <Button
                         onClick={() => fetchAttendanceData()}
                         variant="outline"
-                        className="flex items-center space-x-2"
+                        className="flex items-center space-x-2 touch-manipulation min-h-[44px]"
                     >
                         <RefreshCw className="h-4 w-4" />
                         <span>Refresh</span>
                     </Button>
                     <Button
                         onClick={exportToExcel}
-                        className="flex items-center space-x-2"
+                        className="flex items-center space-x-2 touch-manipulation min-h-[44px]"
                     >
                         <FileText className="h-4 w-4" />
                         <span>Export Excel</span>
@@ -440,7 +393,7 @@ const AttendanceManagement = () => {
                     <Button
                         onClick={exportToPDF}
                         variant="outline"
-                        className="flex items-center space-x-2"
+                        className="flex items-center space-x-2 touch-manipulation min-h-[44px]"
                     >
                         <Download className="h-4 w-4" />
                         <span>Export PDF</span>
@@ -449,101 +402,101 @@ const AttendanceManagement = () => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Total Records</p>
-                                <p className="text-2xl font-bold text-gray-900">{summary.totalRecords}</p>
-                                <p className="text-sm text-gray-500">100% attendance rate</p>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Records</p>
+                                <p className="text-lg sm:text-2xl font-bold text-gray-900">{summary.totalRecords}</p>
+                                <p className="text-xs sm:text-sm text-gray-500">100% attendance rate</p>
                             </div>
-                            <Clock className="h-8 w-8 text-blue-500" />
+                            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 flex-shrink-0" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Present</p>
-                                <p className="text-2xl font-bold text-green-600">{summary.present}</p>
-                                <p className="text-sm text-gray-500">{summary.totalHours}h total</p>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600">Present</p>
+                                <p className="text-lg sm:text-2xl font-bold text-green-600">{summary.present}</p>
+                                <p className="text-xs sm:text-sm text-gray-500">{summary.totalHours}h total</p>
                             </div>
-                            <UserCheck className="h-8 w-8 text-green-500" />
+                            <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 flex-shrink-0" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Absent</p>
-                                <p className="text-2xl font-bold text-red-600">{summary.absent}</p>
-                                <p className="text-sm text-gray-500">0% of total</p>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600">Absent</p>
+                                <p className="text-lg sm:text-2xl font-bold text-red-600">{summary.absent}</p>
+                                <p className="text-xs sm:text-sm text-gray-500">0% of total</p>
                             </div>
-                            <UserX className="h-8 w-8 text-red-500" />
+                            <UserX className="h-6 w-6 sm:h-8 sm:w-8 text-red-500 flex-shrink-0" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Morning Shift</p>
-                                <p className="text-2xl font-bold text-blue-600">{summary.morningShift}</p>
-                                <p className="text-sm text-gray-500">records</p>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600">Morning Shift</p>
+                                <p className="text-lg sm:text-2xl font-bold text-blue-600">{summary.morningShift}</p>
+                                <p className="text-xs sm:text-sm text-gray-500">records</p>
                             </div>
-                            <Clock className="h-8 w-8 text-blue-500" />
+                            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 flex-shrink-0" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Shift Breakdown */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Morning Shift</p>
-                                <p className="text-2xl font-bold text-blue-600">{summary.morningShift}</p>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600">Morning Shift</p>
+                                <p className="text-lg sm:text-2xl font-bold text-blue-600">{summary.morningShift}</p>
                             </div>
-                            <Clock className="h-8 w-8 text-blue-500" />
+                            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 flex-shrink-0" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Evening Shift</p>
-                                <p className="text-2xl font-bold text-orange-600">{summary.eveningShift}</p>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600">Evening Shift</p>
+                                <p className="text-lg sm:text-2xl font-bold text-orange-600">{summary.eveningShift}</p>
                             </div>
-                            <Clock className="h-8 w-8 text-orange-500" />
+                            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-orange-500 flex-shrink-0" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Night Shift</p>
-                                <p className="text-2xl font-bold text-purple-600">{summary.nightShift}</p>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600">Night Shift</p>
+                                <p className="text-lg sm:text-2xl font-bold text-purple-600">{summary.nightShift}</p>
                             </div>
-                            <Clock className="h-8 w-8 text-purple-500" />
+                            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500 flex-shrink-0" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 gap-4">
                 <div className="flex-1">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -552,14 +505,15 @@ const AttendanceManagement = () => {
                             placeholder="Search by name, email, or location..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 w-full"
+                            className="pl-10 w-full touch-manipulation min-h-[44px]"
                         />
                     </div>
                 </div>
                 <div className="flex space-x-2">
                     <Button
                         variant="outline"
-                        className="flex items-center space-x-2"
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="flex items-center justify-center space-x-2 touch-manipulation min-h-[44px] w-full sm:w-auto"
                     >
                         <Filter className="h-4 w-4" />
                         <span>Filters</span>
@@ -567,25 +521,330 @@ const AttendanceManagement = () => {
                 </div>
             </div>
 
+            {/* Filter Panel */}
+            {showFilters && (
+                <Card className="p-6">
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+
+                        {/* Filter Row 1 */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Manager</label>
+                                <select
+                                    value={filters.manager}
+                                    onChange={(e) => handleFilterChange('manager', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">All Managers</option>
+                                    {managers.map(manager => (
+                                        <option key={manager._id} value={manager._id}>
+                                            {manager.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+                                <select
+                                    value={filters.employee}
+                                    onChange={(e) => handleFilterChange('employee', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">All Employees</option>
+                                    {employees.map(employee => (
+                                        <option key={employee._id} value={employee._id}>
+                                            {employee.name} ({employee.empCode})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Shift</label>
+                                <select
+                                    value={filters.shift}
+                                    onChange={(e) => handleFilterChange('shift', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">All Shifts</option>
+                                    <option value="morning">Morning</option>
+                                    <option value="evening">Evening</option>
+                                    <option value="night">Night</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Filter Row 2 */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                <select
+                                    value={filters.status}
+                                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">All Status</option>
+                                    <option value="present">Present</option>
+                                    <option value="absent">Absent</option>
+                                    <option value="late">Late</option>
+                                    <option value="half-day">Half Day</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                <Input
+                                    type="date"
+                                    value={filters.startDate}
+                                    onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                                <Input
+                                    type="date"
+                                    value={filters.endDate}
+                                    onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                                    className="w-full"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Filter Actions */}
+                        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                            <Button
+                                variant="outline"
+                                onClick={clearFilters}
+                                className="px-4 py-2"
+                            >
+                                Clear
+                            </Button>
+                            <Button
+                                onClick={applyFilters}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                Apply Filters
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+            )}
+
             {/* AG Grid */}
-            <Card>
-                <CardContent className="p-0">
+            <Card className="flex-1 min-h-0">
+                <CardContent className="p-0 h-full flex flex-col">
                     {loading ? (
                         <div className="flex justify-center items-center py-12">
                             <Loading />
                         </div>
+                    ) : filteredData.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                            <Users className="h-12 w-12 mb-4 text-gray-300" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">No Attendance Records</h3>
+                            <p className="text-sm text-gray-600 mb-4">
+                                {attendanceData.length === 0
+                                    ? 'No attendance records found. Try refreshing the data.'
+                                    : 'No records match your current search criteria.'
+                                }
+                            </p>
+                            <Button
+                                onClick={fetchAttendanceData}
+                                variant="outline"
+                                className="flex items-center space-x-2"
+                            >
+                                <RefreshCw className="h-4 w-4" />
+                                <span>Refresh Data</span>
+                            </Button>
+                        </div>
                     ) : (
-                        <div className="ag-theme-alpine" style={{ height: '600px', width: '100%' }}>
-                            <AgGridReact
-                                columnDefs={columnDefs}
-                                rowData={filteredData}
-                                gridOptions={gridOptions}
-                                defaultColDef={gridOptions.defaultColDef}
-                                pagination={gridOptions.pagination}
-                                paginationPageSize={gridOptions.paginationPageSize}
-                                rowHeight={gridOptions.rowHeight}
-                                animateRows={gridOptions.animateRows}
-                            />
+                        <div className="flex-1 min-h-0" style={{
+                            height: window.innerWidth < 768 ? '400px' : '600px',
+                            width: '100%',
+                            minHeight: window.innerWidth < 768 ? '300px' : '400px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            overflow: 'hidden'
+                        }}>
+                            {/* Simple HTML Table */}
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Employee
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Date
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Shift
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Clock In
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Clock Out
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Status
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Location
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {filteredData.map((record, index) => {
+                                            const employee = record.employeeId;
+                                            const getStatusColor = (status) => {
+                                                switch (status) {
+                                                    case 'present': return 'bg-green-100 text-green-800';
+                                                    case 'absent': return 'bg-red-100 text-red-800';
+                                                    case 'late': return 'bg-orange-100 text-orange-800';
+                                                    case 'half-day': return 'bg-blue-100 text-blue-800';
+                                                    default: return 'bg-gray-100 text-gray-800';
+                                                }
+                                            };
+                                            const getShiftColor = (shift) => {
+                                                switch (shift) {
+                                                    case 'morning': return 'bg-blue-100 text-blue-800';
+                                                    case 'evening': return 'bg-orange-100 text-orange-800';
+                                                    case 'night': return 'bg-purple-100 text-purple-800';
+                                                    default: return 'bg-gray-100 text-gray-800';
+                                                }
+                                            };
+
+                                            return (
+                                                <tr key={record._id || index} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            <div className="flex-shrink-0 h-10 w-10">
+                                                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                                    <span className="text-blue-600 font-semibold text-sm">
+                                                                        {employee?.name?.charAt(0) || 'N/A'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="ml-4">
+                                                                <div className="text-sm font-medium text-gray-900">
+                                                                    {employee?.name || 'N/A'}
+                                                                </div>
+                                                                <div className="text-sm text-gray-500">
+                                                                    {employee?.empCode || 'N/A'}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {new Date(record.stepIn).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(record.shift)}`}>
+                                                            {record.shift || 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {record.stepIn ? new Date(record.stepIn).toLocaleTimeString() : 'N/A'}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {record.stepOut ? new Date(record.stepOut).toLocaleTimeString() : 'N/A'}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(record.status)}`}>
+                                                            {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" title={record.address || 'N/A'}>
+                                                        {record.address || 'N/A'}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                        <div className="flex space-x-2">
+                                                            <button
+                                                                onClick={() => handleEditAttendance(record)}
+                                                                className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded text-xs"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteAttendance(record)}
+                                                                className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-2 py-1 rounded text-xs"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {pagination.totalPages > 1 && (
+                                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+                                    <div className="flex items-center text-sm text-gray-700">
+                                        <span>
+                                            Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to{' '}
+                                            {Math.min(pagination.currentPage * pagination.limit, pagination.totalRecords)} of{' '}
+                                            {pagination.totalRecords} records
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center space-x-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => fetchAttendanceData(pagination.currentPage - 1)}
+                                            disabled={!pagination.hasPrevPage || loading}
+                                            className="flex items-center space-x-1"
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                            <span>Previous</span>
+                                        </Button>
+
+                                        <div className="flex items-center space-x-1">
+                                            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                                                const pageNum = Math.max(1, pagination.currentPage - 2) + i;
+                                                if (pageNum > pagination.totalPages) return null;
+
+                                                return (
+                                                    <Button
+                                                        key={pageNum}
+                                                        variant={pageNum === pagination.currentPage ? "primary" : "outline"}
+                                                        size="sm"
+                                                        onClick={() => fetchAttendanceData(pageNum)}
+                                                        disabled={loading}
+                                                        className="w-8 h-8 p-0"
+                                                    >
+                                                        {pageNum}
+                                                    </Button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => fetchAttendanceData(pagination.currentPage + 1)}
+                                            disabled={!pagination.hasNextPage || loading}
+                                            className="flex items-center space-x-1"
+                                        >
+                                            <span>Next</span>
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </CardContent>

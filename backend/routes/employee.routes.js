@@ -21,6 +21,7 @@ import { requireRole, canManageEmployees } from "../utils/roleMiddleware.js";
 // Define routes
 router.post("/", authenticateUser, canManageEmployees, createEmployee);
 router.post("/login", loginEmployee);
+router.get("/", authenticateUser, getAllEmployees); // Get employees for current company
 router.get("/all", authenticateUser, requireRole(['superadmin', 'admin']), getAllEmployees);
 router.get("/team", authenticateUser, requireRole(['manager']), getEmployeesByManager);
 router.get("/muster-roll", authenticateUser, requireRole(['superadmin', 'admin']), getMusterRollReport);

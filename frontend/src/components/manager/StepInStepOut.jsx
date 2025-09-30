@@ -445,16 +445,20 @@ const StepInStepOut = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Step In/Step Out</h1>
-                    <p className="text-gray-600">Manage employee attendance with photo verification</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
+                        Step In/Step Out
+                    </h1>
+                    <p className="text-sm sm:text-base text-gray-600 mt-1 truncate">
+                        Manage employee attendance with photo verification
+                    </p>
                 </div>
 
                 {/* Manual Refresh Button */}
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-4 mt-4 sm:mt-0">
                     <button
                         onClick={async () => {
                             try {
@@ -470,7 +474,7 @@ const StepInStepOut = () => {
                             }
                         }}
                         disabled={loading}
-                        className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
                     >
                         {loading ? (
                             <>
@@ -488,48 +492,48 @@ const StepInStepOut = () => {
             </div>
 
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm opacity-90">Total Employees</p>
-                            <p className="text-3xl font-bold">{stats.total}</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 sm:p-4 lg:p-6 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex-1">
+                            <p className="text-xs sm:text-sm opacity-90">Total Employees</p>
+                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.total}</p>
                         </div>
-                        <Users className="h-12 w-12 opacity-80" />
+                        <Users className="h-6 w-6 sm:h-8 sm:w-8 lg:h-12 lg:w-12 opacity-80 mt-2 sm:mt-0" />
                     </div>
                 </div>
-                <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm opacity-90">Clocked In</p>
-                            <p className="text-3xl font-bold">{stats.clockedIn}</p>
+                <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-3 sm:p-4 lg:p-6 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex-1">
+                            <p className="text-xs sm:text-sm opacity-90">Clocked In</p>
+                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.clockedIn}</p>
                         </div>
-                        <LogIn className="h-12 w-12 opacity-80" />
+                        <LogIn className="h-6 w-6 sm:h-8 sm:w-8 lg:h-12 lg:w-12 opacity-80 mt-2 sm:mt-0" />
                     </div>
                 </div>
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-lg">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm opacity-90">Clocked Out</p>
-                            <p className="text-3xl font-bold">{stats.clockedOut}</p>
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-3 sm:p-4 lg:p-6 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex-1">
+                            <p className="text-xs sm:text-sm opacity-90">Clocked Out</p>
+                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.clockedOut}</p>
                         </div>
-                        <LogOut className="h-12 w-12 opacity-80" />
+                        <LogOut className="h-6 w-6 sm:h-8 sm:w-8 lg:h-12 lg:w-12 opacity-80 mt-2 sm:mt-0" />
                     </div>
                 </div>
-                <div className="bg-gradient-to-r from-gray-500 to-gray-600 text-white p-6 rounded-lg">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm opacity-90">Not Clocked</p>
-                            <p className="text-3xl font-bold">{stats.notClocked}</p>
+                <div className="bg-gradient-to-r from-gray-500 to-gray-600 text-white p-3 sm:p-4 lg:p-6 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex-1">
+                            <p className="text-xs sm:text-sm opacity-90">Not Clocked</p>
+                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.notClocked}</p>
                         </div>
-                        <Clock className="h-12 w-12 opacity-80" />
+                        <Clock className="h-6 w-6 sm:h-8 sm:w-8 lg:h-12 lg:w-12 opacity-80 mt-2 sm:mt-0" />
                     </div>
                 </div>
             </div>
 
             {/* Search and Filter */}
-            <div className="bg-white p-6 rounded-lg border border-gray-200">
-                <div className="flex flex-col md:flex-row gap-4">
+            <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <div className="flex-1">
                         <div className="relative">
                             <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -538,15 +542,15 @@ const StepInStepOut = () => {
                                 placeholder="Search employees by name or email..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
                             />
                         </div>
                     </div>
-                    <div className="md:w-48">
+                    <div className="sm:w-48">
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
                         >
                             <option value="all">All Status</option>
                             <option value="not-clocked">Not Clocked</option>
@@ -558,17 +562,17 @@ const StepInStepOut = () => {
             </div>
 
             {/* Employee Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                 {filteredEmployees.map(employee => {
                     const status = getEmployeeStatus(employee._id);
                     const displayImage = status.image || employee.photo;
 
                     return (
-                        <div key={employee._id} className="bg-white p-6 rounded-lg border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-                            {/* Employee Info */}
+                        <div key={employee._id} className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 hover:shadow-xl hover:scale-105 transform transition-all duration-300 group">
+                            {/* Enhanced Employee Info */}
                             <div className="flex items-center space-x-4 mb-4">
                                 <div className="relative">
-                                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
                                         {displayImage ? (
                                             <img
                                                 src={displayImage}
@@ -584,41 +588,42 @@ const StepInStepOut = () => {
                                             {employee.name?.charAt(0)?.toUpperCase() || 'U'}
                                         </div>
                                     </div>
-                                    {/* Attendance Image Indicator */}
+                                    {/* Enhanced Attendance Image Indicator */}
                                     {status.image && (
-                                        <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-1">
+                                        <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-1.5 shadow-lg">
                                             <Camera className="h-3 w-3" />
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="font-semibold text-lg text-gray-900">{employee.name}</h3>
-                                    <p className="text-sm text-gray-500">{employee.email}</p>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-lg text-gray-900 truncate">{employee.name}</h3>
+                                    <p className="text-sm text-gray-500 truncate">{employee.email}</p>
                                     <p className="text-xs text-gray-400 capitalize">{employee.shift} Shift</p>
                                 </div>
                             </div>
 
-                            {/* Status Badge */}
+                            {/* Enhanced Status Badge */}
                             <div className="mb-4">
-                                <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${status.color === 'green' ? 'bg-green-100 text-green-800' :
+                                <span className={`inline-flex px-3 py-1.5 text-xs font-medium rounded-full ${status.color === 'green' ? 'bg-green-100 text-green-800' :
                                         status.color === 'orange' ? 'bg-orange-100 text-orange-800' :
                                             'bg-gray-100 text-gray-800'
                                     }`}>
                                     {status.text}
                                 </span>
                                 {status.status === 'clocked-in' && (
-                                    <div className="mt-2 text-xs text-green-600 font-medium">
-                                        ✓ Currently working
+                                    <div className="mt-2 text-xs text-green-600 font-medium flex items-center">
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        Currently working
                                     </div>
                                 )}
                             </div>
 
-                            {/* Action Buttons */}
+                            {/* Enhanced Action Buttons */}
                             <div className="space-y-2">
                                 {status.status === 'not-clocked' && (
                                     <button
                                         onClick={() => handleStepInOut(employee._id, 'step-in')}
-                                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
                                         disabled={loading}
                                     >
                                         <LogIn className="h-4 w-4" />
@@ -628,7 +633,7 @@ const StepInStepOut = () => {
                                 {status.status === 'clocked-out' && (
                                     <button
                                         onClick={() => handleStepInOut(employee._id, 'step-in')}
-                                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
                                         disabled={loading}
                                     >
                                         <LogIn className="h-4 w-4" />
@@ -638,7 +643,7 @@ const StepInStepOut = () => {
                                 {status.status === 'clocked-in' && (
                                     <button
                                         onClick={() => handleStepInOut(employee._id, 'step-out')}
-                                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
                                         disabled={loading || isSubmitting}
                                     >
                                         {isSubmitting ? (
@@ -669,28 +674,35 @@ const StepInStepOut = () => {
                 </div>
             )}
 
-            {/* Camera Modal */}
+            {/* Enhanced Camera Modal */}
             {showCamera && (
-                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                            <div>
-                                <h3 className="text-xl font-semibold text-gray-900">
-                                    {stepType === 'step-in' ? 'Step In' : 'Step Out'} - {selectedEmployee?.name}
-                                </h3>
-                                <p className="text-sm text-gray-600">Capture photo and enter details</p>
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[95vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-300">
+                        {/* Enhanced Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 rounded-t-2xl text-white">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                    <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+                                        <Camera className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl sm:text-2xl font-bold">
+                                            {stepType === 'step-in' ? 'Step In' : 'Step Out'} - {selectedEmployee?.name}
+                                        </h3>
+                                        <p className="text-blue-100 text-sm sm:text-base">Capture photo and enter details</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowCamera(false);
+                                        setCapturedImage(null);
+                                        setSelectedEmployee(null);
+                                    }}
+                                    className="p-2 rounded-lg text-white hover:bg-white hover:bg-opacity-20 transition-colors"
+                                >
+                                    <X className="h-6 w-6" />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => {
-                                    setShowCamera(false);
-                                    setCapturedImage(null);
-                                    setSelectedEmployee(null);
-                                }}
-                                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
-                            >
-                                <X className="h-6 w-6" />
-                            </button>
                         </div>
 
                         {/* Camera/Image Content */}
@@ -707,11 +719,12 @@ const StepInStepOut = () => {
                                             onUserMedia={() => setCameraReady(true)}
                                         />
 
-                                        {/* Camera Controls */}
+                                        {/* Enhanced Camera Controls */}
                                         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-4">
                                             <button
                                                 onClick={switchCamera}
-                                                className="p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white"
+                                                className="p-3 bg-white bg-opacity-90 rounded-full shadow-lg hover:bg-white hover:scale-110 transition-all duration-200"
+                                                title="Switch Camera"
                                             >
                                                 <RotateCcw className="h-5 w-5 text-gray-700" />
                                             </button>
@@ -719,14 +732,16 @@ const StepInStepOut = () => {
                                             <button
                                                 onClick={capture}
                                                 disabled={!cameraReady}
-                                                className="p-4 bg-blue-600 rounded-full shadow-lg hover:bg-blue-700 disabled:opacity-50"
+                                                className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 hover:scale-110 transition-all duration-200"
+                                                title="Capture Photo"
                                             >
                                                 <Camera className="h-6 w-6 text-white" />
                                             </button>
 
                                             <button
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white"
+                                                className="p-3 bg-white bg-opacity-90 rounded-full shadow-lg hover:bg-white hover:scale-110 transition-all duration-200"
+                                                title="Upload Photo"
                                             >
                                                 <Upload className="h-5 w-5 text-gray-700" />
                                             </button>
@@ -781,76 +796,122 @@ const StepInStepOut = () => {
                                 )}
                             </div>
 
-                            {/* Form Fields */}
+                            {/* Enhanced Form Fields */}
                             {capturedImage && (
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Location <span className="text-blue-600 text-xs">(Optional - will auto-detect from GPS)</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={location}
-                                            onChange={(e) => setLocation(e.target.value)}
-                                            placeholder="Enter your current location or leave empty for auto-detection..."
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
+                                <div className="space-y-6">
+                                    <div className="bg-gray-50 rounded-xl p-4">
+                                        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                            <MapPin className="h-5 w-5 mr-2 text-blue-600" />
+                                            Attendance Details
+                                        </h4>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Location <span className="text-blue-600 text-xs">(Optional - will auto-detect from GPS)</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={location}
+                                                    onChange={(e) => setLocation(e.target.value)}
+                                                    placeholder="Enter your current location or leave empty for auto-detection..."
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                />
+                                            </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Shift</label>
-                                        <select
-                                            value={shift}
-                                            onChange={(e) => setShift(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        >
-                                            <option value="morning">Morning</option>
-                                            <option value="evening">Evening</option>
-                                            <option value="night">Night</option>
-                                        </select>
-                                    </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Shift</label>
+                                                <select
+                                                    value={shift}
+                                                    onChange={(e) => setShift(e.target.value)}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                >
+                                                    <option value="morning">Morning</option>
+                                                    <option value="evening">Evening</option>
+                                                    <option value="night">Night</option>
+                                                </select>
+                                            </div>
+                                        </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Status *</label>
-                                        <select
-                                            value={status}
-                                            onChange={(e) => setStatus(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            required
-                                        >
-                                            <option value="present">Present</option>
-                                            <option value="absent">Absent</option>
-                                            <option value="weekoff">Week Off</option>
-                                        </select>
-                                    </div>
+                                        <div className="mt-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Status *</label>
+                                            <select
+                                                value={status}
+                                                onChange={(e) => setStatus(e.target.value)}
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                required
+                                            >
+                                                <option value="present">Present</option>
+                                                <option value="absent">Absent</option>
+                                                <option value="weekoff">Week Off</option>
+                                            </select>
+                                        </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Note (Optional)</label>
-                                        <textarea
-                                            value={note}
-                                            onChange={(e) => setNote(e.target.value)}
-                                            placeholder="Add any additional notes..."
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            rows="3"
-                                        />
-                                    </div>
+                                        <div className="mt-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Note (Optional)</label>
+                                            <textarea
+                                                value={note}
+                                                onChange={(e) => setNote(e.target.value)}
+                                                placeholder="Add any additional notes..."
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors resize-none"
+                                                rows="3"
+                                            />
+                                        </div>
 
-                                    <div className="flex gap-4 text-sm text-gray-500">
-                                        <span>Latitude: {latitude || '...'}</span>
-                                        <span>Longitude: {longitude || '...'}</span>
+                                        <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-500 bg-white rounded-lg p-3">
+                                            <span className="flex items-center">
+                                                <MapPin className="h-4 w-4 mr-1" />
+                                                Lat: {latitude || '...'}
+                                            </span>
+                                            <span className="flex items-center">
+                                                <MapPin className="h-4 w-4 mr-1" />
+                                                Lng: {longitude || '...'}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* Instructions */}
-                        <div className="p-6 bg-gray-50 border-t border-gray-200">
-                            <p className="text-sm text-gray-600 text-center">
-                                {!capturedImage
-                                    ? 'Position your face in the camera and tap the camera button to capture, or upload a photo'
-                                    : 'Review your photo and fill in the details above to confirm'
-                                }
-                            </p>
+                        {/* Enhanced Instructions and Actions */}
+                        <div className="p-6 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-200">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-600 mb-4">
+                                    {!capturedImage
+                                        ? 'Position your face in the camera and tap the camera button to capture, or upload a photo'
+                                        : 'Review your photo and fill in the details above to confirm'
+                                    }
+                                </p>
+                                
+                                {capturedImage && (
+                                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                        <button
+                                            onClick={retake}
+                                            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                                        >
+                                            <RotateCcw className="h-4 w-4 inline mr-2" />
+                                            Retake Photo
+                                        </button>
+                                        <button
+                                            onClick={submitAttendance}
+                                            disabled={isSubmitting}
+                                            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-200 font-medium"
+                                        >
+                                            {isSubmitting ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 inline mr-2 animate-spin" />
+                                                    Submitting...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Check className="h-4 w-4 inline mr-2" />
+                                                    Submit Attendance
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

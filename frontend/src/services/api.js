@@ -90,16 +90,45 @@ export const authAPI = {
   },
 
   // Forgot password
-  forgotPassword: async (email) => {
+  forgotPassword: async (email, userType) => {
     try {
-      const response = await api.post('/api/auth/forgot-password', { email });
+      const response = await api.post('/api/auth/forgot-password', {
+        email,
+        userType
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
     }
   },
 
-  // Verify OTP and reset password
+  // Reset password
+  resetPassword: async (token, newPassword, userType) => {
+    try {
+      const response = await api.post('/api/auth/reset-password', {
+        token,
+        newPassword,
+        userType
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Verify reset token
+  verifyResetToken: async (token, userType) => {
+    try {
+      const response = await api.get('/api/auth/verify-reset-token', {
+        params: { token, userType }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Verify OTP and reset password (legacy)
   verifyOTP: async (data) => {
     try {
       const response = await api.post('/api/auth/verify-otp', data);
@@ -171,7 +200,7 @@ export const adminAPI = {
   // Get attendance data
   getAttendance: async (params = {}) => {
     try {
-      const response = await api.get('/api/attendence', { params });
+      const response = await api.get('/api/admin/attendance', { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -191,7 +220,7 @@ export const adminAPI = {
   // Get attendance summary
   getAttendanceSummary: async () => {
     try {
-      const response = await api.get('/api/attendence/summary');
+      const response = await api.get('/api/admin/attendance/summary');
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -201,7 +230,7 @@ export const adminAPI = {
   // Update attendance record
   updateAttendance: async (attendanceId, data) => {
     try {
-      const response = await api.put(`/api/attendence/${attendanceId}`, data);
+      const response = await api.put(`/api/admin/attendance/${attendanceId}`, data);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -211,8 +240,28 @@ export const adminAPI = {
   // Delete attendance record
   deleteAttendance: async (attendanceId) => {
     try {
-      const response = await api.delete(`/api/attendence/${attendanceId}`);
+      const response = await api.delete(`/api/admin/attendance/${attendanceId}`);
       return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get managers for filter dropdown
+  getManagers: async () => {
+    try {
+      const response = await api.get('/api/manager');
+      return { managers: response.data.data || [] };
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get employees for filter dropdown
+  getEmployees: async () => {
+    try {
+      const response = await api.get('/api/employee');
+      return { employees: response.data.data || [] };
     } catch (error) {
       throw error.response?.data || error.message;
     }

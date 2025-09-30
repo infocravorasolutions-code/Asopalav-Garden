@@ -23,12 +23,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
+import CompanyLogo from '../ui/CompanyLogo';
 
 const Sidebar = ({ isOpen, onToggle, userType }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
-  const { companyName, logoUrl, primaryColor } = useCompanyTheme();
+  const { companyName, logoUrl, primaryColor, companyCode } = useCompanyTheme();
   const [isMobile, setIsMobile] = useState(false);
 
   // Check if mobile view
@@ -196,23 +197,18 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3 min-w-0 flex-1">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt={companyName}
-                className="w-10 h-10 rounded-lg object-cover"
-              />
-            ) : (
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: primaryColor + '20' }}
-              >
-                <Building
-                  className="h-6 w-6"
-                  style={{ color: primaryColor }}
-                />
-              </div>
-            )}
+            <CompanyLogo
+              companyCode={companyCode}
+              fallbackLogoUrl={logoUrl}
+              size="md"
+              className="flex-shrink-0"
+              style={{
+                minWidth: '40px',
+                minHeight: '40px',
+                maxWidth: '40px',
+                maxHeight: '40px'
+              }}
+            />
             <div className="min-w-0 flex-1">
               <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate">
                 {companyName || (userType === 'admin' ? 'Admin Portal' : 'Manager Portal')}

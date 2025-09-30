@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Eye, 
-  EyeOff, 
+import {
+  Eye,
+  EyeOff,
   Shield,
   Users,
   User,
@@ -14,7 +14,7 @@ import {
 const IndustryLogin = () => {
   const { login, isAuthenticated, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
-  
+
   const [userType, setUserType] = useState('admin');
   const [formData, setFormData] = useState({
     email: '',
@@ -102,12 +102,12 @@ const IndustryLogin = () => {
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}></div>
       </div>
-      
+
       {/* Floating Elements */}
       <div className="absolute top-20 left-20 w-32 h-32 bg-blue-500/20 rounded-full blur-xl"></div>
       <div className="absolute top-40 right-20 w-24 h-24 bg-purple-500/20 rounded-full blur-xl"></div>
       <div className="absolute bottom-20 left-40 w-20 h-20 bg-cyan-500/20 rounded-full blur-xl"></div>
-      
+
       {/* Main Content */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
         <div className="w-full max-w-sm">
@@ -130,13 +130,12 @@ const IndustryLogin = () => {
                   <button
                     key={type.value}
                     onClick={() => handleUserTypeChange(type.value)}
-                    className={`flex-1 flex items-center justify-center space-x-1 py-1.5 px-2 rounded-md text-xs sm:text-sm font-medium font-poppins transition-colors ${
-                      userType === type.value
+                    className={`flex-1 flex items-center justify-center space-x-1 py-1.5 px-2 rounded-md text-xs sm:text-sm font-medium font-poppins transition-colors ${userType === type.value
                         ? (type.color === 'blue' ? 'bg-blue-600 text-white shadow-sm' :
-                           type.color === 'purple' ? 'bg-purple-600 text-white shadow-sm' :
-                           'bg-green-600 text-white shadow-sm')
+                          type.color === 'purple' ? 'bg-purple-600 text-white shadow-sm' :
+                            'bg-green-600 text-white shadow-sm')
                         : 'text-white/70 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <type.icon className="h-3 w-3" />
                     <span>{type.label}</span>
@@ -172,7 +171,7 @@ const IndustryLogin = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-white/50 hover:text-white"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center justify-center text-white/50 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

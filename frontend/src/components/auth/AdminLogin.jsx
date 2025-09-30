@@ -10,13 +10,13 @@ import Loading from '../ui/Loading';
 const AdminLogin = () => {
   const { login, isAuthenticated, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     company: ''
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
@@ -38,7 +38,7 @@ const AdminLogin = () => {
       ...prev,
       [field]: e.target.value
     }));
-    
+
     // Clear validation error for this field
     if (validationErrors[field]) {
       setValidationErrors(prev => ({
@@ -50,40 +50,46 @@ const AdminLogin = () => {
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (!formData.email) {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Please enter a valid email address';
     }
-    
+
     if (!formData.password) {
       errors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       errors.password = 'Password must be at least 6 characters';
     }
-    
+
     if (!formData.company) {
       errors.company = 'Company code is required';
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSubmitting(true);
     clearError();
-    
+
     try {
-      const result = await login(formData);
-      
+      // Add userType to the form data for admin login
+      const loginData = {
+        ...formData,
+        userType: 'admin'
+      };
+
+      const result = await login(loginData);
+
       if (result.success) {
         navigate('/admin/dashboard');
       } else {
@@ -125,7 +131,7 @@ const AdminLogin = () => {
           <CardHeader>
             <CardTitle className="text-center">Welcome Back</CardTitle>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Global Error */}

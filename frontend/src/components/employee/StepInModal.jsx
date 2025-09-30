@@ -202,10 +202,10 @@ const StepInModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-1">
+            <div className="bg-white rounded-xl w-full max-w-2xl mx-1 max-h-[98vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-gray-200">
                     <div>
                         <h3 className="text-xl font-semibold text-gray-900">
                             Step In - Clock In
@@ -214,15 +214,15 @@ const StepInModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
                     </div>
                     <button
                         onClick={handleClose}
-                        className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+                        className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 touch-manipulation min-h-[44px]"
                     >
                         <X className="h-6 w-6" />
                     </button>
                 </div>
 
                 {/* Camera/Image Content */}
-                <div className="p-6">
-                    <div className="relative mb-6">
+                <div className="p-3 sm:p-4 lg:p-6">
+                    <div className="relative mb-4 sm:mb-6">
                         {!capturedImage ? (
                             <div className="relative">
                                 <Webcam
@@ -238,7 +238,7 @@ const StepInModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
                                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-4">
                                     <button
                                         onClick={switchCamera}
-                                        className="p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white"
+                                        className="p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white touch-manipulation min-h-[44px]"
                                     >
                                         <RotateCcw className="h-5 w-5 text-gray-700" />
                                     </button>
@@ -246,14 +246,14 @@ const StepInModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
                                     <button
                                         onClick={capture}
                                         disabled={!cameraReady}
-                                        className="p-4 bg-blue-600 rounded-full shadow-lg hover:bg-blue-700 disabled:opacity-50"
+                                        className="p-4 bg-blue-600 rounded-full shadow-lg hover:bg-blue-700 disabled:opacity-50 touch-manipulation min-h-[44px]"
                                     >
                                         <Camera className="h-6 w-6 text-white" />
                                     </button>
 
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white"
+                                        className="p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white touch-manipulation min-h-[44px]"
                                     >
                                         <Upload className="h-5 w-5 text-gray-700" />
                                     </button>
@@ -281,7 +281,7 @@ const StepInModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
                                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-4">
                                     <button
                                         onClick={retake}
-                                        className="p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white"
+                                        className="p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white touch-manipulation min-h-[44px]"
                                     >
                                         <RotateCcw className="h-5 w-5 text-gray-700" />
                                     </button>
@@ -289,7 +289,7 @@ const StepInModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
                                     <button
                                         onClick={handleSubmit}
                                         disabled={isSubmitting || loading}
-                                        className="p-4 bg-green-600 rounded-full shadow-lg hover:bg-green-700 disabled:opacity-50"
+                                        className="p-4 bg-green-600 rounded-full shadow-lg hover:bg-green-700 disabled:opacity-50 touch-manipulation min-h-[44px]"
                                     >
                                         {isSubmitting || loading ? (
                                             <Loader2 className="h-6 w-6 text-white animate-spin" />
@@ -341,12 +341,12 @@ const StepInModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
                                         value={location}
                                         onChange={(e) => setLocation(e.target.value)}
                                         placeholder="Enter your current location or leave empty for auto-detection..."
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
                                     />
                                     <button
                                         onClick={getCurrentLocation}
                                         disabled={locationLoading}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 touch-manipulation min-h-[44px]"
                                     >
                                         {locationLoading ? (
                                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -368,14 +368,14 @@ const StepInModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
                             <div className="flex justify-end gap-3 pt-4">
                                 <button
                                     onClick={handleClose}
-                                    className="px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                    className="px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 touch-manipulation min-h-[44px]"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleSubmit}
                                     disabled={isSubmitting || loading}
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 touch-manipulation min-h-[44px]"
                                 >
                                     {isSubmitting || loading ? (
                                         <>

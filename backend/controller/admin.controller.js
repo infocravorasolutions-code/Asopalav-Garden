@@ -117,29 +117,30 @@ export const getAllAdmins = async (req, res) => {
 
 export const loginAdmin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, company } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email, password, and companyCode are required" });
+    if (!email || !password || !company) {
+      return res.status(400).json({ message: "Email, password, and company code are required" });
     }
 
-    const admin = await Admin.findOne({ email: req.body.email })
+    // First, find the company by company code
+    const companyData = await Company.findOne({ code: company });
+    if (!companyData) {
+      return res.status(404).json({ message: "Company not found with the provided company code" });
+    }
+
+    // Find admin by email
+    const admin = await Admin.findOne({ email: email });
     if (!admin) {
       return res.status(404).json({ message: "Admin not found" });
     }
 
-    const company = await Company.findById(admin.companyId);
-    console.log("company ==> ", company);
-    if (!company) {
-      return res.status(404).json({ message: "Company not found for this admin" });
-    }
-    console.log("company ==> ", company);
-
     // Check if admin belongs to the same company
-    if (!admin.companyId) {
+    if (!admin.companyId || admin.companyId.toString() !== companyData._id.toString()) {
       return res.status(403).json({ message: "Admin does not belong to this company" });
     }
 
+    // Verify password
     const isPasswordValid = await bcrypt.compare(password, admin.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid password" });
@@ -151,13 +152,13 @@ export const loginAdmin = async (req, res) => {
         email: admin.email,
         role: admin.role,
         userType: "admin",
-        companyId: company._id
+        companyId: companyData._id
       },
       JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || "1y" }
     );
 
-    res.status(200).json({ message: "Login successful", token, admin, company });
+    res.status(200).json({ message: "Login successful", token, admin, company: companyData });
   } catch (error) {
     console.error("Error logging in:", error);
     res.status(500).json({ message: "Error logging in", error });

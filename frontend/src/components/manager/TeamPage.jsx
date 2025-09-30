@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserPlus, Edit, Trash2, Users } from 'lucide-react';
+import { UserPlus, Edit, Trash2, Users, Search, Filter, RefreshCw, Download, Eye, MoreVertical } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 import StandaloneAgGrid from '../ui/StandaloneAgGrid';
-import EmployeeModal from '../admin/EmployeeModal';
+import EnhancedEmployeeModal from './EnhancedEmployeeModal';
 
 const TeamPage = () => {
   const { user } = useAuth();
@@ -357,55 +357,40 @@ const TeamPage = () => {
   ], [handleEdit, handleDelete]);
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
+    <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
       {/* Header with Title, Description and Buttons */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center space-x-4">
           <div className="p-3 rounded-lg" style={{ backgroundColor: `${primaryColor}20` }}>
             <Users className="h-6 w-6" style={{ color: primaryColor }} />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
               My Team ({employees.length})
             </h1>
-            <p className="text-gray-600 mt-1">Manage your team members</p>
+            <p className="text-sm sm:text-base text-gray-600 mt-1 truncate">Manage your team members</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Filter Toggle */}
-          {/* <div className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showOnlyMyTeam}
-                onChange={(e) => setShowOnlyMyTeam(e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">
-                Show only my team
-              </span>
-            </label>
-          </div> */}
-
+        <div className="flex items-center gap-2 mt-4 sm:mt-0">
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 touch-manipulation min-h-[44px]"
           >
-            <div className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}>↻</div>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
           <button
             onClick={handleExport}
-            className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
           >
-            <div className="w-4 h-4">⬇</div>
+            <Download className="h-4 w-4" />
             <span>Export</span>
           </button>
           <button
             onClick={handleCreateEmployee}
-            className="flex items-center space-x-2 px-5 py-2 text-white rounded-lg transition-colors font-medium"
+            className="flex items-center space-x-2 px-4 py-2 text-white rounded-lg transition-colors font-medium touch-manipulation min-h-[44px]"
             style={{ backgroundColor: primaryColor }}
           >
             <UserPlus className="h-4 w-4" />
@@ -449,8 +434,8 @@ const TeamPage = () => {
         subtitle="Manage your team members"
       />
 
-      {/* Employee Modal */}
-      <EmployeeModal
+      {/* Enhanced Employee Modal */}
+      <EnhancedEmployeeModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSave={handleSaveEmployee}

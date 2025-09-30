@@ -330,11 +330,11 @@ const ManagerDashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
             Manager Dashboard
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
@@ -363,7 +363,7 @@ const ManagerDashboard = () => {
           <Button
             onClick={fetchEmployees}
             variant="outline"
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 touch-manipulation min-h-[44px]"
           >
             <RefreshCw className="h-4 w-4" />
             <span>Refresh</span>
@@ -381,7 +381,7 @@ const ManagerDashboard = () => {
               }
             }}
             variant="outline"
-            className="flex items-center space-x-2 text-sm"
+            className="flex items-center space-x-2 text-sm touch-manipulation min-h-[44px]"
           >
             <span>Refresh Status</span>
           </Button>
@@ -389,14 +389,14 @@ const ManagerDashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {stats.map((stat, index) => (
           <Card key={index} className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">{stat.title}</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
                   <div className="flex items-center mt-2">
                     <span className={`text-xs sm:text-sm font-medium ${stat.changeType === 'positive' ? 'text-green-600' :
                       stat.changeType === 'negative' ? 'text-red-600' : 'text-gray-600'
@@ -422,14 +422,14 @@ const ManagerDashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {quickActions.map((action, index) => (
           <Card
             key={index}
             className="hover:shadow-lg cursor-pointer hover:scale-105 transform transition-all duration-200"
             onClick={() => handleQuickActionClick(action.href)}
           >
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center space-x-4">
                 <div className={`p-3 rounded-lg ${action.color === 'blue' ? 'bg-blue-100' :
                   action.color === 'green' ? 'bg-green-100' :

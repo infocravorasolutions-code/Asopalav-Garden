@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  Building, 
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  Building,
   User,
   Shield,
   Users,
-  AlertCircle, 
+  AlertCircle,
   ArrowRight
 } from 'lucide-react';
 
 const SimpleUnifiedLogin = () => {
   const { login, isAuthenticated, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
-  
+
   const [userType, setUserType] = useState('admin');
   const [formData, setFormData] = useState({
     company: '',
@@ -45,49 +45,49 @@ const SimpleUnifiedLogin = () => {
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (userType === 'admin' && !formData.company.trim()) {
       errors.company = 'Company code is required';
     }
-    
+
     if (!formData.email.trim()) {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Please enter a valid email';
     }
-    
+
     if (!formData.password.trim()) {
       errors.password = 'Password is required';
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsSubmitting(true);
     clearError();
-    
+
     try {
       const loginData = {
         ...formData,
         userType: userType
       };
-      
+
       console.log('Attempting login with data:', loginData);
-      
+
       const result = await login(loginData);
       console.log('Login result:', result);
-      
+
       if (result.success) {
         // Redirect based on user type
-        const dashboardPath = userType === 'admin' ? '/admin/dashboard' : 
-                             userType === 'manager' ? '/manager/dashboard' : 
-                             '/employee/dashboard';
+        const dashboardPath = userType === 'admin' ? '/admin/dashboard' :
+          userType === 'manager' ? '/manager/dashboard' :
+            '/employee/dashboard';
         console.log('Redirecting to:', dashboardPath);
         navigate(dashboardPath);
       }
@@ -141,12 +141,12 @@ const SimpleUnifiedLogin = () => {
       <div className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-xl"></div>
       <div className="absolute top-40 right-20 w-24 h-24 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-xl"></div>
       <div className="absolute bottom-20 left-40 w-20 h-20 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-full blur-xl"></div>
-      
+
       <div className="relative z-10 flex items-center justify-center min-h-screen py-8 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-lg mx-auto">
           {/* Login Card */}
           <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-10 relative">
-            
+
             {/* Header */}
             <div className="text-center mb-10 relative z-10">
               <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl shadow-2xl mb-8">
@@ -154,14 +154,14 @@ const SimpleUnifiedLogin = () => {
               </div>
               <h1 className="text-4xl font-bold text-white mb-3">
                 {userType === 'admin' ? 'Admin Access' :
-                 userType === 'manager' ? 'Manager Portal' : 'Employee Login'}
+                  userType === 'manager' ? 'Manager Portal' : 'Employee Login'}
               </h1>
               <p className="text-blue-200 text-xl">
                 {userType === 'admin' ? 'Enterprise Dashboard' :
-                 userType === 'manager' ? 'Team Management' : 'Personal Workspace'}
+                  userType === 'manager' ? 'Team Management' : 'Personal Workspace'}
               </p>
             </div>
-          
+
             {/* User Type Selector */}
             <div className="mb-10 relative z-10">
               <div className="flex bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/20">
@@ -173,11 +173,10 @@ const SimpleUnifiedLogin = () => {
                   <button
                     key={key}
                     onClick={() => handleUserTypeChange(key)}
-                    className={`flex-1 flex items-center justify-center space-x-3 py-5 px-6 rounded-xl text-base font-bold ${
-                      userType === key
-                        ? `bg-gradient-to-r from-${color}-500 to-${color}-600 text-white shadow-lg shadow-${color}-500/25`
-                        : 'text-white/70 hover:text-white'
-                    }`}
+                    className={`flex-1 flex items-center justify-center space-x-3 py-5 px-6 rounded-xl text-base font-bold ${userType === key
+                      ? `bg-gradient-to-r from-${color}-500 to-${color}-600 text-white shadow-lg shadow-${color}-500/25`
+                      : 'text-white/70 hover:text-white'
+                      }`}
                   >
                     <Icon className={`h-6 w-6 ${userType === key ? 'text-white' : 'text-white/70'}`} />
                     <span>{label}</span>
@@ -254,18 +253,18 @@ const SimpleUnifiedLogin = () => {
                     value={formData.password}
                     onChange={handleInputChange('password')}
                     disabled={isSubmitting}
-                    className="w-full px-6 py-5 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 pr-14 text-lg"
+                    className="w-full px-6 py-5 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 pr-12 text-lg"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-5 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center justify-center text-white/50 hover:text-white transition-colors p-1 rounded w-6 h-6"
                     disabled={isSubmitting}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-6 w-6" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="h-6 w-6" />
+                      <Eye className="h-4 w-4" />
                     )}
                   </button>
                   {validationErrors.password && (
@@ -303,11 +302,11 @@ const SimpleUnifiedLogin = () => {
                   Forgot your password?
                 </a>
               </div>
-              
+
               <div className="text-center">
                 <p className="text-sm text-white/60">
                   {userType === 'admin' ? 'Need help? Contact your system administrator' :
-                   userType === 'manager' ? 'Need help? Contact your admin' : 'Need help? Contact your manager or HR'}
+                    userType === 'manager' ? 'Need help? Contact your admin' : 'Need help? Contact your manager or HR'}
                 </p>
               </div>
             </div>

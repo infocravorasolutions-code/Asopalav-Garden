@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  Building, 
-  AlertCircle, 
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  Building,
+  AlertCircle,
   CheckCircle,
   Users,
   Clock,
@@ -24,13 +24,13 @@ import Loading from '../ui/Loading';
 const EnhancedLogin = () => {
   const { login, isAuthenticated, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     company: ''
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
@@ -53,7 +53,7 @@ const EnhancedLogin = () => {
       ...prev,
       [field]: e.target.value
     }));
-    
+
     // Clear validation error for this field
     if (validationErrors[field]) {
       setValidationErrors(prev => ({
@@ -65,40 +65,40 @@ const EnhancedLogin = () => {
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (!formData.email) {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Please enter a valid email address';
     }
-    
+
     if (!formData.password) {
       errors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       errors.password = 'Password must be at least 6 characters';
     }
-    
+
     if (!formData.company) {
       errors.company = 'Company code is required';
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSubmitting(true);
     clearError();
-    
+
     try {
       const result = await login(formData);
-      
+
       if (result.success) {
         navigate('/admin/dashboard');
       } else {
@@ -131,16 +131,16 @@ const EnhancedLogin = () => {
           backgroundRepeat: 'repeat'
         }}></div>
       </div>
-      
+
       {/* Floating Elements */}
       <div className="absolute top-20 left-20 w-20 h-20 bg-blue-100 rounded-full opacity-20 animate-pulse"></div>
       <div className="absolute top-40 right-20 w-16 h-16 bg-green-100 rounded-full opacity-20 animate-pulse delay-1000"></div>
       <div className="absolute bottom-20 left-40 w-12 h-12 bg-purple-100 rounded-full opacity-20 animate-pulse delay-2000"></div>
-      
+
       <div className="relative z-10 flex items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl w-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            
+
             {/* Left Side - Branding & Features */}
             <div className="hidden lg:block space-y-8">
               <div className="space-y-6">
@@ -153,16 +153,16 @@ const EnhancedLogin = () => {
                     <p className="text-gray-600">Multi-Company Management System</p>
                   </div>
                 </div>
-                
+
                 <h2 className="text-4xl font-bold text-gray-900 leading-tight">
                   Welcome to the future of
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600">
                     {" "}attendance management
                   </span>
                 </h2>
-                
+
                 <p className="text-lg text-gray-600 leading-relaxed">
-                  Streamline your workforce management with our comprehensive attendance tracking system. 
+                  Streamline your workforce management with our comprehensive attendance tracking system.
                   Built for modern companies that value efficiency and transparency.
                 </p>
               </div>
@@ -178,7 +178,7 @@ const EnhancedLogin = () => {
                     <p className="text-sm text-gray-600">Manage multiple companies from one platform</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-white/20">
                   <div className="p-2 bg-green-100 rounded-lg">
                     <MapPin className="h-5 w-5 text-green-600" />
@@ -188,7 +188,7 @@ const EnhancedLogin = () => {
                     <p className="text-sm text-gray-600">Location-based attendance verification</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-white/20">
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <Clock className="h-5 w-5 text-purple-600" />
@@ -198,7 +198,7 @@ const EnhancedLogin = () => {
                     <p className="text-sm text-gray-600">Live attendance monitoring and alerts</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-white/20">
                   <div className="p-2 bg-orange-100 rounded-lg">
                     <Sparkles className="h-5 w-5 text-orange-600" />
@@ -225,7 +225,7 @@ const EnhancedLogin = () => {
                     Access your company dashboard
                   </p>
                 </CardHeader>
-                
+
                 <CardContent className="pt-0">
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Global Error */}
@@ -293,7 +293,7 @@ const EnhancedLogin = () => {
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors p-1 rounded w-6 h-6"
                           disabled={isSubmitting}
                         >
                           {showPassword ? (
@@ -339,7 +339,7 @@ const EnhancedLogin = () => {
                         Forgot your password?
                       </a>
                     </div>
-                    
+
                     <div className="text-center">
                       <p className="text-xs text-gray-500">
                         Need help? Contact your system administrator

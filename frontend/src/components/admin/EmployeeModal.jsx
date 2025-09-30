@@ -26,7 +26,8 @@ const EmployeeModal = ({
     accountNumber: '',
     ifscCode: '',
     photo: null,
-    active: true
+    active: true,
+    assignedManager: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -36,13 +37,49 @@ const EmployeeModal = ({
   const [cameraStream, setCameraStream] = useState(null);
   const [facingMode, setFacingMode] = useState('user'); // 'user' for front camera, 'environment' for back
   const [imagePreview, setImagePreview] = useState(null);
+  const [managers, setManagers] = useState([]);
+  const [loadingManagers, setLoadingManagers] = useState(false);
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
+  // Fetch managers when modal opens
+  const fetchManagers = async () => {
+    setLoadingManagers(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      console.log('Fetching managers with token:', token ? 'Present' : 'Missing');
+
+      const response = await fetch('http://localhost:5678/api/manager/company', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('Manager fetch response status:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Manager fetch result:', result);
+        setManagers(result.data || []);
+        console.log('Managers loaded:', result.data?.length || 0);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to fetch managers:', response.status, errorText);
+      }
+    } catch (error) {
+      console.error('Error fetching managers:', error);
+    } finally {
+      setLoadingManagers(false);
+    }
+  };
+
   // Initialize form data when modal opens
   useEffect(() => {
     if (isOpen) {
+      // Fetch managers when modal opens
+      fetchManagers();
+
       if (mode === 'edit' && employee) {
         setFormData({
           name: employee.name || '',
@@ -60,7 +97,8 @@ const EmployeeModal = ({
           accountNumber: employee.accountNumber || '',
           ifscCode: employee.ifscCode || '',
           photo: employee.photo || null,
-          active: employee.active !== undefined ? employee.active : true
+          active: employee.active !== undefined ? employee.active : true,
+          assignedManager: employee.managerId?._id || employee.managerId || ''
         });
         setPhotoPreview(employee.photo || null);
         setImagePreview(employee.photo || null);
@@ -81,7 +119,8 @@ const EmployeeModal = ({
           accountNumber: '',
           ifscCode: '',
           photo: null,
-          active: true
+          active: true,
+          assignedManager: ''
         });
         setPhotoPreview(null);
         setImagePreview(null);
@@ -101,6 +140,12 @@ const EmployeeModal = ({
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    // Debug logging for manager assignment
+    if (name === 'assignedManager') {
+      console.log('Manager selection changed:', { name, value, type });
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -315,6 +360,16 @@ const EmployeeModal = ({
     e.preventDefault();
 
     if (!validateForm()) return;
+
+    // Debug logging for form submission
+    console.log('EmployeeModal - Form submission data:', {
+      name: formData.name,
+      email: formData.email,
+      assignedManager: formData.assignedManager,
+      managerId: formData.managerId,
+      hasAssignedManager: !!formData.assignedManager,
+      formDataKeys: Object.keys(formData)
+    });
 
     setLoading(true);
     try {
@@ -591,6 +646,30 @@ const EmployeeModal = ({
             </div>
 
             <div>
+              <label htmlFor="assignedManager" className="block text-sm font-medium text-gray-700 mb-2">
+                Assigned Manager
+              </label>
+              <select
+                id="assignedManager"
+                name="assignedManager"
+                value={formData.assignedManager}
+                onChange={handleInputChange}
+                disabled={loadingManagers}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+              >
+                <option value="">Select a manager (optional)</option>
+                {managers.map((manager) => (
+                  <option key={manager._id} value={manager._id}>
+                    {manager.name} ({manager.email})
+                  </option>
+                ))}
+              </select>
+              {loadingManagers && (
+                <p className="text-sm text-gray-500 mt-1">Loading managers...</p>
+              )}
+            </div>
+
+            <div>
               <label htmlFor="uanNumber" className="block text-sm font-medium text-gray-700 mb-2">
                 UAN Number <span className="text-red-500">*</span>
               </label>
@@ -668,6 +747,22 @@ const EmployeeModal = ({
                 <option value="Morning Shift (7:00 AM - 3:00 PM)">Morning Shift (7:00 AM - 3:00 PM)</option>
                 <option value="Evening Shift (3:00 PM - 11:00 PM)">Evening Shift (3:00 PM - 11:00 PM)</option>
                 <option value="Night Shift (11:00 PM - 7:00 AM)">Night Shift (11:00 PM - 7:00 AM)</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="active" className="block text-sm font-medium text-gray-700 mb-2">
+                Status <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="active"
+                name="active"
+                value={formData.active}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value={true}>Active</option>
+                <option value={false}>Inactive</option>
               </select>
             </div>
           </div>

@@ -5,13 +5,14 @@ import Input from '../ui/Input';
 import Button from '../ui/Button';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Loading from '../ui/Loading';
-import { 
-  Leaf, 
-  User, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  LogIn, 
+import CompanyLogo from '../ui/CompanyLogo';
+import {
+  Leaf,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+  LogIn,
   Sparkles,
   Trees,
   Sun
@@ -33,7 +34,7 @@ const GardenLogin = () => {
       ...prev,
       [name]: value
     }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -45,26 +46,26 @@ const GardenLogin = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
     }
-    
+
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -79,7 +80,7 @@ const GardenLogin = () => {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background with Garden Theme */}
-      <div 
+      <div
         className="absolute inset-0 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50"
         style={{
           background: `linear-gradient(135deg, 
@@ -111,11 +112,25 @@ const GardenLogin = () => {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4"
-                 style={{ 
-                   backgroundColor: `${primaryColor}20`,
-                   border: `2px solid ${primaryColor}40`
-                 }}>
+              style={{
+                backgroundColor: `${primaryColor}20`,
+                border: `2px solid ${primaryColor}40`
+              }}>
               <Leaf className="w-8 h-8" style={{ color: primaryColor }} />
+            </div>
+            {/* Company Logo Display */}
+            <div className="flex justify-center mb-4">
+              <CompanyLogo
+                companyCode="NEELKANTH" // Default for garden theme
+                size="lg"
+                className="shadow-lg"
+                style={{
+                  minWidth: '64px',
+                  minHeight: '64px',
+                  maxWidth: '64px',
+                  maxHeight: '64px'
+                }}
+              />
             </div>
             <h1 className="text-3xl font-bold mb-2" style={{ color: primaryColor }}>
               {companyName || 'Garden Attendance'}
@@ -132,7 +147,7 @@ const GardenLogin = () => {
                 Sign In to Your Account
               </CardTitle>
             </CardHeader>
-            
+
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Email Input */}
@@ -168,7 +183,7 @@ const GardenLogin = () => {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        className="flex items-center justify-center p-1 hover:bg-gray-100 rounded transition-colors"
                       >
                         {showPassword ? (
                           <EyeOff className="w-4 h-4 text-gray-400" />
@@ -201,11 +216,11 @@ const GardenLogin = () => {
               </form>
 
               {/* Demo Credentials */}
-              <div className="mt-6 p-4 rounded-lg" 
-                   style={{ 
-                     backgroundColor: `${primaryColor}08`,
-                     border: `1px solid ${primaryColor}20`
-                   }}>
+              <div className="mt-6 p-4 rounded-lg"
+                style={{
+                  backgroundColor: `${primaryColor}08`,
+                  border: `1px solid ${primaryColor}20`
+                }}>
                 <h4 className="text-sm font-medium mb-2" style={{ color: primaryColor }}>
                   Demo Credentials
                 </h4>

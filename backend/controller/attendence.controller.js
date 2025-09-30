@@ -38,7 +38,21 @@ export const markStepIn = async (req, res) => {
     // Determine if this is manager step-in or employee step-in
     const isManagerStepIn = employeeId && employeeId !== authenticatedUserId;
     const finalEmployeeId = isManagerStepIn ? employeeId : authenticatedUserId;
-    const finalManagerId = isManagerStepIn ? authenticatedUserId : managerId;
+
+    let finalManagerId;
+    if (isManagerStepIn) {
+      // For manager step-ins, use the authenticated manager's ID
+      finalManagerId = authenticatedUserId;
+    } else {
+      // For employee step-ins, get managerId from employee record or request body
+      if (managerId) {
+        finalManagerId = managerId;
+      } else {
+        // Get managerId from employee record
+        const employee = await Employee.findById(finalEmployeeId);
+        finalManagerId = employee?.managerId || null;
+      }
+    }
 
     // Validate required fields
     if (!finalEmployeeId) {
@@ -560,11 +574,65 @@ export const getEmployeeAttendance = async (req, res) => {
 // Get all attendance records (for admin reports) - Show only latest entry per employee per day
 export const getAllAttendance = async (req, res) => {
   try {
-    // Get all attendance records
-    const allAttendance = await Attendance.find({})
-      .populate("employeeId")
-      .populate("managerId")
-      .sort({ createdAt: -1 }); // Sort by newest first
+    // Get company ID from authenticated user
+    const companyId = req.user.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "User must be associated with a company" });
+    }
+
+    // Build filter query based on request parameters
+    const filterQuery = { companyId: companyId };
+
+    // Add manager filter
+    if (req.query.manager) {
+      filterQuery.managerId = req.query.manager;
+    }
+
+    // Add employee filter
+    if (req.query.employee) {
+      filterQuery.employeeId = req.query.employee;
+    }
+
+    // Add shift filter
+    if (req.query.shift) {
+      filterQuery.shift = req.query.shift;
+    }
+
+    // Add status filter
+    if (req.query.status) {
+      filterQuery.status = req.query.status;
+    }
+
+    // Add date range filter
+    if (req.query.startDate || req.query.endDate) {
+      filterQuery.stepIn = {};
+      if (req.query.startDate) {
+        filterQuery.stepIn.$gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate) {
+        const endDate = new Date(req.query.endDate);
+        endDate.setHours(23, 59, 59, 999); // End of day
+        filterQuery.stepIn.$lte = endDate;
+      }
+    }
+
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50; // Default 50 records per page
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const totalRecords = await Attendance.countDocuments(filterQuery);
+
+    // Optimized query with pagination and selective fields
+    const allAttendance = await Attendance.find(filterQuery)
+      .populate("employeeId", "name empCode email") // Only select needed fields
+      .populate("managerId", "name email") // Only select needed fields
+      .select("stepIn stepOut status shift address employeeId managerId createdAt stepInImage stepOutImage totalTime") // Only select needed fields
+      .sort({ stepIn: -1 }) // Sort by stepIn instead of createdAt for better performance
+      .skip(skip)
+      .limit(limit);
 
     // Group by employee and date, keeping only the latest entry per day
     const attendanceMap = new Map();
@@ -586,7 +654,22 @@ export const getAllAttendance = async (req, res) => {
     const uniqueAttendance = Array.from(attendanceMap.values())
       .sort((a, b) => new Date(b.stepIn) - new Date(a.stepIn));
 
-    res.status(200).json({ attendance: uniqueAttendance });
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalRecords / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.status(200).json({
+      attendance: uniqueAttendance,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalRecords,
+        limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
   } catch (error) {
     console.error("Error fetching all attendance:", error);
     res.status(500).json({ message: "Error fetching all attendance", error });
@@ -996,81 +1079,160 @@ export const exportAttendancePDF = async (req, res) => {
       .populate('managerId', 'name email')
       .sort({ stepIn: -1 });
 
-    // Create PDF document
-    const doc = new PDFDocument({ margin: 50 });
+    // Create PDF document with proper settings
+    const doc = new PDFDocument({
+      margin: 50,
+      size: 'A4',
+      layout: 'landscape', // Use landscape for better table display
+      autoFirstPage: true
+    });
 
-    // Set response headers
-    const fileName = `Attendance_${company?.name || 'Report'}_${new Date().toISOString().split('T')[0]}.pdf`;
+    // Set response headers with unique filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `Attendance_${company?.name?.replace(/\s+/g, '_') || 'Report'}_${timestamp}.pdf`;
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
+    // Pipe the document to response
     doc.pipe(res);
 
-    // Add title
-    doc.fontSize(20).text('Attendance Report', { align: 'center' });
-    doc.moveDown();
+    // Add header with company logo area
+    doc.rect(50, 50, 700, 80).stroke();
+    doc.fontSize(24).text('ATTENDANCE REPORT', 50, 70, { align: 'center', width: 700 });
 
-    // Add company info
     if (company) {
-      doc.fontSize(14).text(`Company: ${company.name}`, { align: 'center' });
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, { align: 'center' });
+      doc.fontSize(16).text(company.name, 50, 100, { align: 'center', width: 700 });
     }
 
-    doc.moveDown();
+    doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`, 50, 115, { align: 'center', width: 700 });
 
-    // Add table headers
-    const tableTop = doc.y;
-    const col1 = 50;
-    const col2 = 150;
-    const col3 = 250;
-    const col4 = 350;
-    const col5 = 450;
+    // Add table with proper formatting
+    const tableTop = 150;
+    const tableLeft = 50;
+    const tableWidth = 700;
+    const rowHeight = 25;
+    const headerHeight = 30;
 
-    doc.fontSize(10);
-    doc.text('Emp Code', col1, tableTop);
-    doc.text('Name', col2, tableTop);
-    doc.text('Date', col3, tableTop);
-    doc.text('Clock In', col4, tableTop);
-    doc.text('Status', col5, tableTop);
+    // Table headers
+    const headers = ['Employee Code', 'Employee Name', 'Date', 'Clock In', 'Clock Out', 'Shift', 'Status', 'Location'];
+    const colWidths = [80, 120, 80, 80, 80, 60, 60, 140];
+    let currentX = tableLeft;
 
-    // Add data rows
-    let yPosition = tableTop + 20;
+    // Draw header background
+    doc.rect(tableLeft, tableTop, tableWidth, headerHeight).fill('#f0f0f0');
+    doc.rect(tableLeft, tableTop, tableWidth, headerHeight).stroke();
+
+    // Draw header text
+    doc.fillColor('black').fontSize(10).font('Helvetica-Bold');
+    headers.forEach((header, index) => {
+      doc.text(header, currentX + 5, tableTop + 8, { width: colWidths[index] - 10, align: 'center' });
+      currentX += colWidths[index];
+    });
+
+    // Draw data rows
+    let currentY = tableTop + headerHeight;
+    let recordCount = 0;
+
     attendanceRecords.forEach((record, index) => {
-      if (record.employeeId && yPosition < 750) { // Check page height
-        const date = record.stepIn ? new Date(record.stepIn).toLocaleDateString() : 'N/A';
-        const clockInTime = record.stepIn ? new Date(record.stepIn).toLocaleTimeString() : 'N/A';
+      // Check if we need a new page
+      if (currentY > 500) { // Leave space for footer
+        doc.addPage();
+        currentY = 50;
 
-        doc.text(record.employeeId.empCode || 'N/A', col1, yPosition);
-        doc.text(record.employeeId.name, col2, yPosition);
-        doc.text(date, col3, yPosition);
-        doc.text(clockInTime, col4, yPosition);
-        doc.text(record.status || 'N/A', col5, yPosition);
+        // Redraw headers on new page
+        doc.rect(tableLeft, currentY, tableWidth, headerHeight).fill('#f0f0f0');
+        doc.rect(tableLeft, currentY, tableWidth, headerHeight).stroke();
 
-        yPosition += 20;
+        currentX = tableLeft;
+        doc.fillColor('black').fontSize(10).font('Helvetica-Bold');
+        headers.forEach((header, index) => {
+          doc.text(header, currentX + 5, currentY + 8, { width: colWidths[index] - 10, align: 'center' });
+          currentX += colWidths[index];
+        });
+
+        currentY += headerHeight;
       }
 
-      // Add new page if needed
-      if (yPosition > 750) {
-        doc.addPage();
-        yPosition = 50;
+      if (record.employeeId) {
+        // Alternate row colors
+        if (recordCount % 2 === 0) {
+          doc.rect(tableLeft, currentY, tableWidth, rowHeight).fill('#f9f9f9');
+        }
+        doc.rect(tableLeft, currentY, tableWidth, rowHeight).stroke();
+
+        // Draw row data
+        currentX = tableLeft;
+        doc.fillColor('black').fontSize(9).font('Helvetica');
+
+        const date = record.stepIn ? new Date(record.stepIn).toLocaleDateString() : 'N/A';
+        const clockInTime = record.stepIn ? new Date(record.stepIn).toLocaleTimeString() : 'N/A';
+        const clockOutTime = record.stepOut ? new Date(record.stepOut).toLocaleTimeString() : 'N/A';
+        const location = record.address ? (record.address.length > 20 ? record.address.substring(0, 20) + '...' : record.address) : 'N/A';
+
+        const rowData = [
+          record.employeeId.empCode || 'N/A',
+          record.employeeId.name || 'N/A',
+          date,
+          clockInTime,
+          clockOutTime,
+          record.shift || 'N/A',
+          record.status || 'N/A',
+          location
+        ];
+
+        rowData.forEach((data, index) => {
+          doc.text(data, currentX + 5, currentY + 8, { width: colWidths[index] - 10, align: 'left' });
+          currentX += colWidths[index];
+        });
+
+        currentY += rowHeight;
+        recordCount++;
       }
     });
 
-    // Add summary
+    // Add summary section
     doc.addPage();
-    doc.fontSize(16).text('Summary', { align: 'center' });
-    doc.moveDown();
+    doc.fontSize(20).text('ATTENDANCE SUMMARY', 50, 50, { align: 'center', width: 700 });
+    doc.moveDown(2);
 
     const totalRecords = attendanceRecords.length;
     const presentCount = attendanceRecords.filter(r => r.status === 'present').length;
     const absentCount = attendanceRecords.filter(r => r.status === 'absent').length;
+    const lateCount = attendanceRecords.filter(r => r.status === 'late').length;
+
+    // Summary table
+    const summaryTop = doc.y;
+    doc.rect(200, summaryTop, 300, 120).stroke();
+
+    doc.fontSize(14).text('SUMMARY STATISTICS', 200, summaryTop + 10, { align: 'center', width: 300 });
 
     doc.fontSize(12);
-    doc.text(`Total Records: ${totalRecords}`);
-    doc.text(`Present: ${presentCount}`);
-    doc.text(`Absent: ${absentCount}`);
+    doc.text(`Total Records: ${totalRecords}`, 220, summaryTop + 40);
+    doc.text(`Present: ${presentCount}`, 220, summaryTop + 60);
+    doc.text(`Absent: ${absentCount}`, 220, summaryTop + 80);
+    doc.text(`Late: ${lateCount}`, 220, summaryTop + 100);
 
+    // Add footer
+    doc.fontSize(10).text(`Report generated on ${new Date().toLocaleString()}`, 50, 750, { align: 'center', width: 700 });
+
+    // Properly end the document
     doc.end();
+
+    // Handle document completion
+    doc.on('end', () => {
+      console.log('PDF generation completed successfully');
+    });
+
+    doc.on('error', (err) => {
+      console.error('PDF generation error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Error generating PDF', error: err.message });
+      }
+    });
 
   } catch (error) {
     console.error("Error exporting attendance to PDF:", error);

@@ -227,63 +227,73 @@ const ManagersPage = () => {
     {
       headerName: 'Photo',
       field: 'photo',
-      width: 80,
+      width: 60,
+      minWidth: 60,
+      maxWidth: 60,
       cellRenderer: (params) => {
         const initials = params.data.name ? params.data.name.charAt(0).toUpperCase() : 'M';
         return (
-          <div className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold text-lg shadow-md">
+          <div className="flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold text-xs sm:text-sm shadow-md">
             {initials}
           </div>
         );
       },
       pinned: 'left',
       sortable: false,
-      filter: false
+      filter: false,
+      suppressSizeToFit: true
     },
     {
       headerName: 'Name',
       field: 'name',
-      width: 150,
+      width: 120,
+      minWidth: 100,
       cellRenderer: (params) => (
-        <div className="font-medium text-gray-900">{params.value}</div>
+        <div className="font-medium text-gray-900 text-sm truncate">{params.value}</div>
       )
     },
     {
       headerName: 'Email',
       field: 'email',
-      width: 220,
+      width: 180,
+      minWidth: 150,
       cellRenderer: (params) => (
-        <div className="text-gray-600 text-sm truncate" title={params.value}>
+        <div className="text-gray-600 text-xs sm:text-sm truncate" title={params.value}>
           {params.value}
         </div>
-      )
+      ),
+      hide: window.innerWidth < 768
     },
     {
       headerName: 'Mobile',
       field: 'mobile',
-      width: 130,
+      width: 120,
+      minWidth: 100,
       cellRenderer: (params) => (
-        <div className="text-gray-600">{params.value}</div>
+        <div className="text-gray-600 text-xs sm:text-sm">{params.value}</div>
       )
     },
     {
       headerName: 'Company',
       field: 'companyId.name',
-      width: 180,
+      width: 140,
+      minWidth: 120,
       cellRenderer: (params) => (
-        <div className="text-gray-600 text-sm font-medium">
+        <div className="text-gray-600 text-xs sm:text-sm font-medium truncate">
           {params.data.companyId ? 
             (typeof params.data.companyId === 'object' ? params.data.companyId.name : params.data.companyId) 
             : 'NEELKANTH LANDSCAPE'}
         </div>
-      )
+      ),
+      hide: window.innerWidth < 1024
     },
     {
       headerName: 'Location',
       field: 'locationName',
-      width: 150,
+      width: 120,
+      minWidth: 100,
       cellRenderer: (params) => (
-        <div className="text-gray-600">
+        <div className="text-gray-600 text-xs sm:text-sm truncate">
           {params.value || 'Not Set'}
         </div>
       )
@@ -291,7 +301,8 @@ const ManagersPage = () => {
     {
       headerName: 'Status',
       field: 'status',
-      width: 100,
+      width: 80,
+      minWidth: 70,
       cellRenderer: (params) => {
         const status = params.value || (params.data.isActive ? 'Active' : 'Inactive');
         return (
@@ -308,41 +319,46 @@ const ManagersPage = () => {
     {
       headerName: 'Created',
       field: 'createdAt',
-      width: 120,
+      width: 100,
+      minWidth: 80,
       cellRenderer: (params) => {
         const date = new Date(params.value);
         return (
-          <div className="text-gray-600 text-sm">
+          <div className="text-gray-600 text-xs sm:text-sm">
             {date.toLocaleDateString()}
           </div>
         );
-      }
+      },
+      hide: window.innerWidth < 768
     },
     {
       headerName: 'Actions',
       field: 'actions',
-      width: 100,
+      width: 80,
+      minWidth: 80,
+      maxWidth: 80,
       pinned: 'right',
       cellRenderer: (params) => (
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-1">
           <button
             onClick={() => handleEdit(params.data)}
-            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+            className="p-1.5 sm:p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 touch-manipulation min-h-[32px] min-w-[32px]"
             title="Edit Manager"
           >
-            <Edit className="h-4 w-4" />
+            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
           </button>
           <button
             onClick={() => handleDelete(params.data)}
-            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+            className="p-1.5 sm:p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 touch-manipulation min-h-[32px] min-w-[32px]"
             title="Remove Manager"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
           </button>
         </div>
       ),
       sortable: false,
-      filter: false
+      filter: false,
+      suppressSizeToFit: true
     }
   ], []);
 
@@ -404,37 +420,75 @@ const ManagersPage = () => {
   };
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
+    <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Managers</h1>
-          <p className="text-gray-600 mt-1">Manage company managers</p>
+      <div className="w-full mb-4 sm:mb-6">
+        {/* Title Section */}
+        <div className="mb-4">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Managers</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage company managers</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={handleRefresh}
-            disabled={loading}
-            className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-          <button
-            onClick={handleExport}
-            className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Download className="h-4 w-4" />
-            <span>Export</span>
-          </button>
+        
+        {/* Mobile Layout - Full width buttons */}
+        <div className="w-full sm:hidden space-y-3 px-1">
+          {/* Primary Action - Full width */}
           <button
             onClick={handleCreateManager}
-            className="flex items-center space-x-2 px-4 py-2 text-white rounded-lg transition-colors"
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-white rounded-lg transition-colors touch-manipulation min-h-[48px] font-medium mx-0"
             style={{ backgroundColor: primaryColor }}
           >
-            <UserPlus className="h-4 w-4" />
+            <UserPlus className="h-5 w-5" />
             <span>Add Manager</span>
           </button>
+          
+          {/* Secondary Actions - Side by side */}
+          <div className="flex items-center space-x-2 w-full">
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className="flex-1 flex items-center justify-center space-x-2 px-2 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 touch-manipulation min-h-[44px]"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={handleExport}
+              className="flex-1 flex items-center justify-center space-x-2 px-2 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
+            >
+              <Download className="h-4 w-4" />
+              <span>Export</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop Layout - Horizontal buttons */}
+        <div className="hidden sm:flex items-center justify-between">
+          <div></div>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 touch-manipulation min-h-[44px]"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={handleExport}
+              className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
+            >
+              <Download className="h-4 w-4" />
+              <span>Export</span>
+            </button>
+            <button
+              onClick={handleCreateManager}
+              className="flex items-center space-x-2 px-4 py-2 text-white rounded-lg transition-colors touch-manipulation min-h-[44px]"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <UserPlus className="h-4 w-4" />
+              <span>Add Manager</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -450,7 +504,7 @@ const ManagersPage = () => {
       )}
 
       {/* Search and Filters */}
-      <div className="flex items-center space-x-4">
+      <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -458,10 +512,10 @@ const ManagersPage = () => {
             placeholder="Search managers..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation min-h-[44px]"
           />
         </div>
-        <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+        <button className="flex items-center justify-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px] w-full sm:w-auto">
           <Filter className="h-4 w-4" />
           <span>Filters</span>
         </button>
@@ -490,34 +544,42 @@ const ManagersPage = () => {
       </div>
 
       {/* AG Grid */}
-      <div 
-        className="ag-theme-alpine" 
-        style={{ 
-          height: '500px', 
-          width: '100%',
-          minHeight: '400px',
-          maxWidth: '100%',
-          overflow: 'hidden'
-        }}
-      >
-        <AgGridReact
-          rowData={filteredData}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          pagination={true}
-          paginationPageSize={10}
-          paginationPageSizeSelector={[5, 10, 20, 50]}
-          suppressRowClickSelection={true}
-          rowSelection="multiple"
-          animateRows={true}
-          enableRangeSelection={true}
-          onGridReady={onGridReady}
-          loading={loading}
-          overlayLoadingTemplate="<span>Loading managers...</span>"
-          overlayNoRowsTemplate="<span>No managers found</span>"
-          suppressColumnVirtualisation={false}
-          suppressRowVirtualisation={false}
-        />
+      <div className="flex-1 min-h-0">
+        <div 
+          className="ag-theme-alpine" 
+          style={{ 
+            height: window.innerWidth < 768 ? '400px' : '500px', 
+            width: '100%',
+            minHeight: window.innerWidth < 768 ? '300px' : '400px',
+            maxWidth: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <AgGridReact
+            rowData={filteredData}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            pagination={true}
+            paginationPageSize={window.innerWidth < 768 ? 5 : 10}
+            paginationPageSizeSelector={window.innerWidth < 768 ? [5, 10] : [5, 10, 20, 50]}
+            suppressRowClickSelection={true}
+            rowSelection="multiple"
+            animateRows={true}
+            enableRangeSelection={true}
+            onGridReady={onGridReady}
+            loading={loading}
+            overlayLoadingTemplate="<span>Loading managers...</span>"
+            overlayNoRowsTemplate="<span>No managers found</span>"
+            suppressColumnVirtualisation={false}
+            suppressRowVirtualisation={false}
+            suppressHorizontalScroll={window.innerWidth < 768}
+            suppressColumnMoveAnimation={true}
+            suppressRowHoverHighlight={window.innerWidth < 768}
+            domLayout="normal"
+            ensureDomOrder={true}
+          />
+        </div>
       </div>
     </div>
   );

@@ -1,13 +1,19 @@
-// routes/authRoutes.js
-import express from "express";
-
-import { forgotPassword, verifyOtpAndResetPassword } from "../controller/auth.controller.js";
-import { loginEmployee } from "../controller/employee.controller.js";
+import express from 'express';
+import {
+    forgotPassword,
+    resetPassword,
+    verifyResetToken
+} from '../controller/auth.controller.js';
 
 const router = express.Router();
 
-router.post("/forgot-password", forgotPassword);
-router.post("/verify-otp", verifyOtpAndResetPassword);
-router.post("/employee/login", loginEmployee);
+// Forgot Password Route
+router.post('/forgot-password', forgotPassword);
+
+// Reset Password Route
+router.post('/reset-password', resetPassword);
+
+// Verify Reset Token Route
+router.get('/verify-reset-token', verifyResetToken);
 
 export default router;

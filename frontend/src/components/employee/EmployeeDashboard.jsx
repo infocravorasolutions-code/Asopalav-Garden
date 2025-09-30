@@ -275,49 +275,49 @@ const EmployeeDashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+      <div className="w-full flex flex-col space-y-2 p-2 sm:space-y-3 sm:p-3 lg:p-4">
+        <div className="w-full">
+          <h1 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 truncate">
             Welcome, {user?.name || 'Employee'}
           </h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
+          <p className="text-xs text-gray-600 mt-1 truncate">
             {formatDate(currentTime)} • {formatTime(currentTime)}
           </p>
         </div>
-        <div className="flex items-center space-x-2 mt-4 sm:mt-0">
-          <div className={`flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(attendanceStatus)}`}>
+        <div className="w-full flex flex-col gap-2">
+          <div className={`flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(attendanceStatus)}`}>
             <div className={`w-2 h-2 rounded-full mr-2 ${attendanceStatus === 'checked_in' ? 'bg-green-500' :
               attendanceStatus === 'checked_out' ? 'bg-red-500' : 'bg-gray-400'
               }`}></div>
             {getStatusText(attendanceStatus)}
           </div>
-          <button
-            onClick={fetchCurrentAttendanceStatus}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Refresh attendance status"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-          <div className="flex items-center text-sm text-gray-500">
-            {isOnline ? (
-              <Wifi className="h-4 w-4 text-green-500 mr-1" />
-            ) : (
-              <WifiOff className="h-4 w-4 text-red-500 mr-1" />
-            )}
-            {isOnline ? 'Online' : 'Offline'}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={fetchCurrentAttendanceStatus}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation min-h-[44px]"
+              title="Refresh attendance status"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+            <div className="flex items-center text-xs text-gray-500">
+              {isOnline ? (
+                <Wifi className="h-4 w-4 text-green-500 mr-1" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-red-500 mr-1" />
+              )}
+              {isOnline ? 'Online' : 'Offline'}
+            </div>
           </div>
         </div>
       </div>
 
-
-
-      <>
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Quick Actions */}
+      <div className="w-full p-2 sm:p-3 lg:p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
           <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Check In</p>
@@ -332,7 +332,7 @@ const EmployeeDashboard = () => {
               {attendanceStatus !== 'checked_in' && (
                 <Button
                   onClick={openStepInModal}
-                  className="w-full mt-4"
+                  className="w-full mt-4 touch-manipulation min-h-[44px]"
                   disabled={!isOnline}
                 >
                   <Camera className="h-4 w-4 mr-2" />
@@ -343,7 +343,7 @@ const EmployeeDashboard = () => {
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Check Out</p>
@@ -359,7 +359,7 @@ const EmployeeDashboard = () => {
                 <Button
                   onClick={openStepOutModal}
                   variant="outline"
-                  className="w-full mt-4"
+                  className="w-full mt-4 touch-manipulation min-h-[44px]"
                   disabled={!isOnline}
                 >
                   <Camera className="h-4 w-4 mr-2" />
@@ -369,8 +369,8 @@ const EmployeeDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
+          {/* <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Location</p>
@@ -385,17 +385,17 @@ const EmployeeDashboard = () => {
               <Button
                 onClick={getCurrentLocation}
                 variant="outline"
-                className="w-full mt-4"
+                className="w-full mt-4 touch-manipulation min-h-[44px]"
                 disabled={!isOnline}
               >
                 <Navigation className="h-4 w-4 mr-2" />
                 Get Location
               </Button>
             </CardContent>
-          </Card>
+          </Card> */}
 
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
+          {/* <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Battery</p>
@@ -408,11 +408,12 @@ const EmployeeDashboard = () => {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         {/* Employee Information */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="w-full p-2 sm:p-3 lg:p-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -423,30 +424,30 @@ const EmployeeDashboard = () => {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
-                  <User className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{user?.name || 'N/A'}</p>
+                  <User className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{user?.name || 'N/A'}</p>
                     <p className="text-sm text-gray-500">Full Name</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{user?.email || 'N/A'}</p>
+                  <Mail className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{user?.email || 'N/A'}</p>
                     <p className="text-sm text-gray-500">Email Address</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <Phone className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{user?.mobile || 'N/A'}</p>
+                  <Phone className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{user?.mobile || 'N/A'}</p>
                     <p className="text-sm text-gray-500">Mobile Number</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <Building className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{user?.designation || 'N/A'}</p>
+                  <Building className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{user?.designation || 'N/A'}</p>
                     <p className="text-sm text-gray-500">Designation</p>
                   </div>
                 </div>
@@ -469,7 +470,7 @@ const EmployeeDashboard = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Date</span>
-                  <span className="font-semibold">{formatDate(currentTime)}</span>
+                  <span className="font-semibold truncate">{formatDate(currentTime)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Status</span>
@@ -491,7 +492,7 @@ const EmployeeDashboard = () => {
                 {location && (
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Location</span>
-                    <span className="font-semibold text-sm">
+                    <span className="font-semibold text-sm truncate">
                       {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
                     </span>
                   </div>
@@ -500,9 +501,11 @@ const EmployeeDashboard = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
 
-        {/* Recent Activity */}
-        <Card>
+      {/* Recent Activity */}
+        {/* <div className="w-full p-2 sm:p-3 lg:p-4">
+          <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
               <Calendar className="h-5 w-5 mr-2" />
@@ -512,15 +515,15 @@ const EmployeeDashboard = () => {
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <div>
+                <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">System Online</p>
                   <p className="text-xs text-gray-500">All services operational</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">Location Services</p>
                   <p className="text-xs text-gray-500">
                     {location ? 'Location detected' : 'Location not available'}
@@ -528,8 +531,8 @@ const EmployeeDashboard = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <div>
+                <div className="w-2 h-2 bg-yellow-500 rounded-full flex-shrink-0"></div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">Battery Status</p>
                   <p className="text-xs text-gray-500">
                     {batteryLevel ? `${batteryLevel}% remaining` : 'Battery level not available'}
@@ -539,9 +542,8 @@ const EmployeeDashboard = () => {
             </div>
           </CardContent>
         </Card>
-      </>
-
-
+        </div> */}
+      </div>
 
       {/* Step In Modal */}
       <StepInModal

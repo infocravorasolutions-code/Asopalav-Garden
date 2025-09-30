@@ -43,6 +43,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/static", express.static("upload"));
 
 // Routes
+app.use("/api/auth", authRouter);
 app.use("/api/admin", adminRoutes);
 app.use("/api/manager", managerRoutes);
 app.use("/api/employee", employeeRoutes);
@@ -52,7 +53,6 @@ app.use("/api", companyRoutes);
 // Export routes removed - functionality moved to frontend
 
 // Settings routes removed - now using static configuration
-app.use("/api/auth", authRouter);
 // Location routes removed - using manual location fields
 
 // Cron jobs

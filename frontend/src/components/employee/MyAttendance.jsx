@@ -208,29 +208,29 @@ const MyAttendance = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="w-full h-full flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            <div className="w-full flex flex-col space-y-2 p-2 sm:space-y-3 sm:p-3 lg:p-4">
+                <div className="w-full">
+                    <h1 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 truncate">
                         My Attendance
                     </h1>
-                    <p className="text-sm sm:text-base text-gray-600 mt-1">
+                    <p className="text-xs text-gray-600 mt-1 truncate">
                         View and manage your attendance records
                     </p>
                 </div>
-                <div className="flex items-center space-x-2 mt-4 sm:mt-0">
+                <div className="w-full flex flex-col gap-2">
                     <Button
                         onClick={fetchAttendanceRecords}
                         variant="outline"
-                        className="flex items-center gap-2 px-4 py-2"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 touch-manipulation min-h-[44px]"
                     >
                         <RefreshCw className="h-4 w-4" />
                         Refresh
                     </Button>
                     <Button
                         onClick={exportAttendance}
-                        className="flex items-center gap-2 px-4 py-2"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 touch-manipulation min-h-[44px]"
                     >
                         <Download className="h-4 w-4" />
                         Export
@@ -239,79 +239,87 @@ const MyAttendance = () => {
             </div>
 
             {/* Filters */}
-            <Card className="shadow-sm">
-                <CardContent className="p-6">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        {/* Search */}
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search records..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
+            <div className="w-full p-2 sm:p-3 lg:p-4">
+                <Card className="shadow-sm w-full">
+                    <CardContent className="p-2 sm:p-3 lg:p-4">
+                        <div className="w-full flex flex-col gap-3">
+                            {/* Search */}
+                            <div className="w-full">
+                                <div className="relative w-full">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search records..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
+                                    />
+                                </div>
+                            </div>
 
-                        {/* Status Filter */}
-                        <div className="sm:w-48">
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value="all">All Status</option>
-                                <option value="present">Present</option>
-                                <option value="absent">Absent</option>
-                                <option value="late">Late</option>
-                            </select>
-                        </div>
+                            {/* Filters Row */}
+                            <div className="w-full flex flex-col sm:flex-row gap-3">
+                                {/* Status Filter */}
+                                <div className="w-full sm:w-48">
+                                    <select
+                                        value={statusFilter}
+                                        onChange={(e) => setStatusFilter(e.target.value)}
+                                        className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
+                                    >
+                                        <option value="all">All Status</option>
+                                        <option value="present">Present</option>
+                                        <option value="absent">Absent</option>
+                                        <option value="late">Late</option>
+                                    </select>
+                                </div>
 
-                        {/* Date Filter */}
-                        <div className="sm:w-48">
-                            <select
-                                value={dateFilter}
-                                onChange={(e) => setDateFilter(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value="all">All Time</option>
-                                <option value="today">Today</option>
-                                <option value="yesterday">Yesterday</option>
-                                <option value="thisWeek">This Week</option>
-                                <option value="thisMonth">This Month</option>
-                            </select>
-                        </div>
+                                {/* Date Filter */}
+                                <div className="w-full sm:w-48">
+                                    <select
+                                        value={dateFilter}
+                                        onChange={(e) => setDateFilter(e.target.value)}
+                                        className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
+                                    >
+                                        <option value="all">All Time</option>
+                                        <option value="today">Today</option>
+                                        <option value="yesterday">Yesterday</option>
+                                        <option value="thisWeek">This Week</option>
+                                        <option value="thisMonth">This Month</option>
+                                    </select>
+                                </div>
 
-                        {/* Clear Filters */}
-                        <div className="sm:w-auto">
-                            <Button
-                                onClick={() => {
-                                    setSearchTerm('');
-                                    setStatusFilter('all');
-                                    setDateFilter('all');
-                                    setCurrentPage(1);
-                                }}
-                                variant="outline"
-                                className="w-full sm:w-auto flex items-center justify-center gap-2"
-                            >
-                                <Filter className="h-4 w-4" />
-                                Clear Filters
-                            </Button>
+                                {/* Clear Filters */}
+                                <div className="w-full sm:w-auto">
+                                    <Button
+                                        onClick={() => {
+                                            setSearchTerm('');
+                                            setStatusFilter('all');
+                                            setDateFilter('all');
+                                            setCurrentPage(1);
+                                        }}
+                                        variant="outline"
+                                        className="w-full flex items-center justify-center gap-2 touch-manipulation min-h-[44px]"
+                                    >
+                                        <Filter className="h-4 w-4" />
+                                        Clear Filters
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Attendance Records */}
-            <Card className="shadow-sm">
-                <CardHeader>
-                    <CardTitle className="flex items-center">
-                        <Calendar className="h-5 w-5 mr-2" />
-                        Attendance Records ({filteredRecords.length} records)
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
+            <div className="w-full flex-1 flex flex-col overflow-hidden p-2 sm:p-3 lg:p-4">
+                <Card className="shadow-sm w-full h-full flex flex-col">
+                    <CardHeader className="flex-shrink-0">
+                        <CardTitle className="flex items-center text-sm sm:text-base">
+                            <Calendar className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                            Attendance Records ({filteredRecords.length} records)
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-1 overflow-y-auto p-3 sm:p-4">
                     {paginatedRecords.length === 0 ? (
                         <div className="text-center py-8">
                             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -331,7 +339,7 @@ const MyAttendance = () => {
                                 return (
                                     <div
                                         key={record._id || index}
-                                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                                        className="w-full border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow bg-white"
                                     >
                                         {/* Header with Date and Status */}
                                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4">
@@ -359,19 +367,19 @@ const MyAttendance = () => {
                                         {/* Employee and Manager Info */}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                             <div className="flex items-center space-x-2">
-                                                <User className="h-4 w-4 text-blue-500" />
-                                                <div>
+                                                <User className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                                <div className="min-w-0 flex-1">
                                                     <span className="text-xs text-gray-500">Employee:</span>
-                                                    <span className="ml-2 font-medium text-sm">
+                                                    <span className="ml-2 font-medium text-sm truncate">
                                                         {record.employeeId?.name || 'N/A'}
                                                     </span>
                                                 </div>
                                             </div>
                                             <div className="flex items-center space-x-2">
-                                                <User className="h-4 w-4 text-green-500" />
-                                                <div>
+                                                <User className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                                <div className="min-w-0 flex-1">
                                                     <span className="text-xs text-gray-500">Manager:</span>
-                                                    <span className="ml-2 font-medium text-sm">
+                                                    <span className="ml-2 font-medium text-sm truncate">
                                                         {record.managerId?.name || 'N/A'}
                                                     </span>
                                                 </div>
@@ -414,14 +422,14 @@ const MyAttendance = () => {
                                         {/* Location Information */}
                                         <div className="border-t pt-4">
                                             <div className="flex items-start space-x-2">
-                                                <MapPin className="h-4 w-4 text-gray-500 mt-1" />
-                                                <div className="flex-1">
+                                                <MapPin className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
+                                                <div className="flex-1 min-w-0">
                                                     <span className="text-sm text-gray-500">Location:</span>
-                                                    <p className="text-sm font-medium text-gray-900 mt-1">
+                                                    <p className="text-sm font-medium text-gray-900 mt-1 truncate">
                                                         {record.address || 'Location not available'}
                                                     </p>
                                                     {record.latitude && record.longitude && (
-                                                        <p className="text-xs text-gray-500 mt-1">
+                                                        <p className="text-xs text-gray-500 mt-1 truncate">
                                                             Coordinates: {record.latitude.toFixed(6)}, {record.longitude.toFixed(6)}
                                                         </p>
                                                     )}
@@ -446,7 +454,7 @@ const MyAttendance = () => {
                                     disabled={currentPage === 1}
                                     variant="outline"
                                     size="sm"
-                                    className="text-sm"
+                                    className="text-sm touch-manipulation min-h-[44px]"
                                 >
                                     Previous
                                 </Button>
@@ -458,7 +466,7 @@ const MyAttendance = () => {
                                     disabled={currentPage === totalPages}
                                     variant="outline"
                                     size="sm"
-                                    className="text-sm"
+                                    className="text-sm touch-manipulation min-h-[44px]"
                                 >
                                     Next
                                 </Button>
@@ -468,6 +476,7 @@ const MyAttendance = () => {
                 </CardContent>
             </Card>
         </div>
+    </div>
     );
 };
 

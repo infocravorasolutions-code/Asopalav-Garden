@@ -158,6 +158,33 @@ export const getAllManagers = async (req, res) => {
   }
 };
 
+// Get managers by company ID (for admin to assign to employees)
+export const getManagersByCompany = async (req, res) => {
+  try {
+    const companyId = req.user.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "User must be associated with a company" });
+    }
+
+    // Get all managers created by the current admin for the same company
+    const managers = await Manager.find({
+      companyId: companyId,
+      createdBy: req.user.id // Only managers created by this admin
+    }).select('_id name email mobile address locationName isActive')
+      .populate("companyId", "name code");
+
+    res.status(200).json({
+      message: "success",
+      data: managers,
+      count: managers.length
+    });
+  } catch (error) {
+    console.error("Error fetching managers by company:", error);
+    res.status(500).json({ message: "Error fetching managers by company", error: error.message });
+  }
+};
+
 
 // for company relation
 

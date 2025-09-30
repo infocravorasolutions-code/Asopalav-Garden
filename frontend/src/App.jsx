@@ -20,20 +20,14 @@ import CompanyLayout from './components/layout/CompanyLayout';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Loading from './components/ui/Loading';
 import ErrorBoundary from './components/ui/ErrorBoundary';
-import AppTest from './components/test/AppTest';
-import DemoLogin from './components/demo/DemoLogin';
 import UnifiedLogin from './components/auth/UnifiedLogin';
 import AdminStyleLogin from './components/auth/AdminStyleLogin';
 import IndustryLogin from './components/auth/IndustryLogin';
 import EnhancedLogin from './components/auth/EnhancedLogin';
 import EnhancedEmployeeLogin from './components/auth/EnhancedEmployeeLogin';
-import LoginTest from './components/test/LoginTest';
 import SimpleLogin from './components/auth/SimpleLogin';
-import TailwindTest from './components/test/TailwindTest';
-import CSSDebug from './components/test/CSSDebug';
-import DashboardTest from './components/test/DashboardTest';
-import CSSTest from './components/test/CSSTest';
 import MyAttendance from './components/employee/MyAttendance';
+import ForgotPassword from './components/auth/ForgotPassword';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -77,6 +71,15 @@ const AppRoutes = () => {
         element={
           <PublicRoute>
             <AdminStyleLogin />
+          </PublicRoute>
+        }
+      />
+
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPassword />
           </PublicRoute>
         }
       />
@@ -226,17 +229,8 @@ const AppRoutes = () => {
 
 
 
-      {/* Demo route */}
-      <Route path="/demo" element={<DemoLogin />} />
-
-      {/* Test routes */}
-      <Route path="/test" element={<AppTest />} />
-      <Route path="/login-test" element={<LoginTest />} />
+      {/* Simple Login route */}
       <Route path="/simple-login" element={<SimpleLogin />} />
-      <Route path="/tailwind-test" element={<TailwindTest />} />
-      <Route path="/css-debug" element={<CSSDebug />} />
-      <Route path="/dashboard-test" element={<DashboardTest />} />
-      <Route path="/css-test" element={<CSSTest />} />
 
       {/* Default redirects */}
       <Route path="/" element={<Navigate to="/login" replace />} />
