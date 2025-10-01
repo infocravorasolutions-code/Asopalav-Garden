@@ -22,11 +22,11 @@ import { requireRole, canManageEmployees } from "../utils/roleMiddleware.js";
 router.post("/", authenticateUser, canManageEmployees, createEmployee);
 router.post("/login", loginEmployee);
 router.get("/", authenticateUser, getAllEmployees); // Get employees for current company
-router.get("/all", authenticateUser, requireRole(['superadmin', 'admin']), getAllEmployees);
+router.get("/all", authenticateUser, requireRole(['superadmin', 'admin', 'readonly']), getAllEmployees);
 router.get("/team", authenticateUser, requireRole(['manager']), getEmployeesByManager);
-router.get("/muster-roll", authenticateUser, requireRole(['superadmin', 'admin']), getMusterRollReport);
-router.get("/muster-roll/export/excel", authenticateUser, requireRole(['superadmin', 'admin']), exportMusterRollExcel);
-router.get("/muster-roll/export/pdf", authenticateUser, requireRole(['superadmin', 'admin']), exportMusterRollPDF);
+router.get("/muster-roll", authenticateUser, requireRole(['superadmin', 'admin', 'readonly']), getMusterRollReport);
+router.get("/muster-roll/export/excel", authenticateUser, requireRole(['superadmin', 'admin', 'readonly']), exportMusterRollExcel);
+router.get("/muster-roll/export/pdf", authenticateUser, requireRole(['superadmin', 'admin', 'readonly']), exportMusterRollPDF);
 router.get("/:id", authenticateUser, getEmployee);
 router.put("/:id", authenticateUser, canManageEmployees, updateEmployee);
 router.delete("/:id", authenticateUser, canManageEmployees, deleteEmployee);

@@ -266,10 +266,10 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
             {/* Readonly Admin Indicator */}
             {userType === 'admin' && user?.role === 'readonly' && (
               <div className="mt-3 text-center">
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                {/* <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
                   <Shield className="h-3 w-3 mr-1" />
                   Read-Only Access
-                </span>
+                </span> */}
               </div>
             )}
           </div>

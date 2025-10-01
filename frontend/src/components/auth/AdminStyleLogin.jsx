@@ -42,7 +42,7 @@ const AdminStyleLogin = () => {
     const handleUserTypeChange = (type) => {
         console.log('User type changed to:', type);
         setUserType(type);
-        setFormData({ company: 'HARIKRISHNA', email: '', password: '' });
+        setFormData({ company: 'ASOPALAV', email: '', password: '' });
         setValidationErrors({});
         clearError();
     };

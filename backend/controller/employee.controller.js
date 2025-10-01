@@ -48,7 +48,7 @@ export const createEmployee = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!name || !email || !password) {
+    if (!name || !email || !password ) {
       return res.status(400).json({ message: "Name, email, and password are required" });
     }
 
@@ -141,7 +141,7 @@ export const createEmployee = async (req, res) => {
       mobile: mobile || "",
       address: address || "",
       empCode: empCode || "",
-      designation: designation || "security guard",
+      designation: designation || "gardener",
       category: category || "semi-skilled",
       shift: shift || "Morning Shift (7:00 AM - 3:00 PM)",
       uanNumber: uanNumber || "",
@@ -243,10 +243,9 @@ export const getAllEmployees = async (req, res) => {
       role: "employee"
     };
 
-    // If admin is readonly, only show employees they created
+    // If admin is readonly, show all employees in the company (read-only access)
     if (adminRole === 'readonly') {
-      employeeQuery.createdBy = adminId;
-      console.log(`Readonly admin ${adminId} - showing only employees they created`);
+      console.log(`Readonly admin ${adminId} - showing all employees in company for read-only access`);
     }
 
     const employees = await Employee.find(employeeQuery)

@@ -10,8 +10,7 @@ const TraditionalMusterRollReport = () => {
     startDate: '',
     endDate: '',
     shift: '',
-    status: '',
-    employeeId: ''
+    status: ''
   });
   const companyinfo = JSON.parse(localStorage.getItem('company'));
   // const [companyInfo] = useState({
@@ -101,6 +100,16 @@ const TraditionalMusterRollReport = () => {
     }));
   };
 
+  const handleClearFilters = () => {
+    setFilters({
+      startDate: '',
+      endDate: '',
+      shift: '',
+      status: ''
+    });
+    // Don't clear the report data - just reset filters
+  };
+
   const handleGenerateReport = async () => {
     setLoading(true);
     try {
@@ -132,14 +141,6 @@ const TraditionalMusterRollReport = () => {
         console.log(`After shift filter (${filters.shift}):`, employees.length);
       }
 
-      // Apply employee ID filter
-      if (filters.employeeId && filters.employeeId !== '') {
-        employees = employees.filter(emp => {
-          const empCode = emp.empCode || emp.employeeId || emp._id;
-          return empCode.toString().toLowerCase().includes(filters.employeeId.toLowerCase());
-        });
-        console.log(`After employee ID filter (${filters.employeeId}):`, employees.length);
-      }
 
       // Fetch attendance data with date filters
       const startDate = filters.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -338,7 +339,7 @@ const TraditionalMusterRollReport = () => {
 
         {/* Filters */}
         <div className="bg-white p-4 rounded-lg shadow-sm border mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
               <input
@@ -386,17 +387,6 @@ const TraditionalMusterRollReport = () => {
                 <option value="absent">Absent</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
-              <input
-                type="text"
-                name="employeeId"
-                value={filters.employeeId}
-                onChange={handleFilterChange}
-                placeholder="Enter Employee ID"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
             <div className="flex items-end space-x-2">
               <button
                 onClick={handleGenerateReport}
@@ -412,13 +402,19 @@ const TraditionalMusterRollReport = () => {
                   </>
                 )}
               </button>
-
+              <button
+                onClick={handleClearFilters}
+                className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 flex items-center justify-center"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear
+              </button>
             </div>
           </div>
         </div>
 
         {/* Filter Status */}
-        {(filters.startDate || filters.endDate || filters.shift || filters.status || filters.employeeId) && (
+        {(filters.startDate || filters.endDate || filters.shift || filters.status) && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
             <h3 className="text-sm font-medium text-blue-800 mb-2">Active Filters:</h3>
             <div className="flex flex-wrap gap-2">
@@ -440,11 +436,6 @@ const TraditionalMusterRollReport = () => {
               {filters.status && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   Status: {filters.status}
-                </span>
-              )}
-              {filters.employeeId && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  Employee: {filters.employeeId}
                 </span>
               )}
             </div>

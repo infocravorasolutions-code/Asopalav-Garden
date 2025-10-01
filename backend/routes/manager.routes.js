@@ -17,8 +17,8 @@ import { requireRole, canManageManagers, checkReadOnlyAdmin } from "../utils/rol
 router.post("/", authenticateUser, canManageManagers, createManager);
 router.post("/login", loginManager);
 router.get("/", authenticateUser, getManagersByCompany); // Get managers for current company
-router.get("/all", authenticateUser, requireRole(['superadmin', 'admin']), getAllManagers);
-router.get("/company", authenticateUser, requireRole(['superadmin', 'admin']), getManagersByCompany);
+router.get("/all", authenticateUser, requireRole(['superadmin', 'admin', 'readonly']), getAllManagers);
+router.get("/company", authenticateUser, requireRole(['superadmin', 'admin', 'readonly']), getManagersByCompany);
 router.get("/:id", authenticateUser, getManager);
 router.put("/:id", authenticateUser, canManageManagers, updateManager);
 router.delete("/:id", authenticateUser, canManageManagers, deleteManager);

@@ -99,13 +99,8 @@ const AttendanceManagement = () => {
             params.append('page', page.toString());
             params.append('limit', pagination.limit.toString());
 
-            console.log('🔍 [AttendanceManagement] Fetching attendance data...');
             const response = await adminAPI.getAttendance(params);
-            console.log('📥 [AttendanceManagement] API Response:', response);
-
             const data = response.attendance || [];
-            console.log('📊 [AttendanceManagement] Attendance data:', data);
-            console.log('📊 [AttendanceManagement] Data length:', data.length);
 
             setAttendanceData(data);
 
@@ -117,11 +112,9 @@ const AttendanceManagement = () => {
             // Calculate summary
             const summary = calculateSummary(data);
             setSummary(summary);
-            console.log('📈 [AttendanceManagement] Summary calculated:', summary);
         } catch (error) {
-            console.error('❌ [AttendanceManagement] Error fetching attendance data:', error);
-            console.error('❌ [AttendanceManagement] Error details:', error.response?.data || error.message);
-            toast.error('Failed to fetch attendance data. Please check console for details.');
+            console.error('Error fetching attendance data:', error);
+            toast.error('Failed to fetch attendance data');
         } finally {
             setLoading(false);
         }
@@ -151,16 +144,11 @@ const AttendanceManagement = () => {
 
     // Filter data based on search term
     const filteredData = useMemo(() => {
-        console.log('🔍 [AttendanceManagement] Filtering data...');
-        console.log('📊 [AttendanceManagement] Original data length:', attendanceData.length);
-        console.log('🔍 [AttendanceManagement] Search term:', searchTerm);
-
         if (!searchTerm) {
-            console.log('📊 [AttendanceManagement] No search term, returning all data:', attendanceData.length);
             return attendanceData;
         }
 
-        const filtered = attendanceData.filter(record => {
+        return attendanceData.filter(record => {
             const employee = record.employeeId;
             const searchLower = searchTerm.toLowerCase();
             return (
@@ -169,9 +157,6 @@ const AttendanceManagement = () => {
                 record.address?.toLowerCase().includes(searchLower)
             );
         });
-
-        console.log('📊 [AttendanceManagement] Filtered data length:', filtered.length);
-        return filtered;
     }, [attendanceData, searchTerm]);
 
     // Export to Excel
@@ -702,8 +687,29 @@ const AttendanceManagement = () => {
                                                 <tr key={record._id || index} className="hover:bg-gray-50">
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="flex items-center">
-                                                            <div className="flex-shrink-0 h-10 w-10">
-                                                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                            <div className="flex-shrink-0 h-10 w-10 relative">
+                                                                {employee?.photo ? (
+                                                                    <img
+                                                                        src={employee.photo.startsWith('data:') 
+                                                                            ? employee.photo 
+                                                                            : employee.photo.startsWith('http') 
+                                                                                ? employee.photo 
+                                                                                : `http://localhost:5678/static/${employee.photo}`
+                                                                        }
+                                                                        alt={employee?.name || 'Employee'}
+                                                                        className="h-10 w-10 rounded-full object-cover border-2 border-gray-200 absolute top-0 left-0 z-10"
+                                                                        onError={(e) => {
+                                                                            // Fallback to placeholder if image fails to load
+                                                                            e.target.style.display = 'none';
+                                                                            e.target.nextElementSibling.style.display = 'flex';
+                                                                        }}
+                                                                    />
+                                                                ) : null}
+                                                                <div 
+                                                                    className={`h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center ${
+                                                                        employee?.photo ? 'hidden' : 'flex'
+                                                                    }`}
+                                                                >
                                                                     <span className="text-blue-600 font-semibold text-sm">
                                                                         {employee?.name?.charAt(0) || 'N/A'}
                                                                     </span>
@@ -728,10 +734,18 @@ const AttendanceManagement = () => {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {record.stepIn ? new Date(record.stepIn).toLocaleTimeString() : 'N/A'}
+                                                        {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', { 
+                                                            hour: 'numeric', 
+                                                            minute: '2-digit', 
+                                                            hour12: true 
+                                                        }) : 'N/A'}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {record.stepOut ? new Date(record.stepOut).toLocaleTimeString() : 'N/A'}
+                                                        {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', { 
+                                                            hour: 'numeric', 
+                                                            minute: '2-digit', 
+                                                            hour12: true 
+                                                        }) : 'N/A'}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(record.status)}`}>

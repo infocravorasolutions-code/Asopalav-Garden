@@ -25,6 +25,10 @@ import toast from 'react-hot-toast';
 const AdminDashboard = () => {
   const navigate = useNavigate();
 
+  // Get user info and role
+  const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+  const isReadOnlyAdmin = userInfo.role === 'readonly';
+
   // State for dynamic stats
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -210,7 +214,30 @@ const AdminDashboard = () => {
   };
 
 
-  const quickActions = [
+  // Define quick actions based on user role
+  const quickActions = isReadOnlyAdmin ? [
+    {
+      title: 'View Attendance',
+      description: 'Monitor employee attendance records',
+      icon: Clock,
+      color: 'orange',
+      href: '/admin/attendance'
+    },
+    {
+      title: 'Generate Reports',
+      description: 'Create traditional muster roll reports',
+      icon: FileText,
+      color: 'blue',
+      href: '/admin/traditional-muster-roll'
+    },
+    {
+      title: 'Export Data',
+      description: 'Download reports and data',
+      icon: Download,
+      color: 'green',
+      href: '/admin/export'
+    }
+  ] : [
     {
       title: 'Add Manager',
       description: 'Create new manager account',
@@ -264,8 +291,23 @@ const AdminDashboard = () => {
       {/* Page Header */}
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">Admin Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage your workforce and monitor attendance</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">
+            {isReadOnlyAdmin ? 'Read-Only Admin Dashboard' : 'Admin Dashboard'}
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
+            {isReadOnlyAdmin 
+              ? 'View attendance data and generate reports (Read-Only Access)' 
+              : 'Manage your workforce and monitor attendance'
+            }
+          </p>
+          {isReadOnlyAdmin && (
+            <div className="flex items-center mt-2">
+              <div className="flex items-center text-blue-600 text-sm font-medium">
+                <div className="w-2 h-2 bg-blue-600 rounded-full mr-2"></div>
+                Read-Only Access
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex items-center space-x-2 sm:space-x-4">
           <button

@@ -25,6 +25,7 @@ import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 import toast from 'react-hot-toast';
 import Webcam from 'react-webcam';
 import { api } from '../../services/api';
+import { getLocationWithAutoFallback } from '../../utils/locationUtils';
 
 const StepInStepOut = () => {
     const { user } = useAuth();
@@ -111,19 +112,28 @@ const StepInStepOut = () => {
         }
     }, []);
 
-    // Get current location
-    const getCurrentLocation = useCallback(() => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setLatitude(position.coords.latitude.toString());
-                    setLongitude(position.coords.longitude.toString());
-                },
-                () => {
-                    setLatitude("23.0341367");
-                    setLongitude("72.5723255");
-                }
-            );
+    // Get current location with fallback
+    const getCurrentLocation = useCallback(async () => {
+        try {
+            const locationData = await getLocationWithAutoFallback();
+            
+            setLatitude(locationData.latitude.toString());
+            setLongitude(locationData.longitude.toString());
+            setLocation(locationData.address);
+
+            if (locationData.isFallback) {
+                toast.success('Using default location (Ahmedabad, Gujarat)');
+                console.log('Using fallback location:', locationData.address);
+            } else {
+                toast.success('Location captured successfully!');
+            }
+        } catch (error) {
+            console.error('Error getting location:', error);
+            // Even if there's an error, use the fallback
+            setLatitude("23.0341367");
+            setLongitude("72.5723255");
+            setLocation("Ahmedabad, Gujarat, India (Default)");
+            toast.success('Using default location (Ahmedabad, Gujarat)');
         }
     }, []);
 
