@@ -620,7 +620,7 @@ export const getEmployeeAttendance = async (req, res) => {
 
     // Get all attendance records for this employee with pagination
     const allAttendance = await Attendance.find({ employeeId })
-      .populate("employeeId", "name empCode email")
+      .populate("employeeId", "name empCode email photo")
       .populate("managerId", "name email")
       .select("stepIn stepOut status shift address totalTime stepInImage stepOutImage")
       .sort({ stepIn: -1 }) // Sort by stepIn date (newest first)
@@ -683,36 +683,9 @@ export const getAllAttendance = async (req, res) => {
     // Build filter query based on request parameters
     const filterQuery = { companyId: companyId };
 
-    // If admin is readonly, filter by employees they created
+    // If admin is readonly, show all attendance in the company (read-only access)
     if (adminRole === 'readonly') {
-      // Get employee IDs created by this readonly admin
-      const employeeIds = await Employee.find({
-        companyId: companyId,
-        role: "employee",
-        createdBy: adminId
-      }).select('_id');
-
-      const employeeIdList = employeeIds.map(emp => emp._id);
-
-      if (employeeIdList.length === 0) {
-        // No employees created by this admin, return empty result
-        return res.status(200).json({
-          attendance: [],
-          pagination: {
-            currentPage: 1,
-            totalPages: 0,
-            totalRecords: 0,
-            limit: 50,
-            hasNextPage: false,
-            hasPrevPage: false
-          },
-          message: "No employees found for this readonly admin"
-        });
-      }
-
-      // Filter attendance by employees created by this admin
-      filterQuery.employeeId = { $in: employeeIdList };
-      console.log(`Readonly admin ${adminId} - filtering attendance for ${employeeIdList.length} employees`);
+      console.log(`Readonly admin ${adminId} - showing all attendance in company for read-only access`);
     }
 
     // Add manager filter
@@ -758,7 +731,7 @@ export const getAllAttendance = async (req, res) => {
 
     // Optimized query with pagination and selective fields
     const allAttendance = await Attendance.find(filterQuery)
-      .populate("employeeId", "name empCode email") // Only select needed fields
+      .populate("employeeId", "name empCode email photo") // Include photo field
       .populate("managerId", "name email") // Only select needed fields
       .select("stepIn stepOut status shift address employeeId managerId createdAt stepInImage stepOutImage totalTime") // Only select needed fields
       .sort({ stepIn: -1 }) // Sort by stepIn instead of createdAt for better performance
@@ -982,7 +955,7 @@ export const getEmployeeRoutes = async (req, res) => {
 
     // Get routes with populated employee data
     const routes = await EmployeeRoute.find(query)
-      .populate('employeeId', 'name empCode designation email')
+      .populate('employeeId', 'name empCode designation email photo')
       .populate('attendanceId', 'stepIn stepOut shift status')
       .sort({ startTime: -1 })
       .limit(50); // Limit to recent 50 routes
@@ -1040,7 +1013,7 @@ export const getLiveStepIns = async (req, res) => {
       latitude: { $exists: true, $ne: null },
       longitude: { $exists: true, $ne: null }
     })
-      .populate('employeeId', 'name empCode email designation')
+      .populate('employeeId', 'name empCode email designation photo')
       .populate('managerId', 'name email')
       .sort({ stepIn: -1 })
       .limit(50);
@@ -1114,7 +1087,7 @@ export const exportAttendanceExcel = async (req, res) => {
 
     // Get attendance records
     const attendanceRecords = await Attendance.find({ employeeId: { $in: employeeIds } })
-      .populate('employeeId', 'name empCode email position')
+      .populate('employeeId', 'name empCode email position photo')
       .populate('managerId', 'name email')
       .sort({ stepIn: -1 });
 
@@ -1206,7 +1179,7 @@ export const exportAttendancePDF = async (req, res) => {
 
     // Get attendance records
     const attendanceRecords = await Attendance.find({ employeeId: { $in: employeeIds } })
-      .populate('employeeId', 'name empCode email position')
+      .populate('employeeId', 'name empCode email position photo')
       .populate('managerId', 'name email')
       .sort({ stepIn: -1 });
 

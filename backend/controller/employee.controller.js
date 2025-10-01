@@ -243,10 +243,9 @@ export const getAllEmployees = async (req, res) => {
       role: "employee"
     };
 
-    // If admin is readonly, only show employees they created
+    // If admin is readonly, show all employees in the company (read-only access)
     if (adminRole === 'readonly') {
-      employeeQuery.createdBy = adminId;
-      console.log(`Readonly admin ${adminId} - showing only employees they created`);
+      console.log(`Readonly admin ${adminId} - showing all employees in company for read-only access`);
     }
 
     const employees = await Employee.find(employeeQuery)

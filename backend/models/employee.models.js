@@ -29,7 +29,7 @@ const UserSchema = new mongoose.Schema({
     // Job Details
     designation: {
         type: String,
-        enum: ['ladies guard', 'security guard', 'supervisor'],
+        enum: ['gardener', 'supervisor'],
         required: true
     },
     category: {

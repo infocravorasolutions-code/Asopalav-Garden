@@ -18,7 +18,7 @@ const EmployeeModal = ({
     confirmPassword: '',
     address: '',
     empCode: '',
-    designation: 'security guard',
+    designation: 'gardener',
     category: 'semi-skilled',
     shift: 'Morning Shift (7:00 AM - 3:00 PM)',
     uanNumber: '',
@@ -90,7 +90,7 @@ const EmployeeModal = ({
           confirmPassword: '', // Leave empty for edit mode
           address: employee.address || '',
           empCode: employee.empCode || '',
-          designation: employee.designation || 'security guard',
+          designation: employee.designation || 'gardener',
           category: employee.category || 'semi-skilled',
           shift: employee.shift || 'Morning Shift (7:00 AM - 3:00 PM)',
           uanNumber: employee.uanNumber || '',
@@ -112,7 +112,7 @@ const EmployeeModal = ({
           confirmPassword: '',
           address: '',
           empCode: '',
-          designation: 'security guard',
+          designation: 'gardener',
           category: 'semi-skilled',
           shift: 'Morning Shift (7:00 AM - 3:00 PM)',
           uanNumber: '',
@@ -736,8 +736,7 @@ const EmployeeModal = ({
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="ladies guard">Ladies Guard</option>
-                <option value="security guard">Security Guard</option>
+                <option value="gardener">Gardener</option>
                 <option value="supervisor">Supervisor</option>
               </select>
             </div>

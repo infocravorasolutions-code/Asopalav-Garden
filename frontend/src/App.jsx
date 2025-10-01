@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CompanyThemeProvider } from './contexts/CompanyThemeContext';
 import AdminDashboard from './components/admin/AdminDashboard';
+import ReadOnlyAdminDashboard from './components/admin/ReadOnlyAdminDashboard';
 import ManagersPageNew from './components/admin/ManagersPageNew';
 import EmployeesPage from './components/admin/EmployeesPage';
 import TraditionalMusterRollReport from './components/admin/TraditionalMusterRollReport';
@@ -39,6 +40,31 @@ const ProtectedRoute = ({ children }) => {
   }
 
   return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Role-based Route Component
+const RoleBasedRoute = ({ children, allowedRoles = [] }) => {
+  const { isAuthenticated, loading, user } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loading text="Loading..." size="lg" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check if user role is allowed
+  const userRole = user?.role || localStorage.getItem('userType');
+  if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  return children;
 };
 
 // Public Route Component (redirect if authenticated)
@@ -132,11 +158,11 @@ const AppRoutes = () => {
       <Route
         path="/admin/dashboard"
         element={
-          <ProtectedRoute>
+          <RoleBasedRoute allowedRoles={['superadmin', 'readonly']}>
             <DashboardLayout>
               <AdminDashboard />
             </DashboardLayout>
-          </ProtectedRoute>
+          </RoleBasedRoute>
         }
       />
 

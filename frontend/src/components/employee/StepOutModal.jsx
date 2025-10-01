@@ -7,6 +7,7 @@ import {
     Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getLocationWithAutoFallback } from '../../utils/locationUtils';
 
 const StepOutModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
     // State
@@ -15,52 +16,38 @@ const StepOutModal = ({ isOpen, onClose, onSubmit, loading = false }) => {
     const [currentLocation, setCurrentLocation] = useState(null);
     const [locationLoading, setLocationLoading] = useState(false);
 
-    // Get current location
+    // Get current location with fallback
     const getCurrentLocation = useCallback(async () => {
-        if (!navigator.geolocation) {
-            toast.error('Geolocation is not supported by this browser');
-            return;
-        }
-
         setLocationLoading(true);
         try {
-            const position = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    timeout: 10000,
-                    enableHighAccuracy: true
-                });
+            const locationData = await getLocationWithAutoFallback();
+            
+            setCurrentLocation({ 
+                latitude: locationData.latitude, 
+                longitude: locationData.longitude 
             });
+            setLocation(locationData.address);
 
-            const { latitude, longitude } = position.coords;
-            setCurrentLocation({ latitude, longitude });
-            setLocation(`Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-
-            // Try to get address from coordinates (optional)
-            try {
-                const response = await fetch(
-                    `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-                );
-                const data = await response.json();
-                if (data.locality) {
-                    const addressParts = [];
-                    if (data.locality && typeof data.locality === 'string') addressParts.push(data.locality);
-                    if (data.principalSubdivision && typeof data.principalSubdivision === 'string') addressParts.push(data.principalSubdivision);
-                    if (data.countryName && typeof data.countryName === 'string') addressParts.push(data.countryName);
-                    if (data.postcode && typeof data.postcode === 'string') addressParts.push(data.postcode);
-                    if (data.city && typeof data.city === 'string') addressParts.push(data.city);
-                    if (data.administrativeArea && typeof data.administrativeArea === 'string') addressParts.push(data.administrativeArea);
-
-                    const address = addressParts.join(', ');
-                    setLocation(address);
-                }
-            } catch {
-                console.log('Could not get address from coordinates, using coordinates as location');
+            if (locationData.isFallback) {
+                toast.success('Using default location (Ahmedabad, Gujarat)');
+                console.log('Using fallback location:', locationData.address);
+            } else {
+                toast.success('Location captured successfully!');
             }
-
-            toast.success('Location captured successfully!');
         } catch (error) {
             console.error('Error getting location:', error);
-            toast.error('Could not get current location. Please enter manually.');
+            // Even if there's an error, use the fallback
+            const fallbackData = {
+                latitude: 23.0341367,
+                longitude: 72.5723255,
+                address: 'Ahmedabad, Gujarat, India (Default)'
+            };
+            setCurrentLocation({ 
+                latitude: fallbackData.latitude, 
+                longitude: fallbackData.longitude 
+            });
+            setLocation(fallbackData.address);
+            toast.success('Using default location (Ahmedabad, Gujarat)');
         } finally {
             setLocationLoading(false);
         }
