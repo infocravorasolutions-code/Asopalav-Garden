@@ -48,7 +48,7 @@ export const createEmployee = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!name || !email || !password) {
+    if (!name || !email || !password ) {
       return res.status(400).json({ message: "Name, email, and password are required" });
     }
 
@@ -141,7 +141,7 @@ export const createEmployee = async (req, res) => {
       mobile: mobile || "",
       address: address || "",
       empCode: empCode || "",
-      designation: designation || "security guard",
+      designation: designation || "gardener",
       category: category || "semi-skilled",
       shift: shift || "Morning Shift (7:00 AM - 3:00 PM)",
       uanNumber: uanNumber || "",
