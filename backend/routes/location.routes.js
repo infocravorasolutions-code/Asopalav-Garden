@@ -4,7 +4,7 @@ import {
   getOnlineEmployees,
   getEmployeeLocationHistory,
   markEmployeeOffline,
-  testGeoFencing,
+  // testGeoFencing,
   validateGeoFenceWithAWS,
   recordStepInWithAWS,
   getAddressFromCoords,
