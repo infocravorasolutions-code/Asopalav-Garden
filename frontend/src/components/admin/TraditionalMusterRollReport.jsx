@@ -77,8 +77,6 @@ const TraditionalMusterRollReport = () => {
           name: employee.name,
           designation: employee.designation || employee.position || 'employee',
           shift: employee.shift || 'Morning',
-          uan: employee.uan || employee.uanNumber || 'Not Available',
-          esic: employee.esic || employee.esicNumber || 'Not Available',
           attendance,
           totalDays
         };
@@ -198,8 +196,6 @@ const TraditionalMusterRollReport = () => {
           name: employee.name,
           designation: employee.designation || employee.position || 'employee',
           shift: employee.shift || 'Morning',
-          uan: employee.uan || employee.uanNumber || 'Not Available',
-          esic: employee.esic || employee.esicNumber || 'Not Available',
           attendance,
           totalDays
         };
@@ -241,48 +237,34 @@ const TraditionalMusterRollReport = () => {
     try {
       setLoading(true);
 
-      // Build query parameters from current filters
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value && value !== '') {
-          params.append(key, value);
-        }
-      });
-
-      // Use the configured API service instead of direct fetch
-      const response = await api.get(`/api/employee/muster-roll/export/pdf?${params.toString()}`, {
-        responseType: 'blob',
-        headers: {
-          'Accept': 'application/pdf'
-        }
-      });
-
-      // Validate response data
-      if (!response.data || response.data.size === 0) {
-        throw new Error('PDF file is empty');
+      if (!reportData || reportData.length === 0) {
+        toast.error('No muster roll data to export');
+        return;
       }
 
-      // Create a unique filename with timestamp
+      // Create dateRange from filters
+      const dateRange = {
+        startDate: filters.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+        endDate: filters.endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0]
+      };
+
+      // Import the enhanced PDF export utility
+      const { exportTraditionalMusterRollToPDF } = await import('../../utils/pdfExportUtils');
+      
+      // Create filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `muster-roll-report_${timestamp}.pdf`;
-
-      // Create blob and download directly
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-
-      // Cleanup
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-
-      showSuccess('Muster roll report exported to PDF successfully!');
+      const filename = `nilkanth_muster_roll_${timestamp}.pdf`;
+      
+      // Use the enhanced PDF export function with Nilkanth Landscape branding
+      await exportTraditionalMusterRollToPDF(reportData, dateRange, filename);
+      
+      // Show success message
+      const isWebView = window.ReactNativeWebView !== undefined;
+      if (isWebView) {
+        toast.success('Nilkanth Landscape muster roll PDF export initiated in mobile app');
+      } else {
+        toast.success('Nilkanth Landscape muster roll PDF exported successfully');
+      }
     } catch (error) {
       console.error('Error exporting to PDF:', error);
       showError(`Failed to export report to PDF: ${error.message}`);
@@ -298,7 +280,7 @@ const TraditionalMusterRollReport = () => {
     const maxDays = Math.min(daysInPeriod, 31);
 
     const headers = [
-      'SR NO', 'EMP CODE', 'NAME OF EMPLOYEE', 'DESIGNATION', 'SHIFT', 'UAN', 'ESIC',
+      'SR NO', 'EMP CODE', 'NAME OF EMPLOYEE', 'DESIGNATION', 'SHIFT',
       ...Array.from({ length: maxDays }, (_, i) => `Day ${i + 1}`),
       'TOTAL DAYS'
     ];
@@ -310,8 +292,6 @@ const TraditionalMusterRollReport = () => {
         employee.name,
         employee.designation,
         employee.shift,
-        employee.uan,
-        employee.esic,
         ...Array.from({ length: maxDays }, (_, i) => employee.attendance[i + 1] || ''),
         employee.totalDays
       ];
@@ -515,8 +495,6 @@ const TraditionalMusterRollReport = () => {
                 <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-32">NAME OF EMPLOYEE</th>
                 <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-28">DESIGNATION</th>
                 <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-40">SHIFT</th>
-                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-32">UAN</th>
-                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-28">ESIC</th>
                 {renderDayColumns()}
                 <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-20">TOTAL DAYS</th>
               </tr>
@@ -554,8 +532,6 @@ const TraditionalMusterRollReport = () => {
                       <td className="border border-gray-300 px-2 py-2 text-xs w-32">{employee.name}</td>
                       <td className="border border-gray-300 px-2 py-2 text-center text-xs w-28">{employee.designation}</td>
                       <td className="border border-gray-300 px-2 py-2 text-center text-xs w-40">{employee.shift}</td>
-                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono w-32">{employee.uan}</td>
-                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono w-28">{employee.esic}</td>
                       {Array.from({ length: Math.min(daysInPeriod, 31) }, (_, i) => i + 1).map(day =>
                         renderAttendanceCell(day, employee.attendance)
                       )}

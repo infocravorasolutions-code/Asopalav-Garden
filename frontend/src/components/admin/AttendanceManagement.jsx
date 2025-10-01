@@ -204,51 +204,36 @@ const AttendanceManagement = () => {
         }
     };
 
-    // Export to PDF
+    // Export to PDF using enhanced professional export
     const exportToPDF = async () => {
         try {
-            const params = new URLSearchParams();
-            Object.entries(filters).forEach(([key, value]) => {
-                if (value) params.append(key, value);
-            });
-
-            // Add timestamp to prevent caching issues
-            params.append('_t', Date.now().toString());
-
-            const response = await api.get(`/api/admin/attendance/export/pdf?${params.toString()}`, {
-                responseType: 'blob',
-                timeout: 30000 // 30 second timeout
-            });
-
-            if (response.status === 200) {
-                // Create a unique filename with timestamp
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const fileName = `attendance_${timestamp}.pdf`;
-
-                const blob = new Blob([response.data], { type: 'application/pdf' });
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = fileName;
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-
-                // Clean up after a short delay
-                setTimeout(() => {
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                }, 100);
-
-                toast.success('Attendance data exported to PDF successfully!');
+            
+            if (!attendanceData || attendanceData.length === 0) {
+                toast.error('No attendance data to export');
+                return;
             }
+
+            // Import the enhanced PDF export utility
+            const { exportAttendanceToPDF } = await import(`../../utils/pdfExportUtils?t=${Date.now()}`);
+            
+            // Create filename with timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `attendance_${timestamp}.pdf`;
+            
+            // Use the enhanced PDF export function
+            await exportAttendanceToPDF(attendanceData, filename);
+            
+            // Show success message
+            const isWebView = window.ReactNativeWebView !== undefined;
+            if (isWebView) {
+                toast.success('Professional PDF export initiated in mobile app');
+            } else {
+                toast.success('Professional PDF exported successfully');
+            }
+            
         } catch (error) {
             console.error('Error exporting to PDF:', error);
-            if (error.code === 'ECONNABORTED') {
-                toast.error('PDF generation timed out. Please try again.');
-            } else {
-                toast.error('Failed to export attendance data to PDF');
-            }
+            toast.error('Failed to export PDF: ' + error.message);
         }
     };
 

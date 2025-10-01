@@ -31,7 +31,7 @@ const AdminStyleLogin = () => {
 
     const [userType, setUserType] = useState('admin');
     const [formData, setFormData] = useState({
-        company: 'HARIKRISHNA',
+        company: 'ASOPALAV',
         email: '',
         password: ''
     });
