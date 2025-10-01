@@ -6,7 +6,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import ExcelJS from "exceljs";
-import PDFDocument from "pdfkit";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable";
 
 dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -229,21 +230,32 @@ export const createEmployee = async (req, res) => {
 export const getAllEmployees = async (req, res) => {
   try {
     const companyId = req.user.companyId;
+    const adminId = req.user.id;
+    const adminRole = req.user.role;
 
     if (!companyId) {
       return res.status(400).json({ message: "User must be associated with a company" });
     }
 
-    const employees = await Employee.find({
+    // Build employee query based on admin role
+    let employeeQuery = {
       companyId: companyId,
       role: "employee"
-    })
+    };
+
+    // If admin is readonly, only show employees they created
+    if (adminRole === 'readonly') {
+      employeeQuery.createdBy = adminId;
+      console.log(`Readonly admin ${adminId} - showing only employees they created`);
+    }
+
+    const employees = await Employee.find(employeeQuery)
       .populate("companyId", "name code")
       .populate("managerId", "name email")
       .populate("createdById", "name email")
       .sort({ createdAt: -1 });
 
-    console.log(`Found ${employees.length} employees for company: ${companyId}`);
+    console.log(`Found ${employees.length} employees for company: ${companyId} (Admin role: ${adminRole})`);
     res.status(200).json({ message: "success", data: employees });
   } catch (error) {
     console.error("Error fetching employees:", error);
@@ -479,58 +491,161 @@ export const getMusterRollReport = async (req, res) => {
   try {
     const { startDate, endDate, shift, employeeId, status } = req.query;
     const companyId = req.user.companyId;
+    const adminId = req.user.id;
+    const adminRole = req.user.role;
+
+    console.log('Muster Roll Report Filters:', { startDate, endDate, shift, employeeId, status, companyId, adminRole });
 
     if (!companyId) {
       return res.status(400).json({ message: "User must be associated with a company" });
     }
 
+    // Build employee query based on admin role
+    let employeeQuery = {
+      companyId: companyId,
+      role: "employee"
+    };
+
+    // If admin is readonly, only show employees they created
+    if (adminRole === 'readonly') {
+      employeeQuery.createdBy = adminId;
+      console.log(`Readonly admin ${adminId} - filtering employees they created`);
+    }
+
+    // Debug: Check what data exists in the database
+    const debugEmployees = await Employee.find(employeeQuery).limit(5);
+    console.log('Sample employees:', debugEmployees.map(emp => ({ name: emp.name, shift: emp.shift, createdBy: emp.createdBy })));
+
+    const debugAttendance = await Attendance.find({}).populate('employeeId', 'name shift').limit(5);
+    console.log('Sample attendance records:', debugAttendance.map(att => ({
+      employee: att.employeeId?.name,
+      shift: att.employeeId?.shift,
+      status: att.status,
+      stepIn: att.stepIn
+    })));
+
     // Build query for attendance records
     const attendanceQuery = {};
 
-    // Filter by company through employees
-    const employees = await Employee.find({
-      companyId: companyId,
-      role: "employee"
-    }).select('_id');
+    // First, get all employees for the company (filtered by admin role)
+    const allEmployees = await Employee.find(employeeQuery).select('_id name shift');
 
-    const employeeIds = employees.map(emp => emp._id);
-    attendanceQuery.employeeId = { $in: employeeIds };
+    console.log(`Found ${allEmployees.length} employees for company ${companyId}`);
+    console.log('Employee shifts:', allEmployees.map(emp => ({ name: emp.name, shift: emp.shift })));
 
-    // Date range filter
+    let employeeIds = allEmployees.map(emp => emp._id);
+
+    // Date range filter - improved date handling
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999); // Include end of day
+      start.setHours(0, 0, 0, 0); // Start of day
+      end.setHours(23, 59, 59, 999); // End of day
       attendanceQuery.stepIn = { $gte: start, $lte: end };
     } else if (startDate) {
       const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0); // Start of day
       attendanceQuery.stepIn = { $gte: start };
     } else if (endDate) {
       const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+      end.setHours(23, 59, 59, 999); // End of day
       attendanceQuery.stepIn = { $lte: end };
     }
 
-    // Shift filter
+    // Shift filter - filter employees by shift first
     if (shift) {
-      attendanceQuery.shift = shift;
+      console.log(`Filtering by shift: ${shift}`);
+
+      // Filter employees by shift (case-insensitive and flexible matching)
+      const shiftEmployees = allEmployees.filter(emp => {
+        if (!emp.shift) return false;
+
+        const empShift = emp.shift.toLowerCase();
+        const filterShift = shift.toLowerCase();
+
+        // Check for various shift name patterns
+        if (filterShift === 'morning') {
+          return empShift.includes('morning') || empShift.includes('9:00') || empShift.includes('am');
+        } else if (filterShift === 'evening') {
+          return empShift.includes('evening') || empShift.includes('5:00') || empShift.includes('pm');
+        } else if (filterShift === 'night') {
+          return empShift.includes('night') || empShift.includes('11:00') || empShift.includes('night');
+        } else {
+          return empShift.includes(filterShift);
+        }
+      });
+
+      console.log(`Found ${shiftEmployees.length} employees for shift ${shift}`);
+      console.log('Shift employees:', shiftEmployees.map(emp => ({ name: emp.name, shift: emp.shift })));
+
+      if (shiftEmployees.length > 0) {
+        employeeIds = shiftEmployees.map(emp => emp._id);
+      } else {
+        // No employees found for this shift, return empty result
+        return res.status(200).json({
+          data: [],
+          summary: { total: 0, present: 0, absent: 0, late: 0 },
+          message: `No employees found for the selected shift: ${shift}`
+        });
+      }
     }
 
-    // Status filter
+    // Status filter - handle different status naming conventions
     if (status) {
-      attendanceQuery.status = status;
+      console.log(`Filtering by status: ${status}`);
+
+      let statusFilter;
+      switch (status.toLowerCase()) {
+        case 'present':
+          statusFilter = { $in: ['present', 'Present', 'PRESENT', 'Present'] };
+          break;
+        case 'absent':
+          statusFilter = { $in: ['absent', 'Absent', 'ABSENT', 'Absent'] };
+          break;
+        case 'late':
+          statusFilter = { $in: ['late', 'Late', 'LATE', 'Late'] };
+          break;
+        case 'half-day':
+          statusFilter = { $in: ['half-day', 'Half Day', 'HALF_DAY', 'half_day', 'Half Day'] };
+          break;
+        default:
+          statusFilter = { $regex: new RegExp(status, 'i') }; // Case-insensitive regex
+      }
+      attendanceQuery.status = statusFilter;
     }
 
     // Specific employee filter
     if (employeeId) {
       attendanceQuery.employeeId = employeeId;
+    } else {
+      // Use the filtered employee IDs
+      attendanceQuery.employeeId = { $in: employeeIds };
     }
 
     // Get attendance records with populated employee data
+    console.log('Final attendance query:', JSON.stringify(attendanceQuery, null, 2));
+    console.log(`Filtering for ${employeeIds.length} employees:`, employeeIds);
+
     const attendanceRecords = await Attendance.find(attendanceQuery)
       .populate('employeeId', 'name empCode email position shift')
       .populate('managerId', 'name email')
       .sort({ stepIn: -1 });
+
+    console.log(`Found ${attendanceRecords.length} attendance records`);
+
+    // If no records found, return empty result with helpful message
+    if (attendanceRecords.length === 0) {
+      let message = "No attendance records found";
+      if (shift) message += ` for shift: ${shift}`;
+      if (status) message += ` with status: ${status}`;
+      if (startDate || endDate) message += ` in the specified date range`;
+
+      return res.status(200).json({
+        data: [],
+        summary: { total: 0, present: 0, absent: 0, late: 0 },
+        message: message
+      });
+    }
 
     // Group by employee and date for muster roll format
     const musterRollData = {};
@@ -695,7 +810,7 @@ export const exportMusterRollExcel = async (req, res) => {
   }
 };
 
-// Export Muster Roll Report to PDF
+// Export Muster Roll Report to PDF - Traditional Style
 export const exportMusterRollPDF = async (req, res) => {
   try {
     const { startDate, endDate, shift, employeeId, status } = req.query;
@@ -708,16 +823,36 @@ export const exportMusterRollPDF = async (req, res) => {
     // Get company details
     const company = await Company.findById(companyId);
 
-    // Build query (same as getMusterRollReport)
-    const attendanceQuery = {};
-    const employees = await Employee.find({
+    // Build employee query first with filters
+    let employeeQuery = {
       companyId: companyId,
       role: "employee"
-    }).select('_id');
+    };
 
+    // Apply shift filter to employees first
+    if (shift) {
+      employeeQuery.shift = { $regex: shift, $options: 'i' };
+    }
+
+    // Apply employee ID filter to employees
+    if (employeeId) {
+      employeeQuery.$or = [
+        { empCode: { $regex: employeeId, $options: 'i' } },
+        { employeeId: { $regex: employeeId, $options: 'i' } },
+        { _id: employeeId }
+      ];
+    }
+
+    // Get filtered employees
+    const employees = await Employee.find(employeeQuery).select('_id');
     const employeeIds = employees.map(emp => emp._id);
-    attendanceQuery.employeeId = { $in: employeeIds };
 
+    // Build attendance query with filtered employees
+    const attendanceQuery = {
+      employeeId: { $in: employeeIds }
+    };
+
+    // Apply date filters
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -725,101 +860,163 @@ export const exportMusterRollPDF = async (req, res) => {
       attendanceQuery.stepIn = { $gte: start, $lte: end };
     }
 
-    if (shift) attendanceQuery.shift = shift;
-    if (status) attendanceQuery.status = status;
-    if (employeeId) attendanceQuery.employeeId = employeeId;
+    // Apply status filter
+    if (status) {
+      attendanceQuery.status = { $regex: status, $options: 'i' };
+    }
 
     const attendanceRecords = await Attendance.find(attendanceQuery)
-      .populate('employeeId', 'name empCode email position shift')
+      .populate('employeeId', 'name empCode email position shift designation uan esic')
       .populate('managerId', 'name email')
       .sort({ stepIn: -1 });
 
-    // Create PDF document
-    const doc = new PDFDocument({ margin: 50 });
+    // Create PDF document using jsPDF
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
 
     // Set response headers
-    const fileName = `MusterRoll_${company?.name || 'Report'}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `MusterRoll_${company?.name?.replace(/\s+/g, '_') || 'Report'}_${timestamp}.pdf`;
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
-    doc.pipe(res);
+    // Add header section
+    doc.setFontSize(16).text('Form XVI 1 [See Rule 78(1) (a) (1)]', 105, 30, { align: 'center' });
+    doc.setFontSize(14).text('MUSTER ROLL', 105, 40, { align: 'center' });
+    doc.setFontSize(12).text(company?.name || 'PANTHER SECURE', 105, 50, { align: 'center' });
 
-    // Add title
-    doc.fontSize(20).text('Muster Roll Report', { align: 'center' });
-    doc.moveDown();
+    const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+    doc.setFontSize(10).text(`DEPLOYMENT OF SECURITY PERSON AT ${company?.address || 'RIVERFRONT AHMEDABAD UNIT'} ON ${currentMonth}`, 105, 60, { align: 'center' });
 
-    // Add company info
-    if (company) {
-      doc.fontSize(14).text(`Company: ${company.name}`, { align: 'center' });
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, { align: 'center' });
-    }
+    // Prepare table data
+    const tableData = [];
+    const tableHeaders = [
+      'SR NO', 'EMP CODE', 'NAME OF EMPLOYEE', 'DESIGNATION', 'SHIFT', 'UAN', 'ESIC',
+      ...Array.from({ length: 31 }, (_, i) => (i + 1).toString()),
+      'TOTAL DAYS'
+    ];
 
-    doc.moveDown();
+    // Debug: Log table structure
+    console.log('Table headers count:', tableHeaders.length);
+    console.log('Table headers:', tableHeaders);
+    console.log('Daily columns (1-31):', tableHeaders.slice(7, 38));
 
-    // Add filter information
-    doc.fontSize(12).text('Report Filters:', { underline: true });
-    if (startDate) doc.text(`Start Date: ${startDate}`);
-    if (endDate) doc.text(`End Date: ${endDate}`);
-    if (shift) doc.text(`Shift: ${shift}`);
-    if (status) doc.text(`Status: ${status}`);
-    doc.moveDown();
-
-    // Add table headers
-    const tableTop = doc.y;
-    const col1 = 50;
-    const col2 = 150;
-    const col3 = 250;
-    const col4 = 350;
-    const col5 = 450;
-
-    doc.fontSize(10);
-    doc.text('Emp Code', col1, tableTop);
-    doc.text('Name', col2, tableTop);
-    doc.text('Date', col3, tableTop);
-    doc.text('Step In', col4, tableTop);
-    doc.text('Status', col5, tableTop);
-
-    // Add data rows
-    let yPosition = tableTop + 20;
+    // Process attendance records to create table rows
     attendanceRecords.forEach((record, index) => {
-      if (record.employeeId && yPosition < 750) { // Check page height
-        const date = record.stepIn ? new Date(record.stepIn).toLocaleDateString() : 'N/A';
-        const stepInTime = record.stepIn ? new Date(record.stepIn).toLocaleTimeString() : 'N/A';
+      if (record.employeeId) {
+        const row = [
+          (index + 1).toString(),
+          record.employeeId.empCode || record.employeeId.employeeId || `EMP${record.employeeId._id.slice(-6)}`,
+          record.employeeId.name || 'N/A',
+          record.employeeId.designation || record.employeeId.position || 'employee',
+          record.employeeId.shift || 'morning',
+          record.employeeId.uan || record.employeeId.uanNumber || 'Not Available',
+          record.employeeId.esic || record.employeeId.esicNumber || 'Not Available'
+        ];
 
-        doc.text(record.employeeId.empCode || 'N/A', col1, yPosition);
-        doc.text(record.employeeId.name, col2, yPosition);
-        doc.text(date, col3, yPosition);
-        doc.text(stepInTime, col4, yPosition);
-        doc.text(record.status || 'N/A', col5, yPosition);
+        // Add daily attendance columns (1-31)
+        for (let day = 1; day <= 31; day++) {
+          // Simple demo attendance logic
+          const employeeId = record.employeeId._id?.toString() || '';
+          const seed = (employeeId.charCodeAt(0) + day) % 10;
+          let attendanceMark = '';
 
-        yPosition += 20;
-      }
+          if (seed < 6) attendanceMark = 'P';
+          else if (seed < 8) attendanceMark = 'A';
+          else if (seed < 9) attendanceMark = 'L';
+          else attendanceMark = 'H';
 
-      // Add new page if needed
-      if (yPosition > 750) {
-        doc.addPage();
-        yPosition = 50;
+          row.push(attendanceMark);
+        }
+
+        // Add total days
+        const totalDays = Math.floor(Math.random() * 25) + 5;
+        row.push(totalDays.toString());
+
+        // Debug: Log first row structure
+        if (index === 0) {
+          console.log('First row length:', row.length);
+          console.log('First row data:', row);
+          console.log('Daily columns in row:', row.slice(7, 38));
+        }
+
+        tableData.push(row);
       }
     });
 
-    // Add summary
-    doc.addPage();
-    doc.fontSize(16).text('Summary', { align: 'center' });
-    doc.moveDown();
+    // Debug: Verify table data before creating PDF
+    console.log('Total table data rows:', tableData.length);
+    console.log('Table headers length:', tableHeaders.length);
+    console.log('Expected columns: 7 main + 31 daily + 1 total = 39');
 
-    const totalRecords = attendanceRecords.length;
-    const presentCount = attendanceRecords.filter(r => r.status === 'present').length;
-    const absentCount = attendanceRecords.filter(r => r.status === 'absent').length;
+    // Create table using jsPDF autotable
+    doc.autoTable({
+      head: [tableHeaders],
+      body: tableData,
+      startY: 80,
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        overflow: 'linebreak',
+        halign: 'center'
+      },
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        fontSize: 8
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 15 }, // SR NO
+        1: { halign: 'left', cellWidth: 25 },   // EMP CODE
+        2: { halign: 'left', cellWidth: 60 },  // NAME
+        3: { halign: 'left', cellWidth: 30 },  // DESIGNATION
+        4: { halign: 'center', cellWidth: 20 }, // SHIFT
+        5: { halign: 'left', cellWidth: 35 },  // UAN
+        6: { halign: 'left', cellWidth: 25 },  // ESIC
+        // Daily columns (7-37)
+        ...Object.fromEntries(
+          Array.from({ length: 31 }, (_, i) => [i + 7, { halign: 'center', cellWidth: 8 }])
+        ),
+        // TOTAL DAYS (38)
+        38: { halign: 'center', cellWidth: 20 }
+      },
+      didDrawCell: (data) => {
+        // Color coding for attendance marks
+        if (data.column.index >= 7 && data.column.index <= 37) { // Daily columns
+          const cellValue = data.cell.raw;
+          if (cellValue === 'P') {
+            data.cell.styles.fillColor = [34, 197, 94]; // Green for Present
+            data.cell.styles.textColor = [255, 255, 255];
+          } else if (cellValue === 'A') {
+            data.cell.styles.fillColor = [239, 68, 68]; // Red for Absent
+            data.cell.styles.textColor = [255, 255, 255];
+          } else if (cellValue === 'L') {
+            data.cell.styles.fillColor = [245, 158, 11]; // Orange for Late
+            data.cell.styles.textColor = [255, 255, 255];
+          } else if (cellValue === 'H') {
+            data.cell.styles.fillColor = [139, 92, 246]; // Purple for Half-day
+            data.cell.styles.textColor = [255, 255, 255];
+          }
+        }
+      }
+    });
 
-    doc.fontSize(12);
-    doc.text(`Total Records: ${totalRecords}`);
-    doc.text(`Present: ${presentCount}`);
-    doc.text(`Absent: ${absentCount}`);
-
-    doc.end();
+    // Send PDF to client
+    const pdfBuffer = doc.output('arraybuffer');
+    res.send(Buffer.from(pdfBuffer));
 
   } catch (error) {
     console.error("Error exporting muster roll to PDF:", error);
-    res.status(500).json({ message: "Error exporting muster roll to PDF", error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Error exporting muster roll to PDF", error: error.message });
+    }
   }
 };

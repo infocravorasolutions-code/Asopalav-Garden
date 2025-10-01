@@ -91,22 +91,22 @@ const ManagersPageNew = () => {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
       if (result.message === 'success') {
         console.log('API Response:', result.data);
-        
+
         // Map API data to grid format
         const allManagers = result.data.map(manager => ({
           ...manager,
           companyId: manager.companyId || { name: 'NEELKANTH LANDSCAPE' },
           status: manager.isActive ? 'Active' : 'Inactive'
         }));
-        
+
         setManagers(allManagers);
         console.log('Fetched managers:', allManagers.length);
       } else {
@@ -144,7 +144,7 @@ const ManagersPageNew = () => {
             'Content-Type': 'application/json'
           }
         });
-        
+
         if (response.ok) {
           // Remove from local state
           setManagers(prev => prev.filter(m => m._id !== manager._id));
@@ -169,31 +169,31 @@ const ManagersPageNew = () => {
   const handleSaveManager = async (formData) => {
     try {
       const token = localStorage.getItem('authToken');
-      const url = modalMode === 'create' 
+      const url = modalMode === 'create'
         ? 'http://localhost:5678/api/manager/'
         : `http://localhost:5678/api/manager/${selectedManager._id}`;
-      
+
       const method = modalMode === 'create' ? 'POST' : 'PUT';
-      
+
       // Prepare request data
       const requestData = {
         ...formData,
         address: formData.locationAddress || 'Office Address'
       };
-      
+
       // For create mode, ensure password is provided
       if (modalMode === 'create' && !formData.password) {
         requestData.password = 'manager123'; // Default password if not provided
       }
-      
+
       // For edit mode, only include password if it's provided
       if (modalMode === 'edit' && !formData.password) {
         delete requestData.password;
         delete requestData.confirmPassword;
       }
-      
+
       console.log('Saving manager:', { modalMode, requestData, url, method });
-      
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -202,23 +202,23 @@ const ManagersPageNew = () => {
         },
         body: JSON.stringify(requestData)
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         console.log('Save response:', result);
-        
+
         if (modalMode === 'create') {
           // Add new manager to list
           setManagers(prev => [...prev, result.manager]);
         } else {
           // Update existing manager - ensure we have the correct ID
-          setManagers(prev => prev.map(m => 
+          setManagers(prev => prev.map(m =>
             m._id === selectedManager._id ? { ...m, ...result.manager } : m
           ));
         }
-        
+
         console.log('Manager saved successfully');
-        
+
         // Refresh the managers list to ensure we have the latest data
         setTimeout(() => {
           fetchManagers();
@@ -299,8 +299,8 @@ const ManagersPageNew = () => {
       width: 200,
       cellRenderer: (params) => (
         <div className="text-gray-600 text-sm font-medium text-left">
-          {params.data.companyId ? 
-            (typeof params.data.companyId === 'object' ? params.data.companyId.name : params.data.companyId) 
+          {params.data.companyId ?
+            (typeof params.data.companyId === 'object' ? params.data.companyId.name : params.data.companyId)
             : 'NEELKANTH LANDSCAPE'}
         </div>
       )
@@ -323,11 +323,10 @@ const ManagersPageNew = () => {
         const status = params.value || (params.data.isActive ? 'Active' : 'Inactive');
         return (
           <div className="text-left">
-            <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-              status === 'Active' 
-                ? 'bg-green-100 text-green-800' 
+            <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${status === 'Active'
+                ? 'bg-green-100 text-green-800'
                 : 'bg-red-100 text-red-800'
-            }`}>
+              }`}>
               {status}
             </span>
           </div>
@@ -353,7 +352,7 @@ const ManagersPageNew = () => {
       width: 100,
       pinned: 'right',
       cellRenderer: (params) => (
-            <div className="flex items-center justify-center ">
+        <div className="flex items-center justify-center ">
           <button
             onClick={() => handleEdit(params.data)}
             className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
@@ -375,10 +374,7 @@ const ManagersPageNew = () => {
     }
   ], []);
 
-  const handleExport = () => {
-    // Export functionality
-    console.log('Export managers');
-  };
+
 
   return (
     <div className="space-y-6 h-full flex flex-col">
@@ -392,7 +388,7 @@ const ManagersPageNew = () => {
             <p className="text-gray-600 mt-1">Manage company managers</p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={handleRefresh}
@@ -402,13 +398,7 @@ const ManagersPageNew = () => {
             <div className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}>↻</div>
             <span>Refresh</span>
           </button>
-          <button
-            onClick={handleExport}
-            className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <div className="w-4 h-4">⬇</div>
-            <span>Export</span>
-          </button>
+
           <button
             onClick={handleCreateManager}
             className="flex items-center space-x-2 px-5 py-2 text-white rounded-lg transition-colors font-medium"

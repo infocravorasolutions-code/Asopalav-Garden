@@ -404,7 +404,15 @@ export const attendanceAPI = {
       'Content-Type': 'multipart/form-data',
     },
   }),
-  getEmployeeAttendance: (employeeId) => api.get(`/api/attendence/employee/${employeeId}`),
+  getEmployeeAttendance: (employeeId, params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+
+    const queryString = queryParams.toString();
+    const url = `/api/attendence/employee/${employeeId}${queryString ? `?${queryString}` : ''}`;
+    return api.get(url);
+  },
 }
 
 export default api;

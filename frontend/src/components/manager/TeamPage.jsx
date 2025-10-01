@@ -16,37 +16,7 @@ const TeamPage = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showOnlyMyTeam, setShowOnlyMyTeam] = useState(true);
 
-  // Dummy team data (used as fallback)
-  const dummyTeam = [
-    {
-      _id: 'emp1',
-      name: 'Alice Johnson',
-      email: 'alice.j@neelkanthlandscape.com',
-      mobile: '+91 98765 11111',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      shift: 'morning',
-      position: 'Landscape Designer',
-      empCode: 'NEEL001',
-      status: 'Active',
-      createdAt: '2024-01-01T10:00:00Z',
-      createdByRole: 'manager',
-      createdById: { name: user?.name || 'Manager' }
-    },
-    {
-      _id: 'emp2',
-      name: 'Bob Williams',
-      email: 'bob.w@neelkanthlandscape.com',
-      mobile: '+91 98765 22222',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      shift: 'evening',
-      position: 'Garden Supervisor',
-      empCode: 'NEEL002',
-      status: 'Active',
-      createdAt: '2024-01-05T11:30:00Z',
-      createdByRole: 'manager',
-      createdById: { name: user?.name || 'Manager' }
-    }
-  ];
+
 
   const fetchTeam = async () => {
     setLoading(true);
@@ -88,8 +58,6 @@ const TeamPage = () => {
     } catch (error) {
       console.error('Error fetching team:', error);
       setError(error.message);
-      // Use dummy data as fallback
-      setEmployees(dummyTeam);
     } finally {
       setLoading(false);
     }
@@ -204,9 +172,6 @@ const TeamPage = () => {
     fetchTeam();
   };
 
-  const handleExport = () => {
-    console.log('Export team members');
-  };
 
   // Column definitions for team members
   const columnDefs = useMemo(() => [
@@ -258,8 +223,8 @@ const TeamPage = () => {
       )
     },
     {
-      headerName: 'Position',
-      field: 'position',
+      headerName: 'designation',
+      field: 'designation',
       width: 150,
       cellRenderer: (params) => (
         <div className="text-gray-600 text-sm text-left">
@@ -381,13 +346,7 @@ const TeamPage = () => {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
-          <button
-            onClick={handleExport}
-            className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
-          >
-            <Download className="h-4 w-4" />
-            <span>Export</span>
-          </button>
+
           <button
             onClick={handleCreateEmployee}
             className="flex items-center space-x-2 px-4 py-2 text-white rounded-lg transition-colors font-medium touch-manipulation min-h-[44px]"

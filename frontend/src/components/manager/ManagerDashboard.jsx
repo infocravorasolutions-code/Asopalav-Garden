@@ -126,17 +126,51 @@ const ManagerDashboard = () => {
           const statusResponse = await api.get(`/api/attendence/status/${employee.id}`);
           console.log(`Attendance status for ${employee.name}:`, statusResponse.data);
 
-          if (statusResponse.data.success && statusResponse.data.attendance) {
-            const attendance = statusResponse.data.attendance;
-            employee.status = attendance.stepOut ? 'checked_out' : 'checked_in';
-            employee.stepInTime = attendance.stepIn ? new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : null;
-            employee.stepOutTime = attendance.stepOut ? new Date(attendance.stepOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : null;
-            employee.isOnline = !attendance.stepOut; // Online if not stepped out
-            employee.lastSeen = attendance.stepIn ? new Date(attendance.stepIn) : null;
+          if (statusResponse.data.success) {
+            const { isSteppedIn, isCompleted, attendance } = statusResponse.data;
+
+            if (isSteppedIn && attendance) {
+              // Employee is currently stepped in today
+              employee.status = 'checked_in';
+              employee.stepInTime = new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+              employee.stepOutTime = null;
+              employee.isOnline = true;
+              employee.lastSeen = new Date(attendance.stepIn);
+              console.log(`✅ ${employee.name} is currently stepped in`);
+            } else if (isCompleted && attendance) {
+              // Employee has completed attendance for today
+              employee.status = 'checked_out';
+              employee.stepInTime = new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+              employee.stepOutTime = new Date(attendance.stepOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+              employee.isOnline = false;
+              employee.lastSeen = new Date(attendance.stepOut);
+              console.log(`✅ ${employee.name} has completed attendance today`);
+            } else {
+              // No attendance record for today
+              employee.status = 'not_checked_in';
+              employee.stepInTime = null;
+              employee.stepOutTime = null;
+              employee.isOnline = false;
+              employee.lastSeen = null;
+              console.log(`❌ ${employee.name} has no attendance record for today`);
+            }
+          } else {
+            // API call failed, mark as not checked in
+            employee.status = 'not_checked_in';
+            employee.stepInTime = null;
+            employee.stepOutTime = null;
+            employee.isOnline = false;
+            employee.lastSeen = null;
+            console.log(`❌ API call failed for ${employee.name}`);
           }
         } catch (statusError) {
           console.log(`No attendance record found for ${employee.name}:`, statusError.message);
-          // Keep default status
+          // Keep default status as not_checked_in
+          employee.status = 'not_checked_in';
+          employee.stepInTime = null;
+          employee.stepOutTime = null;
+          employee.isOnline = false;
+          employee.lastSeen = null;
         }
       }
 
@@ -251,9 +285,17 @@ const ManagerDashboard = () => {
 
   // Calculate stats
   const totalEmployees = employees.length;
-  const presentToday = employees.filter(emp => emp.status === 'present').length;
-  const absentToday = employees.filter(emp => emp.status === 'absent').length;
+  const presentToday = employees.filter(emp => emp.status === 'checked_in').length;
+  const absentToday = employees.filter(emp => emp.status === 'not_checked_in').length;
   const checkedOut = employees.filter(emp => emp.status === 'checked_out').length;
+
+  // Debug logging
+  console.log('📊 Dashboard Stats Calculation:');
+  console.log(`Total Employees: ${totalEmployees}`);
+  console.log(`Present Today: ${presentToday}`);
+  console.log(`Absent Today: ${absentToday}`);
+  console.log(`Checked Out: ${checkedOut}`);
+  console.log('Employee Statuses:', employees.map(emp => ({ name: emp.name, status: emp.status })));
 
   const stats = [
     {

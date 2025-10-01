@@ -21,6 +21,7 @@ import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Loading from '../ui/Loading';
+import Pagination from '../ui/Pagination';
 import { adminAPI, api } from '../../services/api';
 import CopyCellRenderer from '../ui/CopyCellRenderer';
 import toast from 'react-hot-toast';
@@ -442,18 +443,7 @@ const AttendanceManagement = () => {
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardContent className="p-3 sm:p-4">
-                        <div className="flex items-center justify-between">
-                            <div className="min-w-0 flex-1">
-                                <p className="text-xs sm:text-sm font-medium text-gray-600">Morning Shift</p>
-                                <p className="text-lg sm:text-2xl font-bold text-blue-600">{summary.morningShift}</p>
-                                <p className="text-xs sm:text-sm text-gray-500">records</p>
-                            </div>
-                            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 flex-shrink-0" />
-                        </div>
-                    </CardContent>
-                </Card>
+
             </div>
 
             {/* Shift Breakdown */}
@@ -790,61 +780,12 @@ const AttendanceManagement = () => {
                             </div>
 
                             {/* Pagination Controls */}
-                            {pagination.totalPages > 1 && (
-                                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-                                    <div className="flex items-center text-sm text-gray-700">
-                                        <span>
-                                            Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to{' '}
-                                            {Math.min(pagination.currentPage * pagination.limit, pagination.totalRecords)} of{' '}
-                                            {pagination.totalRecords} records
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center space-x-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => fetchAttendanceData(pagination.currentPage - 1)}
-                                            disabled={!pagination.hasPrevPage || loading}
-                                            className="flex items-center space-x-1"
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                            <span>Previous</span>
-                                        </Button>
-
-                                        <div className="flex items-center space-x-1">
-                                            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                                                const pageNum = Math.max(1, pagination.currentPage - 2) + i;
-                                                if (pageNum > pagination.totalPages) return null;
-
-                                                return (
-                                                    <Button
-                                                        key={pageNum}
-                                                        variant={pageNum === pagination.currentPage ? "primary" : "outline"}
-                                                        size="sm"
-                                                        onClick={() => fetchAttendanceData(pageNum)}
-                                                        disabled={loading}
-                                                        className="w-8 h-8 p-0"
-                                                    >
-                                                        {pageNum}
-                                                    </Button>
-                                                );
-                                            })}
-                                        </div>
-
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => fetchAttendanceData(pagination.currentPage + 1)}
-                                            disabled={!pagination.hasNextPage || loading}
-                                            className="flex items-center space-x-1"
-                                        >
-                                            <span>Next</span>
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
+                            <Pagination
+                                pagination={pagination}
+                                onPageChange={fetchAttendanceData}
+                                loading={loading}
+                                className="px-6 py-4 border-t border-gray-200"
+                            />
                         </div>
                     )}
                 </CardContent>

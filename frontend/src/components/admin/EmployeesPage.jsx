@@ -171,10 +171,6 @@ const EmployeesPage = () => {
     fetchEmployees();
   };
 
-  const handleExport = () => {
-    // Export functionality
-    console.log('Export employees');
-  };
 
   // Column definitions for employees
   const columnDefs = useMemo(() => [
@@ -186,9 +182,24 @@ const EmployeesPage = () => {
       maxWidth: 60,
       cellRenderer: (params) => {
         const initials = params.data.name ? params.data.name.charAt(0).toUpperCase() : 'E';
+        const photo = params.data.photo;
+
         return (
-          <div className="flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-green-500 to-teal-600 text-white font-semibold text-xs sm:text-sm shadow-md">
-            {initials}
+          <div className="flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-green-500 to-teal-600 text-white font-semibold text-xs sm:text-sm shadow-md overflow-hidden">
+            {photo ? (
+              <img
+                src={photo}
+                alt={params.data.name || 'Employee'}
+                className="w-full h-full object-cover rounded-full"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div className={`w-full h-full flex items-center justify-center ${photo ? 'hidden' : ''}`}>
+              {initials}
+            </div>
           </div>
         );
       },
@@ -200,8 +211,8 @@ const EmployeesPage = () => {
     {
       headerName: 'Name',
       field: 'name',
-      width: 150,
-      minWidth: 120,
+      width: 200,
+      minWidth: 150,
       cellRenderer: (params) => (
         <div className="min-w-0">
           <CopyCellRenderer value={params.value} field="name" />
@@ -211,8 +222,8 @@ const EmployeesPage = () => {
     {
       headerName: 'Email',
       field: 'email',
-      width: 200,
-      minWidth: 150,
+      width: 250,
+      minWidth: 200,
       cellRenderer: (params) => (
         <div className="min-w-0">
           <CopyCellRenderer value={params.value} field="email" />
@@ -223,8 +234,8 @@ const EmployeesPage = () => {
     {
       headerName: 'Mobile',
       field: 'mobile',
-      width: 120,
-      minWidth: 100,
+      width: 150,
+      minWidth: 120,
       cellRenderer: (params) => (
         <div className="min-w-0">
           <CopyCellRenderer value={params.value || 'Not Set'} field="mobile" />
@@ -232,13 +243,13 @@ const EmployeesPage = () => {
       )
     },
     {
-      headerName: 'Position',
-      field: 'position',
-      width: 120,
-      minWidth: 100,
+      headerName: 'Designation',
+      field: 'designation',
+      width: 180,
+      minWidth: 150,
       cellRenderer: (params) => (
         <div className="min-w-0">
-          <CopyCellRenderer value={params.value || 'Not Set'} field="position" />
+          <CopyCellRenderer value={params.value || 'Not Set'} field="designation" />
         </div>
       ),
       hide: window.innerWidth < 1024
@@ -246,19 +257,19 @@ const EmployeesPage = () => {
     {
       headerName: 'Shift',
       field: 'shift',
-      width: 100,
-      minWidth: 80,
+      width: 200,
+      minWidth: 180,
       cellRenderer: (params) => {
-        const shift = params.value || 'morning';
+        const shift = params.value || 'Morning Shift (7:00 AM - 3:00 PM)';
         const shiftColors = {
-          morning: 'bg-yellow-100 text-yellow-800',
-          evening: 'bg-orange-100 text-orange-800',
-          night: 'bg-purple-100 text-purple-800'
+          'Morning Shift (7:00 AM - 3:00 PM)': 'bg-yellow-100 text-yellow-800',
+          'Evening Shift (3:00 PM - 11:00 PM)': 'bg-orange-100 text-orange-800',
+          'Night Shift (11:00 PM - 7:00 AM)': 'bg-purple-100 text-purple-800'
         };
         return (
           <div className="text-left">
-            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${shiftColors[shift]}`}>
-              {shift.charAt(0).toUpperCase() + shift.slice(1)}
+            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${shiftColors[shift] || 'bg-gray-100 text-gray-800'}`}>
+              {shift}
             </span>
           </div>
         );
@@ -267,8 +278,8 @@ const EmployeesPage = () => {
     {
       headerName: 'Emp Code',
       field: 'empCode',
-      width: 100,
-      minWidth: 80,
+      width: 120,
+      minWidth: 100,
       cellRenderer: (params) => (
         <div className="text-gray-600 text-xs sm:text-sm font-mono text-left">
           {params.value || 'Not Set'}
@@ -276,19 +287,23 @@ const EmployeesPage = () => {
       )
     },
     {
-      headerName: 'Status',
-      field: 'status',
-      width: 100,
-      minWidth: 80,
+      headerName: 'Manager',
+      field: 'managerId.name',
+      width: 150,
+      minWidth: 120,
       cellRenderer: (params) => {
-        const status = params.value || (params.data.active ? 'Active' : 'Inactive');
+        const manager = params.data.managerId;
+        const managerName = manager ?
+          (typeof manager === 'object' ? manager.name : manager) :
+          'Not Assigned';
+
         return (
           <div className="text-left">
-            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${status === 'Active'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-red-100 text-red-800'
+            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${managerName === 'Not Assigned'
+                ? 'bg-gray-100 text-gray-600'
+                : 'bg-blue-100 text-blue-800'
               }`}>
-              {status}
+              {managerName}
             </span>
           </div>
         );
@@ -297,8 +312,8 @@ const EmployeesPage = () => {
     {
       headerName: 'Created By',
       field: 'createdById.name',
-      width: 120,
-      minWidth: 100,
+      width: 150,
+      minWidth: 120,
       cellRenderer: (params) => (
         <div className="text-gray-600 text-xs sm:text-sm text-left">
           {params.data.createdById ?
@@ -311,8 +326,8 @@ const EmployeesPage = () => {
     {
       headerName: 'Created',
       field: 'createdAt',
-      width: 100,
-      minWidth: 80,
+      width: 120,
+      minWidth: 100,
       cellRenderer: (params) => {
         const date = new Date(params.value);
         return (
@@ -376,13 +391,7 @@ const EmployeesPage = () => {
               <div className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}>↻</div>
               <span>Refresh</span>
             </button>
-            <button
-              onClick={handleExport}
-              className="flex items-center justify-center space-x-2 px-3 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px] flex-1"
-            >
-              <div className="w-4 h-4">⬇</div>
-              <span>Export</span>
-            </button>
+
           </div>
           <button
             onClick={handleCreateEmployee}
@@ -404,13 +413,6 @@ const EmployeesPage = () => {
             >
               <div className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}>↻</div>
               <span>Refresh</span>
-            </button>
-            <button
-              onClick={handleExport}
-              className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
-            >
-              <div className="w-4 h-4">⬇</div>
-              <span>Export</span>
             </button>
           </div>
           <button

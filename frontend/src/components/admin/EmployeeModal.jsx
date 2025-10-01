@@ -39,6 +39,7 @@ const EmployeeModal = ({
   const [imagePreview, setImagePreview] = useState(null);
   const [managers, setManagers] = useState([]);
   const [loadingManagers, setLoadingManagers] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -160,7 +161,7 @@ const EmployeeModal = ({
     }
   };
 
-  const handlePhotoUpload = (e) => {
+  const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
@@ -179,21 +180,41 @@ const EmployeeModal = ({
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target.result;
+      try {
+        // Compress the uploaded image
+        const compressedBlob = await compressImage(file, 800, 600, 0.7);
+
+        // Convert to base64 for storage
+        const base64DataUrl = await blobToBase64(compressedBlob);
+
+        // Create object URL for preview
+        const imageUrl = URL.createObjectURL(compressedBlob);
         setPhotoPreview(imageUrl);
         setImagePreview(imageUrl);
         setFormData(prev => ({
           ...prev,
-          photo: imageUrl
+          photo: base64DataUrl
         }));
         setErrors(prev => ({
           ...prev,
           photo: ''
         }));
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Error compressing uploaded image:', error);
+        // Fallback to original file if compression fails
+        const base64DataUrl = await blobToBase64(file);
+        const imageUrl = URL.createObjectURL(file);
+        setPhotoPreview(imageUrl);
+        setImagePreview(imageUrl);
+        setFormData(prev => ({
+          ...prev,
+          photo: base64DataUrl
+        }));
+        setErrors(prev => ({
+          ...prev,
+          photo: ''
+        }));
+      }
     }
   };
 
@@ -213,6 +234,7 @@ const EmployeeModal = ({
   // Start camera
   const startCamera = async () => {
     try {
+      setIsCameraActive(true);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: facingMode }
       });
@@ -223,21 +245,30 @@ const EmployeeModal = ({
       setShowCamera(true);
     } catch (error) {
       console.error('Error accessing camera:', error);
+      setIsCameraActive(false);
       alert('Unable to access camera. Please check permissions.');
     }
   };
 
   // Stop camera
-  const stopCamera = () => {
+  const stopCamera = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop());
       setCameraStream(null);
     }
     setShowCamera(false);
+    setIsCameraActive(false);
   };
 
   // Switch camera
-  const switchCamera = async () => {
+  const switchCamera = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     const newFacingMode = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(newFacingMode);
 
@@ -258,12 +289,63 @@ const EmployeeModal = ({
       }
     } catch (error) {
       console.error('Error switching camera:', error);
-      alert('Unable to switch camera. Please check permissions.');
+      // Don't show alert, just log the error to prevent form validation issues
+      console.log('Camera switch failed, reverting to previous camera');
+      // Revert to previous facing mode
+      setFacingMode(facingMode === 'user' ? 'environment' : 'user');
     }
   };
 
+  // Compress image function
+  const compressImage = (file, maxWidth = 800, maxHeight = 600, quality = 0.7) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = () => {
+        // Calculate new dimensions
+        let { width, height } = img;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+
+        // Set canvas dimensions
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw and compress
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(resolve, 'image/jpeg', quality);
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // Convert blob to base64 data URL
+  const blobToBase64 = (blob) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  };
+
   // Capture photo
-  const capturePhoto = () => {
+  const capturePhoto = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -276,27 +358,51 @@ const EmployeeModal = ({
       // Draw video frame to canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Convert canvas to blob
-      canvas.toBlob((blob) => {
+      // Convert canvas to blob and compress
+      canvas.toBlob(async (blob) => {
         if (blob) {
+          try {
+            // Compress the image
+            const compressedBlob = await compressImage(blob, 800, 600, 0.7);
 
-          // Create object URL for preview
-          const imageUrl = URL.createObjectURL(blob);
-          setImagePreview(imageUrl);
-          setPhotoPreview(imageUrl);
+            // Convert to base64 for storage
+            const base64DataUrl = await blobToBase64(compressedBlob);
 
-          // Update form data
-          setFormData(prev => ({
-            ...prev,
-            photo: imageUrl
-          }));
+            // Create object URL for preview
+            const imageUrl = URL.createObjectURL(compressedBlob);
+            setImagePreview(imageUrl);
+            setPhotoPreview(imageUrl);
 
-          stopCamera();
+            // Update form data with compressed base64 image
+            setFormData(prev => ({
+              ...prev,
+              photo: base64DataUrl
+            }));
+
+            stopCamera();
+          } catch (error) {
+            console.error('Error compressing image:', error);
+            // Fallback to original blob if compression fails
+            const base64DataUrl = await blobToBase64(blob);
+            const imageUrl = URL.createObjectURL(blob);
+            setImagePreview(imageUrl);
+            setPhotoPreview(imageUrl);
+            setFormData(prev => ({
+              ...prev,
+              photo: base64DataUrl
+            }));
+            stopCamera();
+          }
         }
       }, 'image/jpeg', 0.8);
     }
   };
   const validateForm = () => {
+    // Don't validate if camera is active to prevent form issues during camera operations
+    if (isCameraActive) {
+      return true;
+    }
+
     const newErrors = {};
 
     if (!formData.name.trim()) {
@@ -335,6 +441,11 @@ const EmployeeModal = ({
 
     if (!formData.ifscCode.trim()) {
       newErrors.ifscCode = 'IFSC code is required';
+    }
+
+    // Assigned Manager validation
+    if (!formData.assignedManager.trim()) {
+      newErrors.assignedManager = 'Assigned Manager is required';
     }
 
     // Password validation
@@ -447,6 +558,7 @@ const EmployeeModal = ({
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-lg font-semibold">Take Photo</h3>
                       <button
+                        type="button"
                         onClick={stopCamera}
                         className="text-gray-500 hover:text-gray-700"
                       >
@@ -468,6 +580,7 @@ const EmployeeModal = ({
 
                       <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4">
                         <button
+                          type="button"
                           onClick={switchCamera}
                           className="flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
                         >
@@ -475,6 +588,7 @@ const EmployeeModal = ({
                           Switch Camera
                         </button>
                         <button
+                          type="button"
                           onClick={capturePhoto}
                           className="flex items-center justify-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                         >
@@ -647,7 +761,7 @@ const EmployeeModal = ({
 
             <div>
               <label htmlFor="assignedManager" className="block text-sm font-medium text-gray-700 mb-2">
-                Assigned Manager
+                Assigned Manager <span className="text-red-500">*</span>
               </label>
               <select
                 id="assignedManager"
@@ -655,15 +769,16 @@ const EmployeeModal = ({
                 value={formData.assignedManager}
                 onChange={handleInputChange}
                 disabled={loadingManagers}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                className={`w-full px-3 py-2 border ${errors.assignedManager ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100`}
               >
-                <option value="">Select a manager (optional)</option>
+                <option value="">Select a manager</option>
                 {managers.map((manager) => (
                   <option key={manager._id} value={manager._id}>
                     {manager.name} ({manager.email})
                   </option>
                 ))}
               </select>
+              {errors.assignedManager && <p className="mt-1 text-xs text-red-500">{errors.assignedManager}</p>}
               {loadingManagers && (
                 <p className="text-sm text-gray-500 mt-1">Loading managers...</p>
               )}

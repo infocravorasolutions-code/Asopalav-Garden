@@ -10,7 +10,13 @@ import {
   Building,
   Download,
   RefreshCw,
-  Loader2
+  Loader2,
+  UserCog,
+  Briefcase,
+  Activity,
+  Sun,
+  Moon,
+  Zap
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { api } from '../../services/api';
@@ -24,19 +30,31 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // State for shift-wise attendance
+  const [shiftData, setShiftData] = useState({
+    morningActive: 0,
+    eveningActive: 0,
+    nightShiftActive: 0,
+    morningShiftEmployees: 0,
+    eveningShiftEmployees: 0,
+    nightShiftEmployees: 0
+  });
+
   // Fetch dynamic stats data
   const fetchStats = async () => {
     try {
       setRefreshing(true);
 
       // Fetch all data in parallel
-      const [employeesResponse, attendanceResponse] = await Promise.all([
+      const [employeesResponse, attendanceResponse, managersResponse] = await Promise.all([
         api.get('/api/employee/all'),
-        api.get('/api/attendence/')
+        api.get('/api/attendence/'),
+        api.get('/api/manager/')
       ]);
 
       const employees = employeesResponse.data?.data || employeesResponse.data?.employees || [];
       const attendance = attendanceResponse.data?.attendance || [];
+      const managers = managersResponse.data?.data || managersResponse.data?.managers || [];
 
       // Calculate today's date
       const today = new Date().toDateString();
@@ -51,50 +69,84 @@ const AdminDashboard = () => {
         record.stepIn && !record.stepOut
       ).length;
 
-      // Calculate attendance rate
-      const totalEmployees = employees.length;
-      const attendanceRate = totalEmployees > 0 ?
-        ((todayAttendance.length / totalEmployees) * 100).toFixed(1) : 0;
+      // Calculate shift-wise data
+      const morningShiftEmployees = employees.filter(emp =>
+        emp.shift === 'Morning Shift (9:00 AM - 5:00 PM)' || emp.shift === 'Morning'
+      ).length;
 
-      // Calculate pending reports (employees without attendance today)
-      const employeesWithAttendance = new Set(todayAttendance.map(record =>
-        record.employeeId?._id || record.employeeId
-      ));
-      const pendingReports = totalEmployees - employeesWithAttendance.size;
+      const eveningShiftEmployees = employees.filter(emp =>
+        emp.shift === 'Evening Shift (5:00 PM - 11:00 PM)' || emp.shift === 'Evening'
+      ).length;
 
-      // Update stats with dynamic data
+      const nightShiftEmployees = employees.filter(emp =>
+        emp.shift === 'Night Shift (11:00 PM - 7:00 AM)' || emp.shift === 'Night'
+      ).length;
+
+      // Get active employees by shift
+      const morningActive = todayAttendance.filter(record => {
+        const employee = employees.find(emp =>
+          (emp._id === record.employeeId?._id) || (emp._id === record.employeeId)
+        );
+        return employee && (employee.shift === 'Morning Shift (9:00 AM - 5:00 PM)' || employee.shift === 'Morning') && record.stepIn && !record.stepOut;
+      }).length;
+
+      const eveningActive = todayAttendance.filter(record => {
+        const employee = employees.find(emp =>
+          (emp._id === record.employeeId?._id) || (emp._id === record.employeeId)
+        );
+        return employee && (employee.shift === 'Evening Shift (5:00 PM - 11:00 PM)' || employee.shift === 'Evening') && record.stepIn && !record.stepOut;
+      }).length;
+
+      const nightShiftActive = todayAttendance.filter(record => {
+        const employee = employees.find(emp =>
+          (emp._id === record.employeeId?._id) || (emp._id === record.employeeId)
+        );
+        return employee && (employee.shift === 'Night Shift (11:00 PM - 7:00 AM)' || employee.shift === 'Night') && record.stepIn && !record.stepOut;
+      }).length;
+
+      // Update shift data state
+      setShiftData({
+        morningActive,
+        eveningActive,
+        nightShiftActive,
+        morningShiftEmployees,
+        eveningShiftEmployees,
+        nightShiftEmployees
+      });
+
+      // Update stats with dynamic data matching reference image
       setStats([
         {
           title: 'Total Employees',
-          value: totalEmployees.toString(),
+          value: employees.length.toString(),
           change: '+12%',
           changeType: 'positive',
           icon: Users,
           color: 'blue'
         },
         {
-          title: 'Active Today',
-          value: activeToday.toString(),
+          title: 'Total Supervisors',
+          value: managers.length.toString(),
           change: '+8%',
           changeType: 'positive',
-          icon: Clock,
-          color: 'green'
+          icon: UserCog,
+          color: 'blue'
         },
         {
-          title: 'Attendance Rate',
-          value: `${attendanceRate}%`,
+          title: 'Working Employees',
+          value: activeToday.toString(),
           change: '+2.1%',
           changeType: 'positive',
-          icon: BarChart3,
-          color: 'purple'
+          icon: Briefcase,
+          color: 'blue'
         },
         {
-          title: 'Pending Reports',
-          value: pendingReports.toString(),
-          change: '-3',
-          changeType: 'negative',
-          icon: FileText,
-          color: 'orange'
+          title: 'Night Shift',
+          value: nightShiftActive.toString(),
+          change: '+5%',
+          changeType: 'positive',
+          icon: Activity,
+          color: 'blue'
         }
       ]);
 
@@ -103,40 +155,40 @@ const AdminDashboard = () => {
       toast.error('Failed to fetch dashboard statistics');
 
       // Fallback to default stats
-      setStats([
-        {
-          title: 'Total Employees',
-          value: '0',
-          change: '+0%',
-          changeType: 'positive',
-          icon: Users,
-          color: 'blue'
-        },
-        {
-          title: 'Active Today',
-          value: '0',
-          change: '+0%',
-          changeType: 'positive',
-          icon: Clock,
-          color: 'green'
-        },
-        {
-          title: 'Attendance Rate',
-          value: '0%',
-          change: '+0%',
-          changeType: 'positive',
-          icon: BarChart3,
-          color: 'purple'
-        },
-        {
-          title: 'Pending Reports',
-          value: '0',
-          change: '0',
-          changeType: 'positive',
-          icon: FileText,
-          color: 'orange'
-        }
-      ]);
+      // setStats([
+      //   {
+      //     title: 'Total Employees',
+      //     value: '0',
+      //     change: '+0%',
+      //     changeType: 'positive',
+      //     icon: Users,
+      //     color: 'blue'
+      //   },
+      //   {
+      //     title: 'Active Today',
+      //     value: '0',
+      //     change: '+0%',
+      //     changeType: 'positive',
+      //     icon: Clock,
+      //     color: 'green'
+      //   },
+      //   {
+      //     title: 'Attendance Rate',
+      //     value: '0%',
+      //     change: '+0%',
+      //     changeType: 'positive',
+      //     icon: BarChart3,
+      //     color: 'purple'
+      //   },
+      //   {
+      //     title: 'Pending Reports',
+      //     value: '0',
+      //     change: '0',
+      //     changeType: 'positive',
+      //     icon: FileText,
+      //     color: 'orange'
+      //   }
+      // ]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -181,7 +233,7 @@ const AdminDashboard = () => {
       href: '/admin/attendance'
     },
     {
-      title: 'Muster Roll Report',
+      title: 'Report',
       description: 'Generate traditional muster roll reports',
       icon: FileText,
       color: 'blue',
@@ -238,38 +290,80 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Matching Reference Image */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {stats.map((stat, index) => (
-          <Card key={index} className="hover:shadow-lg transition-shadow touch-manipulation">
-            <CardContent className="p-4 sm:p-6">
+          <Card key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{stat.title}</p>
-                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{stat.value}</p>
-                  <div className="flex items-center mt-1 sm:mt-2">
-                    <span className={`text-xs sm:text-sm font-medium ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                      {stat.change}
-                    </span>
-                    <span className="text-xs sm:text-sm text-gray-500 ml-1 hidden sm:inline">vs last month</span>
-                  </div>
+                  <p className="text-sm font-medium text-gray-600 mb-2">{stat.title}</p>
+                  <p className="text-3xl font-bold text-blue-600 mb-2">{stat.value}</p>
                 </div>
-                <div className={`p-2 sm:p-3 rounded-lg flex-shrink-0 ${stat.color === 'blue' ? 'bg-blue-100' :
-                  stat.color === 'green' ? 'bg-green-100' :
-                    stat.color === 'purple' ? 'bg-purple-100' :
-                      'bg-orange-100'
-                  }`}>
-                  <stat.icon className={`h-5 w-5 sm:h-6 sm:w-6 ${stat.color === 'blue' ? 'text-blue-600' :
-                    stat.color === 'green' ? 'text-green-600' :
-                      stat.color === 'purple' ? 'text-purple-600' :
-                        'text-orange-600'
-                    }`} />
+                <div className="p-3 rounded-lg bg-blue-100 flex-shrink-0">
+                  <stat.icon className="h-6 w-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Shift-wise Attendance Section */}
+      <div className="mt-6 sm:mt-8">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <BarChart3 className="h-5 w-5 mr-2 text-blue-600" />
+          Shift-wise Attendance
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          {/* Morning Shift Card */}
+          <Card className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-600 mb-2">Morning</p>
+                  <p className="text-3xl font-bold text-blue-600 mb-2">{shiftData.morningActive}</p>
+                  <p className="text-xs text-gray-500">of {shiftData.morningShiftEmployees} employees</p>
+                </div>
+                <div className="p-3 rounded-lg bg-blue-100 flex-shrink-0">
+                  <Sun className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Evening Shift Card */}
+          <Card className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-600 mb-2">Evening</p>
+                  <p className="text-3xl font-bold text-blue-600 mb-2">{shiftData.eveningActive}</p>
+                  <p className="text-xs text-gray-500">of {shiftData.eveningShiftEmployees} employees</p>
+                </div>
+                <div className="p-3 rounded-lg bg-blue-100 flex-shrink-0">
+                  <Moon className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Night Shift Card */}
+          <Card className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-600 mb-2">Night</p>
+                  <p className="text-3xl font-bold text-blue-600 mb-2">{shiftData.nightShiftActive}</p>
+                  <p className="text-xs text-gray-500">of {shiftData.nightShiftEmployees} employees</p>
+                </div>
+                <div className="p-3 rounded-lg bg-blue-100 flex-shrink-0">
+                  <Zap className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Quick Actions */}
@@ -304,68 +398,6 @@ const AdminDashboard = () => {
             </Card>
           ))}
         </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center text-base sm:text-lg">
-              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-3 sm:space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate">John Doe checked in</p>
-                  <p className="text-xs text-gray-500">2 minutes ago</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate">New employee added</p>
-                  <p className="text-xs text-gray-500">15 minutes ago</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full flex-shrink-0"></div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate">Report generated</p>
-                  <p className="text-xs text-gray-500">1 hour ago</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base sm:text-lg">Attendance Overview</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-3 sm:space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Present Today</span>
-                <span className="font-semibold text-sm sm:text-base">142/156</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: '91%' }}></div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Late Arrivals</span>
-                <span className="font-semibold text-orange-600 text-sm sm:text-base">8</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Absent</span>
-                <span className="font-semibold text-red-600 text-sm sm:text-base">14</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

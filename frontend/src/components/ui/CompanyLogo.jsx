@@ -8,7 +8,8 @@ const CompanyLogo = ({
     size = 'md',
     className = '',
     showFallback = true,
-    style = {}
+    style = {},
+    noContainer = false
 }) => {
     const logoUrl = getCompanyLogo(companyCode, fallbackLogoUrl);
 
@@ -35,12 +36,17 @@ const CompanyLogo = ({
     const iconSize = iconSizes[size] || iconSizes.md;
 
     if (logoUrl) {
+        const containerClasses = noContainer ? '' : 'relative';
+        const imageClasses = noContainer
+            ? `${className} object-contain`
+            : `${sizeClass} rounded-lg object-contain border border-gray-200 shadow-sm bg-white`;
+
         return (
-            <div className={`relative ${className}`}>
+            <div className={containerClasses}>
                 <img
                     src={logoUrl}
                     alt={`${companyCode} Logo`}
-                    className={`${sizeClass} rounded-lg object-contain border border-gray-200 shadow-sm bg-white`}
+                    className={imageClasses}
                     style={{
                         maxWidth: '100%',
                         maxHeight: '100%',
@@ -56,7 +62,7 @@ const CompanyLogo = ({
                         }
                     }}
                 />
-                {showFallback && (
+                {showFallback && !noContainer && (
                     <div
                         className={`${sizeClass} rounded-lg flex items-center justify-center bg-gray-100 border border-gray-200 shadow-sm hidden`}
                         style={{

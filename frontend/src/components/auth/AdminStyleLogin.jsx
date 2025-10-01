@@ -30,9 +30,8 @@ const AdminStyleLogin = () => {
     const navigate = useNavigate();
 
     const [userType, setUserType] = useState('admin');
-    console.log("userType ==> ", userType);
     const [formData, setFormData] = useState({
-        company: 'NEELKANTH',
+        company: 'HARIKRISHNA',
         email: '',
         password: ''
     });
@@ -43,7 +42,7 @@ const AdminStyleLogin = () => {
     const handleUserTypeChange = (type) => {
         console.log('User type changed to:', type);
         setUserType(type);
-        setFormData({ company: 'NEELKANTH', email: '', password: '' });
+        setFormData({ company: 'HARIKRISHNA', email: '', password: '' });
         setValidationErrors({});
         clearError();
     };

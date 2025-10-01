@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Filter, Search, FileText } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, Download, Filter, Search, FileText, X } from 'lucide-react';
 import { adminAPI, api } from '../../services/api';
 import { showSuccess, showError } from '../../utils/toast';
 
@@ -14,11 +14,11 @@ const TraditionalMusterRollReport = () => {
     employeeId: ''
   });
   const companyinfo = JSON.parse(localStorage.getItem('company'));
-  const [companyInfo] = useState({
-    name: 'PANTHER SECURE',
-    location: 'RIVERFRONT AHMEDABAD UNIT',
-    month: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
-  });
+  // const [companyInfo] = useState({
+  //   name: 'PANTHER SECURE',
+  //   location: 'RIVERFRONT AHMEDABAD UNIT',
+  //   month: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
+  // });
 
   useEffect(() => {
     fetchReportData();
@@ -73,12 +73,12 @@ const TraditionalMusterRollReport = () => {
 
         return {
           srNo: index + 1,
-          empCode: employee.employeeId || `EMP${employee._id.slice(-6)}`,
+          empCode: employee.empCode || employee.employeeId || `EMP${employee._id.slice(-6)}`,
           name: employee.name,
-          designation: employee.designation || 'employee',
+          designation: employee.designation || employee.position || 'employee',
           shift: employee.shift || 'Morning',
-          uan: employee.uan || '000000000000',
-          esic: employee.esic || '0000000000',
+          uan: employee.uan || employee.uanNumber || 'Not Available',
+          esic: employee.esic || employee.esicNumber || 'Not Available',
           attendance,
           totalDays
         };
@@ -110,15 +110,37 @@ const TraditionalMusterRollReport = () => {
       const employeesResponse = await api.get('/api/employee/all');
       let employees = employeesResponse.data.data;
 
-      // Apply filters
-      if (filters.shift) {
-        employees = employees.filter(emp => emp.shift === filters.shift.toLowerCase());
+      console.log('All employees before filtering:', employees.length);
+      console.log('Applied filters:', filters);
+
+      // Apply shift filter
+      if (filters.shift && filters.shift !== '') {
+        employees = employees.filter(emp => {
+          if (!emp.shift) return false;
+          const empShift = emp.shift.toLowerCase();
+          const filterShift = filters.shift.toLowerCase();
+
+          // Flexible shift matching
+          if (filterShift === 'morning') {
+            return empShift.includes('morning') || empShift.includes('7:00') || empShift.includes('am');
+          } else if (filterShift === 'evening') {
+            return empShift.includes('evening') || empShift.includes('3:00') || empShift.includes('pm');
+          } else if (filterShift === 'night') {
+            return empShift.includes('night') || empShift.includes('11:00');
+          } else {
+            return empShift.includes(filterShift);
+          }
+        });
+        console.log(`After shift filter (${filters.shift}):`, employees.length);
       }
-      if (filters.employeeId) {
-        employees = employees.filter(emp =>
-          emp.employeeId?.includes(filters.employeeId) ||
-          emp._id.includes(filters.employeeId)
-        );
+
+      // Apply employee ID filter
+      if (filters.employeeId && filters.employeeId !== '') {
+        employees = employees.filter(emp => {
+          const empCode = emp.empCode || emp.employeeId || emp._id;
+          return empCode.toString().toLowerCase().includes(filters.employeeId.toLowerCase());
+        });
+        console.log(`After employee ID filter (${filters.employeeId}):`, employees.length);
       }
 
       // Fetch attendance data with date filters
@@ -128,13 +150,18 @@ const TraditionalMusterRollReport = () => {
       const attendanceResponse = await adminAPI.getAttendance()
       const allAttendanceData = attendanceResponse.attendance || [];
 
-      // Filter attendance data by date range and status
+      // Filter attendance data by date range, status, and filtered employees
+      const filteredEmployeeIds = employees.map(emp => emp._id);
       const attendanceData = allAttendanceData.filter(att => {
         const attDate = new Date(att.stepIn);
         const dateMatch = attDate >= new Date(startDate) && attDate <= new Date(endDate);
         const statusMatch = !filters.status || att.status === filters.status;
-        return dateMatch && statusMatch;
+        const employeeMatch = filteredEmployeeIds.includes(att.employeeId._id || att.employeeId);
+        return dateMatch && statusMatch && employeeMatch;
       });
+
+      console.log(`Filtered employees: ${employees.length}`);
+      console.log(`Filtered attendance records: ${attendanceData.length}`);
 
       // Process data to create muster roll format
       const processedData = employees.map((employee, index) => {
@@ -167,12 +194,12 @@ const TraditionalMusterRollReport = () => {
 
         return {
           srNo: index + 1,
-          empCode: employee.employeeId || `EMP${employee._id.slice(-6)}`,
+          empCode: employee.empCode || employee.employeeId || `EMP${employee._id.slice(-6)}`,
           name: employee.name,
-          designation: employee.designation || 'employee',
+          designation: employee.designation || employee.position || 'employee',
           shift: employee.shift || 'Morning',
-          uan: employee.uan || '000000000000',
-          esic: employee.esic || '0000000000',
+          uan: employee.uan || employee.uanNumber || 'Not Available',
+          esic: employee.esic || employee.esicNumber || 'Not Available',
           attendance,
           totalDays
         };
@@ -212,13 +239,55 @@ const TraditionalMusterRollReport = () => {
 
   const handleExportPDF = async () => {
     try {
-      // For PDF export, we'll use the browser's print functionality
-      // This will allow users to save as PDF using their browser's print dialog
-      window.print();
-      showSuccess('Use your browser\'s print dialog to save as PDF');
+      setLoading(true);
+
+      // Build query parameters from current filters
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value && value !== '') {
+          params.append(key, value);
+        }
+      });
+
+      // Use the configured API service instead of direct fetch
+      const response = await api.get(`/api/employee/muster-roll/export/pdf?${params.toString()}`, {
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/pdf'
+        }
+      });
+
+      // Validate response data
+      if (!response.data || response.data.size === 0) {
+        throw new Error('PDF file is empty');
+      }
+
+      // Create a unique filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `muster-roll-report_${timestamp}.pdf`;
+
+      // Create blob and download directly
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      showSuccess('Muster roll report exported to PDF successfully!');
     } catch (error) {
-      showError('Failed to export report to PDF');
       console.error('Error exporting to PDF:', error);
+      showError(`Failed to export report to PDF: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -260,7 +329,7 @@ const TraditionalMusterRollReport = () => {
 
     for (let i = 1; i <= Math.min(daysInPeriod, 31); i++) {
       days.push(
-        <th key={i} className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">
+        <th key={i} className="border border-gray-300 bg-gray-100 px-1 py-2 text-center text-xs font-bold w-8">
           {i}
         </th>
       );
@@ -271,7 +340,7 @@ const TraditionalMusterRollReport = () => {
   const renderAttendanceCell = (day, attendance) => {
     const isPresent = attendance[day] === 'P';
     return (
-      <td key={day} className="border border-gray-300 px-1 py-1 text-center text-xs">
+      <td key={day} className="border border-gray-300 px-1 py-1 text-center text-xs w-8">
         {isPresent && (
           <span className="inline-flex w-4 h-4 bg-green-500 text-white rounded-full text-xs font-bold items-center justify-center">
             P
@@ -348,11 +417,11 @@ const TraditionalMusterRollReport = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end space-x-2">
               <button
                 onClick={handleGenerateReport}
                 disabled={loading}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center justify-center"
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center justify-center"
               >
                 {loading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -363,9 +432,44 @@ const TraditionalMusterRollReport = () => {
                   </>
                 )}
               </button>
+
             </div>
           </div>
         </div>
+
+        {/* Filter Status */}
+        {(filters.startDate || filters.endDate || filters.shift || filters.status || filters.employeeId) && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <h3 className="text-sm font-medium text-blue-800 mb-2">Active Filters:</h3>
+            <div className="flex flex-wrap gap-2">
+              {filters.startDate && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Start: {new Date(filters.startDate).toLocaleDateString()}
+                </span>
+              )}
+              {filters.endDate && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  End: {new Date(filters.endDate).toLocaleDateString()}
+                </span>
+              )}
+              {filters.shift && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Shift: {filters.shift}
+                </span>
+              )}
+              {filters.status && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Status: {filters.status}
+                </span>
+              )}
+              {filters.employeeId && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Employee: {filters.employeeId}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Export Buttons */}
         <div className="flex gap-2 mb-4">
@@ -403,18 +507,18 @@ const TraditionalMusterRollReport = () => {
 
         {/* Report Table */}
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse table-fixed">
             <thead>
               <tr className="bg-gray-100">
-                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">SR NO</th>
-                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">EMP CODE</th>
-                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">NAME OF EMPLOYEE</th>
-                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">DESIGNATION</th>
-                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">SHIFT</th>
-                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">UAN</th>
-                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">ESIC</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-16">SR NO</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-24">EMP CODE</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-32">NAME OF EMPLOYEE</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-28">DESIGNATION</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-40">SHIFT</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-32">UAN</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-28">ESIC</th>
                 {renderDayColumns()}
-                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold">TOTAL DAYS</th>
+                <th className="border border-gray-300 bg-gray-100 px-2 py-2 text-center text-xs font-bold w-20">TOTAL DAYS</th>
               </tr>
             </thead>
             <tbody>
@@ -445,17 +549,17 @@ const TraditionalMusterRollReport = () => {
 
                   return (
                     <tr key={employee.srNo} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-2 py-2 text-center text-xs">{employee.srNo}</td>
-                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono">{employee.empCode}</td>
-                      <td className="border border-gray-300 px-2 py-2 text-xs">{employee.name}</td>
-                      <td className="border border-gray-300 px-2 py-2 text-center text-xs">{employee.designation}</td>
-                      <td className="border border-gray-300 px-2 py-2 text-center text-xs">{employee.shift}</td>
-                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono">{employee.uan}</td>
-                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono">{employee.esic}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs w-16">{employee.srNo}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono w-24">{employee.empCode}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-xs w-32">{employee.name}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs w-28">{employee.designation}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs w-40">{employee.shift}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono w-32">{employee.uan}</td>
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-mono w-28">{employee.esic}</td>
                       {Array.from({ length: Math.min(daysInPeriod, 31) }, (_, i) => i + 1).map(day =>
                         renderAttendanceCell(day, employee.attendance)
                       )}
-                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-bold text-blue-600">
+                      <td className="border border-gray-300 px-2 py-2 text-center text-xs font-bold text-blue-600 w-20">
                         {employee.totalDays}
                       </td>
                     </tr>

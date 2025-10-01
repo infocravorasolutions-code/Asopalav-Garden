@@ -102,9 +102,21 @@ export const deleteManager = async (req, res) => {
 
 export const loginManager = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    console.log("Manager login attempt:", { email });
+    const { email, password, company } = req.body;
+    console.log("Manager login attempt:", { email, company });
 
+    if (!email || !password || !company) {
+      return res.status(400).json({ message: "Email, password, and company code are required" });
+    }
+
+    // First, find the company by company code
+    const companyData = await Company.findOne({ code: company });
+    if (!companyData) {
+      console.log("Company not found with code:", company);
+      return res.status(404).json({ message: "Company not found with the provided company code" });
+    }
+
+    // Find manager by email
     const manager = await Manager.findOne({ email });
     if (!manager) {
       console.log("Manager not found for email:", email);
@@ -113,6 +125,12 @@ export const loginManager = async (req, res) => {
 
     console.log("Manager found:", manager.name, "Company ID:", manager.companyId);
 
+    // Check if manager belongs to the same company
+    if (!manager.companyId || manager.companyId.toString() !== companyData._id.toString()) {
+      console.log("Manager does not belong to this company");
+      return res.status(403).json({ message: "Manager does not belong to this company" });
+    }
+
     const isPasswordValid = await bcrypt.compare(password, manager.password);
     if (!isPasswordValid) {
       console.log("Invalid password for manager:", email);
@@ -120,21 +138,18 @@ export const loginManager = async (req, res) => {
     }
 
     // Get company details
-    let company = null;
-    if (manager.companyId) {
-      company = await Company.findById(manager.companyId);
-      console.log("Company found:", company ? company.name : "No company");
-    }
+    let companyDetails = companyData;
+    console.log("Company found:", companyDetails ? companyDetails.name : "No company");
 
     const token = jwt.sign({
       id: manager._id,
       email: manager.email,
       userType: 'manager',
-      companyId: manager.companyId
+      companyId: companyData._id
     }, JWT_SECRET, { expiresIn: '1y' });
 
     console.log("Manager login successful:", manager.name);
-    res.status(200).json({ message: "Login successful", token, manager, company });
+    res.status(200).json({ message: "Login successful", token, manager, company: companyDetails });
   }
   catch (error) {
     console.error("Error logging in:", error);

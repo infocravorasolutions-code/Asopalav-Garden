@@ -92,23 +92,7 @@ const DashboardLayout = ({ children }) => {
               <div className="flex items-center justify-between w-full min-w-0">
                 <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
                   {/* Company Logo */}
-                  {logoUrl ? (
-                    <img
-                      src={logoUrl}
-                      alt={companyName}
-                      className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
-                    />
-                  ) : (
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: primaryColor + '20' }}
-                    >
-                      <User
-                        className="h-5 w-5"
-                        style={{ color: primaryColor }}
-                      />
-                    </div>
-                  )}
+
 
                   <div className="min-w-0 flex-1">
                     <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 truncate">

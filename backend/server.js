@@ -39,8 +39,8 @@ app.use(cors({
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use("/static", express.static("upload"));
 
 // Routes
@@ -58,7 +58,7 @@ app.use("/api/superadmin", superAdminRoutes);
 // Location routes removed - using manual location fields
 
 // Cron jobs
-cron.schedule("*/1 * * * *", autoStepOut); // Auto step-out every 30 minutes
+cron.schedule("*/30 * * * *", autoStepOut); // Auto step-out every 30 minutes
 cron.schedule("*/10 * * * *", updateAllEmployeeLocations); // Update all employee latest locations every 10 minutes
 cron.schedule("*/10 * * * *", updateStepInUserLocations); // Update step-in user locations every 10 minutes
 

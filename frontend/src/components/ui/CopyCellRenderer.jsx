@@ -34,12 +34,12 @@ const CopyCellRenderer = ({ value, field }) => {
 
     return (
         <div className="flex items-center justify-between w-full group">
-            <div className="flex-1 truncate pr-2">
+            <div className="flex-1 pr-2 break-words">
                 {value || 'N/A'}
             </div>
             <button
                 onClick={handleCopy}
-                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-100 rounded"
+                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-100 rounded flex-shrink-0"
                 title={`Copy ${field || 'value'}`}
             >
                 {copied ? (

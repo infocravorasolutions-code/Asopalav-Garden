@@ -46,7 +46,8 @@ const SimpleUnifiedLogin = () => {
   const validateForm = () => {
     const errors = {};
 
-    if (userType === 'admin' && !formData.company.trim()) {
+    // Company code is required for both admin and manager
+    if ((userType === 'admin' || userType === 'manager') && !formData.company.trim()) {
       errors.company = 'Company code is required';
     }
 
@@ -196,8 +197,8 @@ const SimpleUnifiedLogin = () => {
                 </div>
               )}
 
-              {/* Company Code - Only for Admin */}
-              {userType === 'admin' && (
+              {/* Company Code - Required for Admin and Manager */}
+              {(userType === 'admin' || userType === 'manager') && (
                 <div className="space-y-4">
                   <label className="text-base font-bold text-white/90 flex items-center">
                     <Building className="h-6 w-6 mr-3 text-blue-400" />

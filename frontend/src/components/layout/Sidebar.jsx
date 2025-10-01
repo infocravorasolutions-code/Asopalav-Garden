@@ -28,7 +28,7 @@ import CompanyLogo from '../ui/CompanyLogo';
 const Sidebar = ({ isOpen, onToggle, userType }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { companyName, logoUrl, primaryColor, companyCode } = useCompanyTheme();
   const [isMobile, setIsMobile] = useState(false);
 
@@ -46,45 +46,76 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
   // Navigation items based on user type
   const getNavigationItems = () => {
     if (userType === 'admin') {
-      return [
-        {
-          id: 'dashboard',
-          label: 'Dashboard',
-          icon: Home,
-          path: '/admin/dashboard',
-          color: 'blue'
-        },
+      // Check if admin is readonly
+      const isReadonlyAdmin = user?.role === 'readonly';
 
-        {
-          id: 'managers',
-          label: 'Managers',
-          icon: UserCog,
-          path: '/admin/managers',
-          color: 'purple'
-        },
-        {
-          id: 'employees',
-          label: 'Employees',
-          icon: UserCheck,
-          path: '/admin/employees',
-          color: 'green'
-        },
-        {
-          id: 'attendance',
-          label: 'Attendance',
-          icon: Clock,
-          path: '/admin/attendance',
-          color: 'orange'
-        },
-        {
-          id: 'muster-roll',
-          label: 'Muster Roll Report',
-          icon: FileText,
-          path: '/admin/traditional-muster-roll',
-          color: 'indigo'
-        },
-
-      ];
+      if (isReadonlyAdmin) {
+        // Readonly admin can only see attendance menu + logout
+        return [
+          {
+            id: 'attendance',
+            label: 'Attendance',
+            icon: Clock,
+            path: '/admin/attendance',
+            color: 'orange'
+          },
+          {
+            id: 'logout',
+            label: 'Logout',
+            icon: LogOut,
+            path: '/logout',
+            color: 'red',
+            isLogout: true
+          }
+        ];
+      } else {
+        // Full admin can see all menus + logout
+        return [
+          {
+            id: 'dashboard',
+            label: 'Dashboard',
+            icon: Home,
+            path: '/admin/dashboard',
+            color: 'blue'
+          },
+          {
+            id: 'managers',
+            label: 'Managers',
+            icon: UserCog,
+            path: '/admin/managers',
+            color: 'purple'
+          },
+          {
+            id: 'employees',
+            label: 'Employees',
+            icon: UserCheck,
+            path: '/admin/employees',
+            color: 'green'
+          },
+          {
+            id: 'attendance',
+            label: 'Attendance',
+            icon: Clock,
+            path: '/admin/attendance',
+            color: 'orange'
+          },
+          {
+            id: 'Report',
+            label: 'Report',
+            icon: FileText,
+            path: '/admin/traditional-muster-roll',
+            color: 'indigo'
+          },
+          {
+            id: 'logout',
+            label: 'Logout',
+            icon: LogOut,
+            path: '/logout',
+            color: 'red',
+            isLogout: true
+          }
+        ];
+      }
     } else if (userType === 'manager') {
       return [
         {
@@ -101,16 +132,21 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
           path: '/manager/team',
           color: 'purple'
         },
-
         {
           id: 'step-in-out',
           label: 'Step In/Step Out',
           icon: Clock,
           path: '/manager/step-in-out',
           color: 'green'
+        },
+        {
+          id: 'logout',
+          label: 'Logout',
+          icon: LogOut,
+          path: '/logout',
+          color: 'red',
+          isLogout: true
         }
-
-
       ];
     } else if (userType === 'employee') {
       return [
@@ -127,6 +163,14 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
           icon: Clock,
           path: '/employee/attendance',
           color: 'green'
+        },
+        {
+          id: 'logout',
+          label: 'Logout',
+          icon: LogOut,
+          path: '/logout',
+          color: 'red',
+          isLogout: true
         }
       ];
     }
@@ -137,10 +181,14 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
 
   // Removed dropdown functionality
 
-  const handleNavigation = (path) => {
-    navigate(path);
-    if (isMobile) {
-      onToggle();
+  const handleNavigation = (path, isLogout = false) => {
+    if (isLogout) {
+      handleLogout();
+    } else {
+      navigate(path);
+      if (isMobile) {
+        onToggle();
+      }
     }
   };
 
@@ -155,22 +203,27 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
 
   const renderMenuItem = (item) => {
     const isItemActive = isActive(item.path);
+    const isLogoutItem = item.isLogout;
 
     return (
       <button
         key={item.id}
-        onClick={() => handleNavigation(item.path)}
+        onClick={() => handleNavigation(item.path, isLogoutItem)}
         className={`w-full flex items-center px-4 py-3 text-sm sm:text-base font-medium rounded-lg transition-all duration-200 group min-w-0 ${isItemActive
           ? (item.color === 'blue' ? 'bg-blue-500/20 text-blue-600 border-l-4 border-blue-500' :
             item.color === 'green' ? 'bg-green-500/20 text-green-600 border-l-4 border-green-500' :
               item.color === 'purple' ? 'bg-purple-500/20 text-purple-600 border-l-4 border-purple-500' :
                 item.color === 'orange' ? 'bg-orange-500/20 text-orange-600 border-l-4 border-orange-500' :
                   item.color === 'indigo' ? 'bg-indigo-500/20 text-indigo-600 border-l-4 border-indigo-500' :
-                    'bg-gray-500/20 text-gray-600 border-l-4 border-gray-500')
-          : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                    item.color === 'red' ? 'bg-red-500/20 text-red-600 border-l-4 border-red-500' :
+                      'bg-gray-500/20 text-gray-600 border-l-4 border-gray-500')
+          : isLogoutItem
+            ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
+            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
           }`}
       >
         <div className="flex items-center space-x-3 min-w-0 flex-1">
+          <item.icon className="h-5 w-5 flex-shrink-0" />
           <span className="truncate">{item.label}</span>
         </div>
       </button>
@@ -194,56 +247,38 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
         lg:translate-x-0 lg:h-screen
         w-64 lg:w-64 overflow-hidden
       `}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3 min-w-0 flex-1">
+        {/* Header - Logo Only */}
+        <div className="flex items-center justify-center p-6 border-b border-gray-200">
+          <div className="w-full">
             <CompanyLogo
               companyCode={companyCode}
               fallbackLogoUrl={logoUrl}
-              size="md"
-              className="flex-shrink-0"
+              size="2xl"
+              className="w-full h-auto"
+              noContainer={true}
               style={{
-                minWidth: '40px',
-                minHeight: '40px',
-                maxWidth: '40px',
-                maxHeight: '40px'
+                width: '100%',
+                height: 'auto',
+                maxWidth: 'none',
+                maxHeight: 'none'
               }}
             />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate">
-                {companyName || (userType === 'admin' ? 'Admin Portal' : 'Manager Portal')}
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-500 truncate">
-                {userType === 'admin' ? 'Administrator' : 'Manager'} Portal
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onToggle}
-            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <X className="h-5 w-5 text-gray-600" />
-          </button>
-        </div>
-
-        <div className='flex flex-col justify-between items-between
-'>
-          {/* Navigation */}
-          <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
-            {navigationItems.map(item => renderMenuItem(item))}
-          </nav>
-
-          {/* Footer */}
-          <div className="p-6 border-t border-gray-200">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors min-w-0"
-            >
-              <LogOut className="h-5 w-5 flex-shrink-0" />
-              <span className="truncate">Logout</span>
-            </button>
+            {/* Readonly Admin Indicator */}
+            {userType === 'admin' && user?.role === 'readonly' && (
+              <div className="mt-3 text-center">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                  <Shield className="h-3 w-3 mr-1" />
+                  Read-Only Access
+                </span>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
+          {navigationItems.map(item => renderMenuItem(item))}
+        </nav>
       </div>
     </>
   );

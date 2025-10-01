@@ -4,32 +4,43 @@ import Employee from "../models/employee.models.js";
 import EmployeeLocation from "../models/employeeLocation.models.js";
 
 // Run every 30 minutes
-export const autoStepOut=async()=>{
-
+export const autoStepOut = async () => {
   const now = new Date();
   const eightHoursAgo = new Date(now.getTime() - 8 * 60 * 60 * 1000);
 
   try {
+    console.log(`🔄 [Auto Step-Out] Running at ${now.toLocaleString()}`);
+    console.log(`🕐 [Auto Step-Out] Checking for employees stepped in before ${eightHoursAgo.toLocaleString()}`);
+
     const records = await Attendance.find({
       stepOut: null,
       stepIn: { $lte: eightHoursAgo }
-    });
+    }).populate('employeeId', 'name empCode');
 
+    console.log(`📊 [Auto Step-Out] Found ${records.length} employees to auto step-out`);
 
     for (const attendance of records) {
-      const stepOutTime = new Date();
-      const totalTime = Math.round((stepOutTime - attendance.stepIn) / 60000);
+      try {
+        const stepOutTime = new Date();
+        const totalTime = Math.round((stepOutTime - attendance.stepIn) / 60000);
 
-      attendance.stepOut = stepOutTime;
-      attendance.totalTime = totalTime;
-      attendance.note = attendance.note || "No Remarks";
-      attendance.status= "present"
-      await attendance.save();
+        attendance.stepOut = stepOutTime;
+        attendance.totalTime = totalTime;
+        attendance.note = attendance.note || "Auto step-out after 8 hours";
+        attendance.status = "present";
+        await attendance.save();
 
-      await Employee.findByIdAndUpdate(attendance.employeeId, { isWorking: false });
+        await Employee.findByIdAndUpdate(attendance.employeeId, { isWorking: false });
 
+        console.log(`✅ [Auto Step-Out] Auto stepped out employee: ${attendance.employeeId?.name || attendance.employeeId} (${attendance.employeeId?.empCode || 'N/A'})`);
+      } catch (employeeError) {
+        console.error(`❌ [Auto Step-Out] Error processing employee ${attendance.employeeId}:`, employeeError);
+      }
     }
+
+    console.log(`🎯 [Auto Step-Out] Completed processing ${records.length} employees`);
   } catch (error) {
+    console.error('❌ [Auto Step-Out] Error in auto step-out cron job:', error);
   }
 }
 
@@ -109,7 +120,7 @@ export const updateStepInUserLocations = async () => {
 
           // Update last location timestamp
           attendance.lastLocationUpdate = new Date();
-          
+
           await attendance.save();
 
         } else {

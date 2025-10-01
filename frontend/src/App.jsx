@@ -3,13 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CompanyThemeProvider } from './contexts/CompanyThemeContext';
-import GardenLogin from './components/auth/GardenLogin';
-import GardenDashboard from './components/admin/GardenDashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
-import ManagersPage from './components/admin/ManagersPage';
 import ManagersPageNew from './components/admin/ManagersPageNew';
 import EmployeesPage from './components/admin/EmployeesPage';
-import MusterRollReport from './components/admin/MusterRollReport';
 import TraditionalMusterRollReport from './components/admin/TraditionalMusterRollReport';
 import AttendanceManagement from './components/admin/AttendanceManagement';
 import ManagerDashboard from './components/manager/ManagerDashboard';
@@ -20,9 +16,7 @@ import CompanyLayout from './components/layout/CompanyLayout';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Loading from './components/ui/Loading';
 import ErrorBoundary from './components/ui/ErrorBoundary';
-import UnifiedLogin from './components/auth/UnifiedLogin';
 import AdminStyleLogin from './components/auth/AdminStyleLogin';
-import IndustryLogin from './components/auth/IndustryLogin';
 import EnhancedLogin from './components/auth/EnhancedLogin';
 import EnhancedEmployeeLogin from './components/auth/EnhancedEmployeeLogin';
 import SimpleLogin from './components/auth/SimpleLogin';
@@ -168,16 +162,7 @@ const AppRoutes = () => {
         }
       />
 
-      <Route
-        path="/admin/muster-roll"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout>
-              <MusterRollReport />
-            </DashboardLayout>
-          </ProtectedRoute>
-        }
-      />
+
 
       <Route
         path="/admin/traditional-muster-roll"

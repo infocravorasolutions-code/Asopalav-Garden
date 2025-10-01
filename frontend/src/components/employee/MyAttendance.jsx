@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
+import Pagination from '../ui/Pagination';
 import { attendanceAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -28,18 +29,37 @@ const MyAttendance = () => {
     const [dateFilter, setDateFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: 0,
+        limit: 10,
+        hasNextPage: false,
+        hasPrevPage: false
+    });
     const recordsPerPage = 10;
 
-    // Fetch attendance records
-    const fetchAttendanceRecords = async () => {
+    // Fetch attendance records with pagination
+    const fetchAttendanceRecords = async (page = 1) => {
         setLoading(true);
         try {
-            const response = await attendanceAPI.getEmployeeAttendance(user._id);
-            console.log("response ==> ", response);
+            console.log(`🔍 [MyAttendance] Fetching attendance for page: ${page}`);
+            const response = await attendanceAPI.getEmployeeAttendance(user._id, { page, limit: recordsPerPage });
+            console.log("📥 [MyAttendance] API Response:", response);
+
             setAttendanceRecords(response.data.attendance || []);
-            setTotalPages(Math.ceil((response.attendance || []).length / recordsPerPage));
+
+            // Update pagination state
+            if (response.data.pagination) {
+                setPagination(response.data.pagination);
+                setTotalPages(response.data.pagination.totalPages);
+                setTotalRecords(response.data.pagination.totalRecords);
+            }
+
+            console.log(`📊 [MyAttendance] Loaded ${response.data.attendance?.length || 0} records`);
         } catch (error) {
-            console.error('Error fetching attendance records:', error);
+            console.error('❌ [MyAttendance] Error fetching attendance records:', error);
             toast.error('Failed to fetch attendance records');
         } finally {
             setLoading(false);
@@ -98,11 +118,15 @@ const MyAttendance = () => {
         return matchesSearch && matchesStatus && matchesDate;
     });
 
-    // Pagination
-    const startIndex = (currentPage - 1) * recordsPerPage;
-    const endIndex = startIndex + recordsPerPage;
-    const paginatedRecords = filteredRecords.slice(startIndex, endIndex);
-    console.log("paginatedRecords ==> ", paginatedRecords);
+    // Handle page change
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+        fetchAttendanceRecords(newPage);
+    };
+
+    // Use filtered records for display (server-side pagination already applied)
+    const paginatedRecords = filteredRecords;
+    console.log("📊 [MyAttendance] Displaying records:", paginatedRecords.length);
 
     // Format date
     const formatDate = (dateString) => {
@@ -219,7 +243,7 @@ const MyAttendance = () => {
                         View and manage your attendance records
                     </p>
                 </div>
-                <div className="w-full flex flex-col gap-2">
+                {/* <div className="w-full flex flex-col gap-2">
                     <Button
                         onClick={fetchAttendanceRecords}
                         variant="outline"
@@ -235,15 +259,15 @@ const MyAttendance = () => {
                         <Download className="h-4 w-4" />
                         Export
                     </Button>
-                </div>
+                </div> */}
             </div>
 
             {/* Filters */}
-            <div className="w-full p-2 sm:p-3 lg:p-4">
+            {/* <div className="w-full p-2 sm:p-3 lg:p-4">
                 <Card className="shadow-sm w-full">
                     <CardContent className="p-2 sm:p-3 lg:p-4">
                         <div className="w-full flex flex-col gap-3">
-                            {/* Search */}
+                           
                             <div className="w-full">
                                 <div className="relative w-full">
                                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -257,9 +281,8 @@ const MyAttendance = () => {
                                 </div>
                             </div>
 
-                            {/* Filters Row */}
                             <div className="w-full flex flex-col sm:flex-row gap-3">
-                                {/* Status Filter */}
+                             
                                 <div className="w-full sm:w-48">
                                     <select
                                         value={statusFilter}
@@ -273,7 +296,7 @@ const MyAttendance = () => {
                                     </select>
                                 </div>
 
-                                {/* Date Filter */}
+                          
                                 <div className="w-full sm:w-48">
                                     <select
                                         value={dateFilter}
@@ -288,7 +311,7 @@ const MyAttendance = () => {
                                     </select>
                                 </div>
 
-                                {/* Clear Filters */}
+                   
                                 <div className="w-full sm:w-auto">
                                     <Button
                                         onClick={() => {
@@ -308,7 +331,7 @@ const MyAttendance = () => {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
+            </div> */}
 
             {/* Attendance Records */}
             <div className="w-full flex-1 flex flex-col overflow-hidden p-2 sm:p-3 lg:p-4">
@@ -320,163 +343,138 @@ const MyAttendance = () => {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-y-auto p-3 sm:p-4">
-                    {paginatedRecords.length === 0 ? (
-                        <div className="text-center py-8">
-                            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">No Records Found</h3>
-                            <p className="text-gray-600">
-                                {filteredRecords.length === 0 && attendanceRecords.length > 0
-                                    ? 'No records match your current filters.'
-                                    : 'No attendance records found for your account.'}
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {paginatedRecords.map((record, index) => {
-                                const statusInfo = getStatusInfo(record.status);
-                                const StatusIcon = statusInfo.icon;
+                        {paginatedRecords.length === 0 ? (
+                            <div className="text-center py-8">
+                                <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No Records Found</h3>
+                                <p className="text-gray-600">
+                                    {filteredRecords.length === 0 && attendanceRecords.length > 0
+                                        ? 'No records match your current filters.'
+                                        : 'No attendance records found for your account.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {paginatedRecords.map((record, index) => {
+                                    const statusInfo = getStatusInfo(record.status);
+                                    const StatusIcon = statusInfo.icon;
 
-                                return (
-                                    <div
-                                        key={record._id || index}
-                                        className="w-full border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow bg-white"
-                                    >
-                                        {/* Header with Date and Status */}
-                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4">
-                                            <div className="flex items-center space-x-4 mb-2 sm:mb-0">
+                                    return (
+                                        <div
+                                            key={record._id || index}
+                                            className="w-full border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow bg-white"
+                                        >
+                                            {/* Header with Date and Status */}
+                                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4">
+                                                <div className="flex items-center space-x-4 mb-2 sm:mb-0">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Calendar className="h-4 w-4 text-gray-500" />
+                                                        <span className="font-semibold text-lg">
+                                                            {formatDate(record.stepIn || record.createdAt)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Clock className="h-4 w-4 text-gray-500" />
+                                                        <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                                            {record.shift || 'N/A'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusInfo.color}`}>
+                                                    <StatusIcon className="h-4 w-4 mr-1" />
+                                                    {statusInfo.text}
+                                                </div>
+                                            </div>
+
+                                            {/* Employee and Manager Info */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                                 <div className="flex items-center space-x-2">
-                                                    <Calendar className="h-4 w-4 text-gray-500" />
-                                                    <span className="font-semibold text-lg">
-                                                        {formatDate(record.stepIn || record.createdAt)}
-                                                    </span>
+                                                    <User className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <span className="text-xs text-gray-500">Employee:</span>
+                                                        <span className="ml-2 font-medium text-sm truncate">
+                                                            {record.employeeId?.name || 'N/A'}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center space-x-2">
-                                                    <Clock className="h-4 w-4 text-gray-500" />
-                                                    <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                                                        {record.shift || 'N/A'}
+                                                    <User className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <span className="text-xs text-gray-500">Manager:</span>
+                                                        <span className="ml-2 font-medium text-sm truncate">
+                                                            {record.managerId?.name || 'N/A'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Time Information */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                                <div className="bg-blue-50 p-3 rounded-lg">
+                                                    <div className="flex items-center space-x-2 mb-1">
+                                                        <Clock className="h-4 w-4 text-blue-600" />
+                                                        <span className="text-sm font-medium text-blue-900">Step In</span>
+                                                    </div>
+                                                    <span className="text-lg font-semibold text-blue-700">
+                                                        {formatTime(record.stepIn)}
+                                                    </span>
+                                                </div>
+
+                                                <div className="bg-red-50 p-3 rounded-lg">
+                                                    <div className="flex items-center space-x-2 mb-1">
+                                                        <Clock className="h-4 w-4 text-red-600" />
+                                                        <span className="text-sm font-medium text-red-900">Step Out</span>
+                                                    </div>
+                                                    <span className="text-lg font-semibold text-red-700">
+                                                        {formatTime(record.stepOut)}
+                                                    </span>
+                                                </div>
+
+                                                <div className="bg-green-50 p-3 rounded-lg">
+                                                    <div className="flex items-center space-x-2 mb-1">
+                                                        <Clock className="h-4 w-4 text-green-600" />
+                                                        <span className="text-sm font-medium text-green-900">Total Hours</span>
+                                                    </div>
+                                                    <span className="text-lg font-semibold text-green-700">
+                                                        {calculateTotalHours(record.stepIn, record.stepOut)}
                                                     </span>
                                                 </div>
                                             </div>
 
-                                            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusInfo.color}`}>
-                                                <StatusIcon className="h-4 w-4 mr-1" />
-                                                {statusInfo.text}
-                                            </div>
-                                        </div>
-
-                                        {/* Employee and Manager Info */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                                            <div className="flex items-center space-x-2">
-                                                <User className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                                <div className="min-w-0 flex-1">
-                                                    <span className="text-xs text-gray-500">Employee:</span>
-                                                    <span className="ml-2 font-medium text-sm truncate">
-                                                        {record.employeeId?.name || 'N/A'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <User className="h-4 w-4 text-green-500 flex-shrink-0" />
-                                                <div className="min-w-0 flex-1">
-                                                    <span className="text-xs text-gray-500">Manager:</span>
-                                                    <span className="ml-2 font-medium text-sm truncate">
-                                                        {record.managerId?.name || 'N/A'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Time Information */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                                            <div className="bg-blue-50 p-3 rounded-lg">
-                                                <div className="flex items-center space-x-2 mb-1">
-                                                    <Clock className="h-4 w-4 text-blue-600" />
-                                                    <span className="text-sm font-medium text-blue-900">Step In</span>
-                                                </div>
-                                                <span className="text-lg font-semibold text-blue-700">
-                                                    {formatTime(record.stepIn)}
-                                                </span>
-                                            </div>
-
-                                            <div className="bg-red-50 p-3 rounded-lg">
-                                                <div className="flex items-center space-x-2 mb-1">
-                                                    <Clock className="h-4 w-4 text-red-600" />
-                                                    <span className="text-sm font-medium text-red-900">Step Out</span>
-                                                </div>
-                                                <span className="text-lg font-semibold text-red-700">
-                                                    {formatTime(record.stepOut)}
-                                                </span>
-                                            </div>
-
-                                            <div className="bg-green-50 p-3 rounded-lg">
-                                                <div className="flex items-center space-x-2 mb-1">
-                                                    <Clock className="h-4 w-4 text-green-600" />
-                                                    <span className="text-sm font-medium text-green-900">Total Hours</span>
-                                                </div>
-                                                <span className="text-lg font-semibold text-green-700">
-                                                    {calculateTotalHours(record.stepIn, record.stepOut)}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Location Information */}
-                                        <div className="border-t pt-4">
-                                            <div className="flex items-start space-x-2">
-                                                <MapPin className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
-                                                <div className="flex-1 min-w-0">
-                                                    <span className="text-sm text-gray-500">Location:</span>
-                                                    <p className="text-sm font-medium text-gray-900 mt-1 truncate">
-                                                        {record.address || 'Location not available'}
-                                                    </p>
-                                                    {record.latitude && record.longitude && (
-                                                        <p className="text-xs text-gray-500 mt-1 truncate">
-                                                            Coordinates: {record.latitude.toFixed(6)}, {record.longitude.toFixed(6)}
+                                            {/* Location Information */}
+                                            <div className="border-t pt-4">
+                                                <div className="flex items-start space-x-2">
+                                                    <MapPin className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <span className="text-sm text-gray-500">Location:</span>
+                                                        <p className="text-sm font-medium text-gray-900 mt-1 truncate">
+                                                            {record.address || 'Location not available'}
                                                         </p>
-                                                    )}
+                                                        {record.latitude && record.longitude && (
+                                                            <p className="text-xs text-gray-500 mt-1 truncate">
+                                                                Coordinates: {record.latitude.toFixed(6)}, {record.longitude.toFixed(6)}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                    );
+                                })}
+                            </div>
+                        )}
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 space-y-4 sm:space-y-0">
-                            <div className="text-sm text-gray-600 text-center sm:text-left">
-                                Showing {startIndex + 1} to {Math.min(endIndex, filteredRecords.length)} of {filteredRecords.length} records
-                            </div>
-                            <div className="flex items-center justify-center space-x-2">
-                                <Button
-                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                    disabled={currentPage === 1}
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-sm touch-manipulation min-h-[44px]"
-                                >
-                                    Previous
-                                </Button>
-                                <span className="text-sm text-gray-600 px-3">
-                                    Page {currentPage} of {totalPages}
-                                </span>
-                                <Button
-                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                    disabled={currentPage === totalPages}
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-sm touch-manipulation min-h-[44px]"
-                                >
-                                    Next
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                        {/* Pagination */}
+                        <Pagination
+                            pagination={pagination}
+                            onPageChange={handlePageChange}
+                            loading={loading}
+                        />
+                    </CardContent>
+                </Card>
+            </div>
         </div>
-    </div>
     );
 };
 

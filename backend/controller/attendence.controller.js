@@ -89,6 +89,32 @@ export const markStepIn = async (req, res) => {
       });
     }
 
+    // Check if employee has already completed attendance for today
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    console.log(`🔍 [markStepIn] Checking for completed attendance today for employee: ${finalEmployeeId}`);
+    console.log(`📅 [markStepIn] Date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+
+    const todayCompletedAttendance = await Attendance.findOne({
+      employeeId: finalEmployeeId,
+      stepIn: { $gte: startOfDay, $lt: endOfDay },
+      stepOut: { $exists: true }
+    });
+
+    if (todayCompletedAttendance) {
+      console.log(`❌ [markStepIn] Employee ${finalEmployeeId} already completed attendance today`);
+      console.log(`📊 [markStepIn] Previous attendance: ${todayCompletedAttendance.stepIn} to ${todayCompletedAttendance.stepOut}`);
+
+      return res.status(400).json({
+        success: false,
+        message: "You have already completed your attendance for today. Please come back tomorrow."
+      });
+    }
+
+    console.log(`✅ [markStepIn] No completed attendance found for today, proceeding with step-in`);
+
     const stepIn = new Date();
     const stepInImage = req.file ? req.file.filename : null;
 
@@ -510,31 +536,70 @@ export const checkEmployeeStatus = async (req, res) => {
   try {
     const { employeeId } = req.params;
 
-    // Check if there is an open attendance for this employee
+    console.log(`🔍 [checkEmployeeStatus] Checking status for employee: ${employeeId}`);
+
+    // Get today's date range
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    console.log(`📅 [checkEmployeeStatus] Date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+
+    // Check if there is an open attendance for this employee (currently stepped in)
     const openAttendance = await Attendance.findOne({
       employeeId,
-      stepOut: { $exists: false }
+      stepOut: { $exists: false },
+      stepIn: { $gte: startOfDay, $lt: endOfDay }
     }).populate('employeeId', 'name email');
 
     if (openAttendance) {
+      console.log(`✅ [checkEmployeeStatus] Employee ${employeeId} is currently stepped in today`);
       return res.status(200).json({
+        success: true,
         isSteppedIn: true,
         attendance: openAttendance,
         message: `Employee is currently stepped in since ${new Date(openAttendance.stepIn).toLocaleString()}`
       });
-    } else {
+    }
+
+    // Check if employee has completed attendance for today (stepped out)
+    const completedAttendance = await Attendance.findOne({
+      employeeId,
+      stepOut: { $exists: true },
+      stepIn: { $gte: startOfDay, $lt: endOfDay }
+    }).populate('employeeId', 'name email');
+
+    if (completedAttendance) {
+      console.log(`✅ [checkEmployeeStatus] Employee ${employeeId} has completed attendance today`);
       return res.status(200).json({
+        success: true,
         isSteppedIn: false,
-        message: "Employee is not currently stepped in"
+        isCompleted: true,
+        attendance: completedAttendance,
+        message: `Employee has completed attendance today (${new Date(completedAttendance.stepIn).toLocaleString()} - ${new Date(completedAttendance.stepOut).toLocaleString()})`
       });
     }
+
+    // No attendance record for today
+    console.log(`❌ [checkEmployeeStatus] Employee ${employeeId} has no attendance record for today`);
+    return res.status(200).json({
+      success: true,
+      isSteppedIn: false,
+      isCompleted: false,
+      message: "Employee has no attendance record for today"
+    });
+
   } catch (error) {
-    console.error("Error checking employee status:", error);
-    res.status(500).json({ message: "Error checking employee status", error });
+    console.error("❌ [checkEmployeeStatus] Error checking employee status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error checking employee status",
+      error: error.message
+    });
   }
 };
 
-// Get all attendance for an employee - Show only latest entry per day
+// Get all attendance for an employee - Show only latest entry per day with pagination
 export const getEmployeeAttendance = async (req, res) => {
   try {
     const { employeeId } = req.params;
@@ -542,11 +607,25 @@ export const getEmployeeAttendance = async (req, res) => {
       return res.status(400).json({ message: "employeeId is required in params" });
     }
 
-    // Get all attendance records for this employee
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10; // Default 10 records per page
+    const skip = (page - 1) * limit;
+
+    console.log(`🔍 [getEmployeeAttendance] Fetching attendance for employee: ${employeeId}`);
+    console.log(`📄 [getEmployeeAttendance] Page: ${page}, Limit: ${limit}`);
+
+    // Get total count for pagination
+    const totalRecords = await Attendance.countDocuments({ employeeId });
+
+    // Get all attendance records for this employee with pagination
     const allAttendance = await Attendance.find({ employeeId })
-      .populate("employeeId")
-      .populate("managerId")
-      .sort({ createdAt: -1 }); // Sort by newest first
+      .populate("employeeId", "name empCode email")
+      .populate("managerId", "name email")
+      .select("stepIn stepOut status shift address totalTime stepInImage stepOutImage")
+      .sort({ stepIn: -1 }) // Sort by stepIn date (newest first)
+      .skip(skip)
+      .limit(limit);
 
     // Group by date, keeping only the latest entry per day
     const attendanceMap = new Map();
@@ -564,10 +643,28 @@ export const getEmployeeAttendance = async (req, res) => {
     const uniqueAttendance = Array.from(attendanceMap.values())
       .sort((a, b) => new Date(b.stepIn) - new Date(a.stepIn));
 
-    res.status(200).json({ attendance: uniqueAttendance });
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalRecords / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    console.log(`📊 [getEmployeeAttendance] Found ${uniqueAttendance.length} unique records`);
+    console.log(`📊 [getEmployeeAttendance] Total records: ${totalRecords}, Total pages: ${totalPages}`);
+
+    res.status(200).json({
+      attendance: uniqueAttendance,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalRecords,
+        limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
   } catch (error) {
-    console.error("Error fetching attendance:", error);
-    res.status(500).json({ message: "Error fetching attendance", error });
+    console.error("❌ [getEmployeeAttendance] Error fetching attendance:", error);
+    res.status(500).json({ message: "Error fetching attendance", error: error.message });
   }
 };
 
@@ -576,6 +673,8 @@ export const getAllAttendance = async (req, res) => {
   try {
     // Get company ID from authenticated user
     const companyId = req.user.companyId;
+    const adminId = req.user.id;
+    const adminRole = req.user.role;
 
     if (!companyId) {
       return res.status(400).json({ message: "User must be associated with a company" });
@@ -583,6 +682,38 @@ export const getAllAttendance = async (req, res) => {
 
     // Build filter query based on request parameters
     const filterQuery = { companyId: companyId };
+
+    // If admin is readonly, filter by employees they created
+    if (adminRole === 'readonly') {
+      // Get employee IDs created by this readonly admin
+      const employeeIds = await Employee.find({
+        companyId: companyId,
+        role: "employee",
+        createdBy: adminId
+      }).select('_id');
+
+      const employeeIdList = employeeIds.map(emp => emp._id);
+
+      if (employeeIdList.length === 0) {
+        // No employees created by this admin, return empty result
+        return res.status(200).json({
+          attendance: [],
+          pagination: {
+            currentPage: 1,
+            totalPages: 0,
+            totalRecords: 0,
+            limit: 50,
+            hasNextPage: false,
+            hasPrevPage: false
+          },
+          message: "No employees found for this readonly admin"
+        });
+      }
+
+      // Filter attendance by employees created by this admin
+      filterQuery.employeeId = { $in: employeeIdList };
+      console.log(`Readonly admin ${adminId} - filtering attendance for ${employeeIdList.length} employees`);
+    }
 
     // Add manager filter
     if (req.query.manager) {
