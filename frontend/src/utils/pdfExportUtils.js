@@ -61,10 +61,40 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     // Header Section - Company Logo and Branding
     const headerHeight = 35;
 
+    const getCompanyLogoPath = (companyCode) => {
+      if (!companyCode) return null;
+
+      const normalizedCode = companyCode.toUpperCase();
+      const logoMap = {
+        'HARIKRISHNA': 'HARIKRISHNA.jpg',
+        'NEELKANTH': 'NEELKANTH.jpg',
+        'NILKANTH': 'NEELKANTH.jpg', // Alternative spelling
+      };
+
+      const logoFileName = logoMap[normalizedCode];
+      if (logoFileName) {
+        return `/assets/${logoFileName}`;
+      }
+      return null;
+    };
+    const companyCode = options.companyCode || 'NEELKANTH';
+    const fallbackLogoUrl = options.fallbackLogoUrl || null;
+
+    console.log("companyCode ==> ", companyCode);
+
+    // Get company logo with fallback (same logic as CompanyLogo component)
+    const getCompanyLogo = (companyCode, fallbackLogoUrl) => {
+      const logoPath = getCompanyLogoPath(companyCode);
+      return logoPath || fallbackLogoUrl;
+    };
+    debugger
     // Try to load company logo
     try {
+      const logoUrl = getCompanyLogo(companyCode, fallbackLogoUrl);
+
       const logoImg = new Image();
-      logoImg.src = '/assets/logo.png';
+      logoImg.crossOrigin = 'anonymous'; // Handle CORS if needed
+      logoImg.src = logoUrl;
 
       // Wait for image to load with timeout
       await new Promise((resolve, reject) => {
@@ -72,13 +102,15 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
         logoImg.onerror = reject;
         setTimeout(() => reject(new Error('Logo load timeout')), 3000);
       });
+      const imageFormat = logoUrl.toLowerCase().includes('.jpg') || logoUrl.toLowerCase().includes('.jpeg') ? 'JPEG' : 'PNG';
 
       // Add logo to PDF
-      doc.addImage(logoImg, 'PNG', margin, y, 25, 25);
+      console.log("logoImg ==> ", logoImg);
+      doc.addImage(logoImg, imageFormat, margin, y, 30, 30);
     } catch (error) {
       // Fallback: Draw a simple logo placeholder
       drawRect(margin, y, 25, 25, primaryBlue);
-      addText('NL', margin + 12.5, y + 17, 14, 'bold', [255, 255, 255], 'center');
+      addText('NEELKANTH', margin + 12.5, y + 17, 14, 'bold', [255, 255, 255], 'center');
     }
 
     // Company branding section - Using current project details
@@ -332,7 +364,7 @@ export const createTraditionalMusterRollPDF = async (reportData, dateRange, opti
 
       const logoFileName = logoMap[normalizedCode];
       if (logoFileName) {
-        return `/src/company-logo/${logoFileName}`;
+        return `/assets/${logoFileName}`;
       }
       return null;
     };

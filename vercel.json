@@ -7,28 +7,38 @@
       "config": {
         "distDir": "build"
       }
+    },
+    {
+      "src": "backend/server.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "backend/server.js"
+    },
+    {
       "src": "/static/(.*)",
-      "dest": "/frontend/build/static/$1"
+      "dest": "frontend/build/static/$1"
     },
     {
-      "src": "/favicon.ico",
-      "dest": "/frontend/build/favicon.ico"
+      "src": "/assets/(.*)",
+      "dest": "frontend/build/assets/$1"
     },
     {
-      "src": "/(.*\\.js)",
-      "dest": "/frontend/build/$1"
-    },
-    {
-      "src": "/(.*\\.css)",
-      "dest": "/frontend/build/$1"
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot))",
+      "dest": "frontend/build/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/frontend/build/index.html"
+      "dest": "frontend/build/index.html"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }

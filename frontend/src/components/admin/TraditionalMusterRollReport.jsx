@@ -113,6 +113,7 @@ const TraditionalMusterRollReport = () => {
   const handleGenerateReport = async () => {
     setLoading(true);
     try {
+      debugger
       // Fetch employees
       const employeesResponse = await api.get('/employee/all');
       let employees = employeesResponse.data.data;
@@ -250,7 +251,19 @@ const TraditionalMusterRollReport = () => {
       };
 
       // Import the enhanced PDF export utility
-      const { exportTraditionalMusterRollToPDF } = await import('../../utils/pdfExportUtils');
+      let exportTraditionalMusterRollToPDF;
+      try {
+        const pdfUtils = await import('../../utils/pdfExportUtils');
+        exportTraditionalMusterRollToPDF = pdfUtils.exportTraditionalMusterRollToPDF || pdfUtils.default?.exportTraditionalMusterRollToPDF;
+
+        if (!exportTraditionalMusterRollToPDF) {
+          throw new Error('PDF export function not found');
+        }
+      } catch (error) {
+        console.error('Error importing PDF utils:', error);
+        toast.error('Failed to load PDF export utility. Please try again.');
+        return;
+      }
 
       // Create filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -381,19 +394,7 @@ const TraditionalMusterRollReport = () => {
                 <option value="Night">Night</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                name="status"
-                value={filters.status}
-                onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Status</option>
-                <option value="present">Present</option>
-                <option value="absent">Absent</option>
-              </select>
-            </div>
+
             <div className="flex items-end space-x-2">
               <button
                 onClick={handleGenerateReport}

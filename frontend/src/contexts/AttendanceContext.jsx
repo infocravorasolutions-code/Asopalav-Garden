@@ -267,7 +267,18 @@ export const AttendanceProvider = ({ children }) => {
 
     try {
       // Import the enhanced PDF export utility
-      const { exportAttendanceToPDF } = await import('../utils/pdfExportUtils');
+      let exportAttendanceToPDF;
+      try {
+        const pdfUtils = await import('../utils/pdfExportUtils');
+        exportAttendanceToPDF = pdfUtils.exportAttendanceToPDF || pdfUtils.default?.exportAttendanceToPDF;
+
+        if (!exportAttendanceToPDF) {
+          throw new Error('PDF export function not found');
+        }
+      } catch (error) {
+        console.error('Error importing PDF utils:', error);
+        throw new Error('Failed to load PDF export utility');
+      }
 
       // Use the enhanced PDF export function
       await exportAttendanceToPDF(data, filename);

@@ -201,7 +201,19 @@ const AttendanceManagement = () => {
             }
 
             // Import the enhanced PDF export utility
-            const { exportAttendanceToPDF } = await import(`../../utils/pdfExportUtils?t=${Date.now()}`);
+            let exportAttendanceToPDF;
+            try {
+                const pdfUtils = await import('../../utils/pdfExportUtils');
+                exportAttendanceToPDF = pdfUtils.exportAttendanceToPDF || pdfUtils.default?.exportAttendanceToPDF;
+
+                if (!exportAttendanceToPDF) {
+                    throw new Error('PDF export function not found');
+                }
+            } catch (error) {
+                console.error('Error importing PDF utils:', error);
+                toast.error('Failed to load PDF export utility. Please try again.');
+                return;
+            }
 
             // Create filename with timestamp
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
