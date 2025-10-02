@@ -35,7 +35,7 @@ const EnhancedEmployeeModal = ({ isOpen, onClose, mode, employee, onSave }) => {
           email: employee.email || '',
           mobile: employee.mobile || '',
           password: '', // Leave empty for edit mode
-          confirmPassword: '', // Leave empty for edit mode
+          confirmPassword: '',
           address: employee.address || '',
           empCode: employee.empCode || '',
           designation: employee.designation || 'gardener',
