@@ -18,10 +18,10 @@ export const initializeSocket = (server) => {
     cors: {
       origin: [
         process.env.FRONTEND_URL || "http://localhost:5173",
-        "https://panthersecure.co.in",
-        "https://www.panthersecure.co.in",
-        "https://admin.panthersecure.co.in",
-        "http://localhost:3000"
+        "https://neelkanthlandscape.info",
+        "https://neelkanthlandscape.info",
+        "https://neelkanthlandscape.info",
+        "http://localhost:5173"
       ],
       methods: ["GET", "POST"],
       credentials: true
