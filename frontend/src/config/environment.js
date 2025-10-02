@@ -15,8 +15,8 @@ const config = {
   // API Configuration
 
   api: {
-    baseURL: import.meta.env.VITE_API_URL || getApiUrl(),
-    timeout: 10000,
+    baseURL: getApiUrl(),
+    timeout: 30000,
   },
 
   // App Configuration
