@@ -33,6 +33,7 @@ export const downloadFileWithWebViewSupport = (blob, filename, mimeType = 'appli
   return new Promise((resolve, reject) => {
     try {
       if (isInWebView()) {
+        console.log('📱 WebView detected, using native download...');
         
         // Use direct React Native WebView messaging
         const reader = new FileReader();
@@ -54,12 +55,13 @@ export const downloadFileWithWebViewSupport = (blob, filename, mimeType = 'appli
           };
           
           window.ReactNativeWebView.postMessage(JSON.stringify(message));
-          
+          console.log('📊 File sent to React Native:', filename);
           resolve();
         };
         reader.onerror = () => reject(new Error('Failed to read file data'));
         reader.readAsDataURL(blob);
       } else {
+        console.log('🌐 Browser environment, using standard download...');
         // Fallback to regular browser download
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);

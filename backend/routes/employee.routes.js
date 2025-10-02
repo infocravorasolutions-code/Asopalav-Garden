@@ -1,70 +1,34 @@
 import express from "express";
 const router = express.Router();
-import multer from "multer";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
-
-
 
 // Import controllers
-
-import{
+import {
     createEmployee,
+    getEmployee,
     updateEmployee,
     deleteEmployee,
-    getEmployees,
-    createEmployeeByManager,
+    getAllEmployees,
+    getEmployeesByManager,
     loginEmployee,
-    getEmployeeDashboard,
-    setEmployeePassword,
-    updateEmployeeProfile,
-    changeEmployeePassword
-} from "../controller/employee.controller.js"
+    getMusterRollReport,
+    exportMusterRollExcel,
+    exportMusterRollPDF
+} from "../controller/employee.controller.js";
+
 import { authenticateUser } from "../utils/middlewere.js";
+import { requireRole, canManageEmployees } from "../utils/roleMiddleware.js";
 
-// Multer config
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadDir = path.join(__dirname, "../upload");
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
-  }
-});
-
-const upload = multer({ storage });
-
-// Create employee (with optional image)
-router.post("/", authenticateUser, upload.single("image"), createEmployee);
-
-// Update employee (with optional image)
-router.put("/:id", authenticateUser, upload.single("image"), updateEmployee);
-
-
-// router.post("/",authenticateUser,createEmployee)
-// router.put("/:id",authenticateUser,updateEmployee)
-router.delete("/:id",authenticateUser,deleteEmployee)
-router.get("/all",authenticateUser,getEmployees)
-router.post("/manager",authenticateUser, upload.single("image"), createEmployeeByManager)
-router.post("/login",loginEmployee)
-router.get("/dashboard", authenticateUser, getEmployeeDashboard)
-router.post("/set-password", authenticateUser, setEmployeePassword)
-router.put("/profile", authenticateUser, updateEmployeeProfile)
-router.put("/change-password", authenticateUser, changeEmployeePassword)
-
-
-
-
-
-
+// Define routes
+router.post("/", authenticateUser, canManageEmployees, createEmployee);
+router.post("/login", loginEmployee);
+router.get("/", authenticateUser, getAllEmployees); // Get employees for current company
+router.get("/all", authenticateUser, requireRole(['superadmin', 'admin', 'readonly']), getAllEmployees);
+router.get("/team", authenticateUser, requireRole(['manager']), getEmployeesByManager);
+router.get("/muster-roll", authenticateUser, requireRole(['superadmin', 'admin', 'readonly']), getMusterRollReport);
+router.get("/muster-roll/export/excel", authenticateUser, requireRole(['superadmin', 'admin', 'readonly']), exportMusterRollExcel);
+router.get("/muster-roll/export/pdf", authenticateUser, requireRole(['superadmin', 'admin', 'readonly']), exportMusterRollPDF);
+router.get("/:id", authenticateUser, getEmployee);
+router.put("/:id", authenticateUser, canManageEmployees, updateEmployee);
+router.delete("/:id", authenticateUser, canManageEmployees, deleteEmployee);
 
 export default router;

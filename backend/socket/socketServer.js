@@ -17,11 +17,11 @@ export const initializeSocket = (server) => {
   io = new Server(server, {
     cors: {
       origin: [
-        process.env.FRONTEND_URL || "http://localhost:3000",
-        "https://panthersecure.co.in",
-        "https://www.panthersecure.co.in",
-        "https://admin.panthersecure.co.in",
-        "http://localhost:3000"
+        process.env.FRONTEND_URL || "http://localhost:5173",
+        "https://neelkanthlandscape.info",
+        "https://neelkanthlandscape.info",
+        "https://neelkanthlandscape.info",
+        "http://localhost:5173"
       ],
       methods: ["GET", "POST"],
       credentials: true
@@ -30,19 +30,63 @@ export const initializeSocket = (server) => {
     pingInterval: 25000
   });
 
-  // No authentication middleware - open connection for all users
+  // Authentication middleware
+  io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+
+    if (!token) {
+      // Allow connection without token for notifications
+      socket.userId = null;
+      socket.userType = 'guest';
+      return next();
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.userId = decoded.id;
+      socket.userType = decoded.userType || decoded.role;
+      socket.userName = decoded.name;
+      socket.companyId = decoded.companyId;
+      next();
+    } catch (error) {
+      console.error('❌ [Socket] Authentication failed:', error.message);
+      socket.userId = null;
+      socket.userType = 'guest';
+      next();
+    }
+  });
 
   // Connection handler
   io.on('connection', (socket) => {
     console.log('🔌 [Socket] User connected:', {
       socketId: socket.id,
+      userId: socket.userId,
+      userType: socket.userType,
       timestamp: new Date()
     });
+
+    // Join user to their specific room for notifications
+    if (socket.userId) {
+      socket.join(`user_${socket.userId}`);
+      console.log(`👤 [Socket] User joined personal room: user_${socket.userId}`);
+    }
+
+    // Join users to role-based rooms
+    if (socket.userType === 'admin' || socket.userType === 'superadmin') {
+      socket.join('admin-room');
+      console.log('👑 [Socket] Admin joined admin-room');
+    } else if (socket.userType === 'manager') {
+      socket.join('manager-room');
+      console.log('👨‍💼 [Socket] Manager joined manager-room');
+    } else if (socket.userType === 'employee') {
+      socket.join('employee-room');
+      console.log('👷 [Socket] Employee joined employee-room');
+    }
 
     // Join all users to a general room for location updates
     socket.join('location-updates');
     console.log('📍 [Socket] User joined location-updates room');
-    
+
     // Send current online employees to newly connected user
     sendOnlineEmployeesToAdmin();
 
@@ -75,7 +119,6 @@ export const initializeSocket = (server) => {
             longitude: data.longitude,
             address: data.address || 'Location not available'
           },
-          isInGeoFence: data.isInGeoFence || false,
           status: data.status || 'tracking',
           batteryLevel: data.batteryLevel,
           accuracy: data.accuracy,
@@ -91,7 +134,6 @@ export const initializeSocket = (server) => {
             longitude: data.longitude,
             address: data.address || 'Location not available'
           },
-          isInGeoFence: data.isInGeoFence || false,
           status: data.status || 'tracking',
           timestamp: new Date()
         });
@@ -104,9 +146,9 @@ export const initializeSocket = (server) => {
 
       } catch (error) {
         console.error('❌ [Socket] Error handling location update:', error);
-        socket.emit('error', { 
+        socket.emit('error', {
           message: 'Failed to process location update',
-          error: error.message 
+          error: error.message
         });
       }
     });
@@ -153,32 +195,14 @@ export const initializeSocket = (server) => {
 
       } catch (error) {
         console.error('❌ [Socket] Error getting online employees:', error);
-        socket.emit('error', { 
+        socket.emit('error', {
           message: 'Failed to get online employees',
-          error: error.message 
+          error: error.message
         });
       }
     });
 
-    // Handle geo-fence alerts
-    socket.on('geofence-alert', (data) => {
-      try {
-        console.log('🚨 [Socket] Geo-fence alert:', data);
 
-        // Broadcast to admin room
-        socket.to('admin-room').emit('geofence-alert', {
-          employeeId: socket.userId,
-          employeeName: socket.userName,
-          alertType: data.alertType, // 'violation', 'entry', 'exit'
-          location: data.location,
-          timestamp: new Date(),
-          message: data.message
-        });
-
-      } catch (error) {
-        console.error('❌ [Socket] Error handling geo-fence alert:', error);
-      }
-    });
 
     // Handle disconnection
     socket.on('disconnect', async (reason) => {
@@ -253,18 +277,10 @@ export const sendOnlineEmployeesToAdmin = async () => {
       },
       isOnline: emp.isOnline,
       lastSeen: emp.lastSeen,
-      isInGeoFence: emp.isInGeoFence,
       status: emp.getCurrentStatus(),
       batteryLevel: emp.batteryLevel,
       accuracy: emp.accuracy,
       timestamp: emp.timestamp,
-      geoFenceValidation: emp.geoFenceValidation ? {
-        isValid: emp.geoFenceValidation.isValid,
-        reason: emp.geoFenceValidation.reason,
-        source: emp.geoFenceValidation.source,
-        distance: emp.geoFenceValidation.distance,
-        nearestPoint: emp.geoFenceValidation.nearestPoint
-      } : null
     }));
 
     if (io) {
@@ -302,7 +318,6 @@ export const sendOnlineEmployeesToSocket = async (socket) => {
       },
       isOnline: emp.isOnline,
       lastSeen: emp.lastSeen,
-      isInGeoFence: emp.isInGeoFence,
       status: emp.getCurrentStatus(),
       batteryLevel: emp.batteryLevel,
       accuracy: emp.accuracy,
@@ -341,20 +356,6 @@ export const broadcastLocationUpdate = (employeeId, locationData) => {
   }
 };
 
-/**
- * Broadcast geo-fence alert
- */
-export const broadcastGeoFenceAlert = (employeeId, alertData) => {
-  if (io) {
-    io.to('admin-room').emit('geofence-alert', {
-      employeeId,
-      ...alertData,
-      timestamp: new Date()
-    });
-
-    console.log('🚨 [Socket] Broadcasted geo-fence alert for employee:', employeeId);
-  }
-};
 
 /**
  * Mark employee as online in database
@@ -391,8 +392,8 @@ const markEmployeeOffline = async (employeeId) => {
   try {
     await EmployeeLocation.findOneAndUpdate(
       { employeeId },
-      { 
-        isOnline: false, 
+      {
+        isOnline: false,
         status: 'offline',
         lastSeen: new Date()
       }
@@ -444,7 +445,7 @@ export const sendToManagers = (event, data) => {
  */
 export const startSocketHealthCheck = () => {
   console.log('🏥 [Socket Health] Starting socket health check every 10 minutes...');
-  
+
   socketHealthCheckInterval = setInterval(() => {
     try {
       if (!io) {
@@ -517,7 +518,6 @@ export default {
   sendOnlineEmployeesToAdmin,
   sendOnlineEmployeesToSocket,
   broadcastLocationUpdate,
-  broadcastGeoFenceAlert,
   getSocketServer,
   sendToUser,
   sendToAdmins,

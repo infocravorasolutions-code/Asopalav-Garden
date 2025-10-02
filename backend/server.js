@@ -13,17 +13,24 @@ import adminRoutes from './routes/admin.routes.js';
 import employeeRoutes from './routes/employee.routes.js';
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import attendenceRoutes from "./routes/attendence.routes.js";
-import companyRoutes from "./routes/company.routes.js"
-// Settings routes removed - now using static configuration
+import companyRoutes from "./routes/company.routes.js";
+import superAdminRoutes from "./routes/superadmin.routes.js";
 import { autoStepOut, updateStepInUserLocations, updateAllEmployeeLocations } from './controller/cron.controller.js';
 import Employee from "./models/employee.models.js";
-import LocationRouter from "./routes/location.routes.js";
+
+// Location routes removed - using manual location fields
+
 import { initializeSocket, startSocketHealthCheck } from './socket/socketServer.js';
 
 dotenv.config();
 const app = express();
 const server = createServer(app);
 const PORT = process.env.PORT || 5678;
+
+
+// Ensure PORT is a number, not a URL
+const portNumber = typeof PORT === 'string' && PORT.includes('http') ? 5678 : parseInt(PORT);
+console.log('  - Final portNumber:', portNumber);
 const MONGO_URI = process.env.MONGODB_URI;
 console.log("MONGO_URI ==> ", MONGO_URI);
 
@@ -33,21 +40,23 @@ app.use(cors({
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use("/static", express.static("upload"));
 
 // Routes
+app.use("/api/auth", authRouter);
 app.use("/api/admin", adminRoutes);
 app.use("/api/manager", managerRoutes);
 app.use("/api/employee", employeeRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/attendence", attendenceRoutes);
 app.use("/api", companyRoutes);
+app.use("/api/superadmin", superAdminRoutes);
+// Export routes removed - functionality moved to frontend
 
 // Settings routes removed - now using static configuration
-app.use("/api/auth", authRouter);
-app.use("/api/location", LocationRouter)
+// Location routes removed - using manual location fields
 
 // Cron jobs
 cron.schedule("*/30 * * * *", autoStepOut); // Auto step-out every 30 minutes
@@ -147,9 +156,9 @@ mongoose.connect(MONGO_URI)
     // Import employees after DB connection
     // await importEmployees();
 
-    server.listen(PORT, () => {
-      console.log(`🚀 Server is running on http://localhost:${PORT}`);
-      console.log(`🔌 Socket.IO server is running on http://localhost:${PORT}`);
+    server.listen(portNumber, () => {
+      console.log(`🚀 Server is running on http://localhost:${portNumber}`);
+      console.log(`🔌 Socket.IO server is running on http://localhost:${portNumber}`);
     });
   })
   .catch((err) => {
@@ -159,6 +168,8 @@ mongoose.connect(MONGO_URI)
 app.get('/', (req, res) => {
   res.send('Welcome to the Labor Management API');
 });
+
+// module.exports = app;
 
 // importEmployees()
 

@@ -1,0 +1,321 @@
+import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  Building,
+  User,
+  Shield,
+  Users,
+  AlertCircle,
+  ArrowRight
+} from 'lucide-react';
+
+const SimpleUnifiedLogin = () => {
+  const { login, isAuthenticated, loading, error, clearError } = useAuth();
+  const navigate = useNavigate();
+
+  const [userType, setUserType] = useState('admin');
+  const [formData, setFormData] = useState({
+    company: '',
+    email: '',
+    password: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+
+  const handleUserTypeChange = (type) => {
+    setUserType(type);
+    setFormData({ company: '', email: '', password: '' });
+    setValidationErrors({});
+    clearError();
+  };
+
+  const handleInputChange = (field) => (e) => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+    if (validationErrors[field]) {
+      setValidationErrors(prev => ({ ...prev, [field]: '' }));
+    }
+    clearError();
+  };
+
+  const validateForm = () => {
+    const errors = {};
+
+    // Company code is required for both admin and manager
+    if ((userType === 'admin' || userType === 'manager') && !formData.company.trim()) {
+      errors.company = 'Company code is required';
+    }
+
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Please enter a valid email';
+    }
+
+    if (!formData.password.trim()) {
+      errors.password = 'Password is required';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    clearError();
+
+    try {
+      const loginData = {
+        ...formData,
+        userType: userType
+      };
+
+      console.log('Attempting login with data:', loginData);
+
+      const result = await login(loginData);
+      console.log('Login result:', result);
+
+      if (result.success) {
+        // Redirect based on user type
+        const dashboardPath = userType === 'admin' ? '/admin/dashboard' :
+          userType === 'manager' ? '/manager/dashboard' :
+            '/employee/dashboard';
+        console.log('Redirecting to:', dashboardPath);
+        navigate(dashboardPath);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading your workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200 border-t-green-600 mx-auto mb-4"></div>
+          <p className="text-white text-lg">Redirecting to dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const getIconComponent = () => {
+    switch (userType) {
+      case 'admin':
+        return Shield;
+      case 'manager':
+        return Users;
+      case 'employee':
+        return User;
+      default:
+        return Shield;
+    }
+  };
+
+  const IconComponent = getIconComponent();
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-xl"></div>
+      <div className="absolute top-40 right-20 w-24 h-24 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-xl"></div>
+      <div className="absolute bottom-20 left-40 w-20 h-20 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-full blur-xl"></div>
+
+      <div className="relative z-10 flex items-center justify-center min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-lg mx-auto">
+          {/* Login Card */}
+          <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-10 relative">
+
+            {/* Header */}
+            <div className="text-center mb-10 relative z-10">
+              <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl shadow-2xl mb-8">
+                <IconComponent className="h-12 w-12 text-white" />
+              </div>
+              <h1 className="text-4xl font-bold text-white mb-3">
+                {userType === 'admin' ? 'Admin Access' :
+                  userType === 'manager' ? 'Manager Portal' : 'Employee Login'}
+              </h1>
+              <p className="text-blue-200 text-xl">
+                {userType === 'admin' ? 'Enterprise Dashboard' :
+                  userType === 'manager' ? 'Team Management' : 'Personal Workspace'}
+              </p>
+            </div>
+
+            {/* User Type Selector */}
+            <div className="mb-10 relative z-10">
+              <div className="flex bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/20">
+                {[
+                  { key: 'admin', label: 'Admin', icon: Shield, color: 'blue' },
+                  { key: 'manager', label: 'Manager', icon: Users, color: 'purple' },
+                  { key: 'employee', label: 'Employee', icon: User, color: 'green' }
+                ].map(({ key, label, icon: Icon, color }) => (
+                  <button
+                    key={key}
+                    onClick={() => handleUserTypeChange(key)}
+                    className={`flex-1 flex items-center justify-center space-x-3 py-5 px-6 rounded-xl text-base font-bold ${userType === key
+                      ? `bg-gradient-to-r from-${color}-500 to-${color}-600 text-white shadow-lg shadow-${color}-500/25`
+                      : 'text-white/70 hover:text-white'
+                      }`}
+                  >
+                    <Icon className={`h-6 w-6 ${userType === key ? 'text-white' : 'text-white/70'}`} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
+              {/* Error Display */}
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 backdrop-blur-md rounded-2xl p-4">
+                  <div className="flex items-center">
+                    <AlertCircle className="h-5 w-5 text-red-400 mr-3 flex-shrink-0" />
+                    <span className="text-red-200 text-sm font-medium">{error}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Company Code - Required for Admin and Manager */}
+              {(userType === 'admin' || userType === 'manager') && (
+                <div className="space-y-4">
+                  <label className="text-base font-bold text-white/90 flex items-center">
+                    <Building className="h-6 w-6 mr-3 text-blue-400" />
+                    Company Code
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Enter your company code"
+                      value={formData.company}
+                      onChange={handleInputChange('company')}
+                      disabled={isSubmitting}
+                      className="w-full px-6 py-5 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 text-lg"
+                    />
+                    {validationErrors.company && (
+                      <p className="text-red-400 text-sm mt-2">{validationErrors.company}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Email */}
+              <div className="space-y-4">
+                <label className="text-base font-bold text-white/90 flex items-center">
+                  <Mail className="h-6 w-6 mr-3 text-green-400" />
+                  Email Address
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={handleInputChange('email')}
+                    disabled={isSubmitting}
+                    className="w-full px-6 py-5 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 text-lg"
+                  />
+                  {validationErrors.email && (
+                    <p className="text-red-400 text-sm mt-2">{validationErrors.email}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-4">
+                <label className="text-base font-bold text-white/90 flex items-center">
+                  <Lock className="h-6 w-6 mr-3 text-purple-400" />
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleInputChange('password')}
+                    disabled={isSubmitting}
+                    className="w-full px-6 py-5 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 pr-12 text-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center justify-center text-white/50 hover:text-white transition-colors p-1 rounded w-6 h-6"
+                    disabled={isSubmitting}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                  {validationErrors.password && (
+                    <p className="text-red-400 text-sm mt-2">{validationErrors.password}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 text-white font-bold py-6 px-8 rounded-2xl disabled:opacity-50 hover:shadow-lg transition-all duration-200"
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center">
+                    <span className="text-xl font-semibold">Signing In...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <span className="text-xl font-semibold">Sign In</span>
+                    <ArrowRight className="h-6 w-6 ml-3" />
+                  </div>
+                )}
+              </button>
+            </form>
+
+            {/* Additional Links */}
+            <div className="mt-10 space-y-6 relative z-10">
+              <div className="text-center">
+                <a
+                  href="/forgot-password"
+                  className="text-base text-blue-300 font-medium hover:text-blue-200 transition-colors"
+                >
+                  Forgot your password?
+                </a>
+              </div>
+
+              <div className="text-center">
+                <p className="text-sm text-white/60">
+                  {userType === 'admin' ? 'Need help? Contact your system administrator' :
+                    userType === 'manager' ? 'Need help? Contact your admin' : 'Need help? Contact your manager or HR'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SimpleUnifiedLogin;

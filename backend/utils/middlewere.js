@@ -106,6 +106,7 @@ export const authenticateUser = async (req, res, next) => {
       role: user.role || decoded.userType, // fallback if no explicit role
       userType: decoded.userType,
       company: company ? { id: company._id, name: company.name, code: company.code } : null,
+      companyId: decoded.companyId || (company ? company._id : null), // Add companyId from JWT or populated company
     };
 
     // Read-only restriction
@@ -141,3 +142,73 @@ export function authenticateAccessToken(req, res, next) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 }
+
+// Generic token authentication for SuperAdmin
+export const authenticateToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "No token provided" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // For SuperAdmin, we need to check if it's a SuperAdmin token
+    if (decoded.role === 'superadmin') {
+      // Import SuperAdmin model dynamically to avoid circular dependency
+      const SuperAdmin = (await import('../models/superadmin.models.js')).default;
+      const superAdmin = await SuperAdmin.findById(decoded.id);
+
+      if (!superAdmin || !superAdmin.isActive) {
+        return res.status(401).json({ message: "SuperAdmin not found or inactive" });
+      }
+
+      req.user = {
+        id: superAdmin._id,
+        email: superAdmin.email,
+        name: superAdmin.name,
+        role: 'superadmin',
+        permissions: superAdmin.permissions
+      };
+    } else {
+      // For regular users, use the existing authentication logic
+      let user = null;
+      let company = null;
+
+      if (decoded.userType === "admin") {
+        user = await Admin.findById(decoded.id).populate("companyId", "name code timezone");
+        if (user?.companyId) company = user.companyId;
+      } else if (decoded.userType === "manager") {
+        user = await Manager.findById(decoded.id).populate("companyId", "name code timezone");
+        if (user?.companyId) company = user.companyId;
+      } else if (decoded.userType === "employee") {
+        user = await Employee.findById(decoded.id).populate("companyId", "name code timezone");
+        if (user?.companyId) company = user.companyId;
+      }
+
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      req.user = {
+        id: user._id,
+        role: user.role || decoded.userType,
+        userType: decoded.userType,
+        company: company ? { id: company._id, name: company.name, code: company.code } : null,
+        companyId: decoded.companyId || (company ? company._id : null),
+      };
+
+      // Read-only restriction
+      if (req.user.role === "readonly" && req.method !== "GET") {
+        return res.status(403).json({ message: "Read-only user cannot modify data" });
+      }
+    }
+
+    next();
+  } catch (err) {
+    console.error("Auth error:", err);
+    res.status(401).json({ message: "Invalid token" });
+  }
+};

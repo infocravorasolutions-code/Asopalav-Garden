@@ -1,57 +1,106 @@
 import Attendance from "../models/attendence.models.js";
 import Employee from "../models/employee.models.js";
+import Manager from "../models/manager.models.js";
 import Location from "../models/location.model.js";
 import EmployeeLocation from "../models/employeeLocation.models.js";
 import EmployeeRoute from "../models/employeeRoute.models.js";
+import Company from "../models/company.models.js";
+import ExcelJS from "exceljs";
+import PDFDocument from "pdfkit";
+import { SHIFT_ENUM, SHIFT_TIMES, getShiftByTime } from "../constants/shifts.js";
 
+// Use centralized shift configuration
+const DEFAULT_SHIFT_TIMES = SHIFT_TIMES;
 
+// Function to automatically determine shift based on step-in time
+const determineShiftByTime = (stepInTime) => {
+  console.log(`🕐 [determineShiftByTime] Step-in time: ${stepInTime.toISOString()}`);
 
-// Default shift configurations
-const DEFAULT_SHIFT_TIMES = {
-  morning: {
-    stepIn: "07:00",
-    stepOut: "15:00",
-    label: "7 AM - 3 PM (Morning)"
-  },
-  evening: {
-    stepIn: "14:00",
-    stepOut: "22:00",
-    label: "2 PM - 10 PM (Evening)"
-  },
-  night: {
-    stepIn: "22:00",
-    stepOut: "07:00",
-    label: "10 PM - 7 AM (Night)"
+  const detectedShift = getShiftByTime(stepInTime);
+  console.log(`🔄 [determineShiftByTime] Determined shift: ${detectedShift}`);
+
+  return detectedShift;
+};
+
+// Function to get shift information for a given time
+export const getShiftInfo = async (req, res) => {
+  try {
+    const { time } = req.query;
+    const testTime = time ? new Date(time) : new Date();
+
+    const detectedShift = determineShiftByTime(testTime);
+    const shiftInfo = DEFAULT_SHIFT_TIMES[detectedShift];
+
+    res.status(200).json({
+      success: true,
+      message: "Shift information retrieved successfully",
+      data: {
+        inputTime: testTime.toISOString(),
+        detectedShift,
+        shiftInfo,
+        allShifts: DEFAULT_SHIFT_TIMES
+      }
+    });
+  } catch (error) {
+    console.error("❌ [getShiftInfo] Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error getting shift information",
+      error: error.message
+    });
   }
 };
 
-
-// Mark step in with geo-fencing validation
+// Mark step in without geo-fencing validation
 export const markStepIn = async (req, res) => {
   try {
     // For manager step-in: employeeId comes from body, managerId from JWT token
     // For employee step-in: employeeId comes from JWT token, managerId from body
-    const { employeeId, managerId, longitude, latitude, address, note, shift, status } = req.body;
+    const { employeeId, managerId, companyId, longitude, latitude, address, note, shift, status } = req.body;
     const authenticatedUserId = req.user.id;
 
     // Determine if this is manager step-in or employee step-in
     const isManagerStepIn = employeeId && employeeId !== authenticatedUserId;
     const finalEmployeeId = isManagerStepIn ? employeeId : authenticatedUserId;
-    const finalManagerId = isManagerStepIn ? authenticatedUserId : managerId;
 
+    let finalManagerId;
+    if (isManagerStepIn) {
+      // For manager step-ins, use the authenticated manager's ID
+      finalManagerId = authenticatedUserId;
+    } else {
+      // For employee step-ins, get managerId from employee record or request body
+      if (managerId) {
+        finalManagerId = managerId;
+      } else {
+        // Get managerId from employee record
+        const employee = await Employee.findById(finalEmployeeId);
+        finalManagerId = employee?.managerId || null;
+      }
+    }
 
     // Validate required fields
-    if (!finalEmployeeId || !finalManagerId) {
+    if (!finalEmployeeId) {
       return res.status(400).json({
         success: false,
-        message: "Employee ID and Manager ID are required"
+        message: "Employee ID is required"
       });
     }
 
-    if (!latitude || !longitude) {
+    // For employee step-ins, managerId is optional
+    // For manager step-ins, managerId should be provided
+    if (isManagerStepIn && !finalManagerId) {
       return res.status(400).json({
         success: false,
-        message: "Location coordinates are required for geo-fenced attendance"
+        message: "Manager ID is required for manager step-ins"
+      });
+    }
+
+    // Get companyId from request or user context
+    const finalCompanyId = companyId || req.user.companyId;
+    if (!finalCompanyId) {
+      return res.status(400).json({
+        success: false,
+        message: "Company ID is required"
       });
     }
 
@@ -64,45 +113,78 @@ export const markStepIn = async (req, res) => {
       });
     }
 
+    // Check if employee has already completed attendance for today
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    console.log(`🔍 [markStepIn] Checking for completed attendance today for employee: ${finalEmployeeId}`);
+    console.log(`📅 [markStepIn] Date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+
+    const todayCompletedAttendance = await Attendance.findOne({
+      employeeId: finalEmployeeId,
+      stepIn: { $gte: startOfDay, $lt: endOfDay },
+      stepOut: { $exists: true }
+    });
+
+    if (todayCompletedAttendance) {
+      console.log(`❌ [markStepIn] Employee ${finalEmployeeId} already completed attendance today`);
+      console.log(`📊 [markStepIn] Previous attendance: ${todayCompletedAttendance.stepIn} to ${todayCompletedAttendance.stepOut}`);
+
+      return res.status(400).json({
+        success: false,
+        message: "You have already completed your attendance for today. Please come back tomorrow."
+      });
+    }
+
+    console.log(`✅ [markStepIn] No completed attendance found for today, proceeding with step-in`);
+
     const stepIn = new Date();
     const stepInImage = req.file ? req.file.filename : null;
 
-    // Create attendance record with geo-fencing data
+    // Automatically determine shift based on step-in time
+    const autoDetectedShift = determineShiftByTime(stepIn);
+    const finalShift = shift || autoDetectedShift;
+
+    console.log(`🔄 [markStepIn] Shift detection: Provided=${shift}, Auto-detected=${autoDetectedShift}, Final=${finalShift}`);
+
+    // Create attendance record
     const attendance = new Attendance({
       employeeId: finalEmployeeId,
       managerId: finalManagerId,
+      companyId: finalCompanyId,
       stepIn,
       stepInImage,
-      longitude: parseFloat(longitude),
-      latitude: parseFloat(latitude),
+      longitude: longitude ? parseFloat(longitude) : null,
+      latitude: latitude ? parseFloat(latitude) : null,
       address: address || 'Location not available',
       note,
-      shift,
+      shift: finalShift,
       status: status || 'present',
     });
 
     await attendance.save();
     await Employee.findByIdAndUpdate(finalEmployeeId, { isWorking: true });
 
-    // Create route tracking for this attendance
+    // Create route tracking for this attendance (optional)
     try {
       const route = new EmployeeRoute({
         employeeId: finalEmployeeId,
         attendanceId: attendance._id,
         startTime: stepIn,
         routePoints: [{
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude),
+          latitude: latitude ? parseFloat(latitude) : null,
+          longitude: longitude ? parseFloat(longitude) : null,
           address: address || 'Location not available',
           timestamp: stepIn,
-          isInGeoFence: true,
         }]
       });
       await route.save();
     } catch (routeError) {
+      console.log('Route tracking failed:', routeError.message);
     }
 
-    // Update employee location status
+    // Update employee location status (optional)
     try {
       const employee = await Employee.findById(finalEmployeeId);
       await EmployeeLocation.findOneAndUpdate(
@@ -111,12 +193,11 @@ export const markStepIn = async (req, res) => {
           employeeId: finalEmployeeId,
           employeeName: employee.name,
           employeeCode: employee.empCode,
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude),
+          latitude: latitude ? parseFloat(latitude) : null,
+          longitude: longitude ? parseFloat(longitude) : null,
           address: address || 'Location not available',
           isOnline: true,
           lastSeen: new Date(),
-          isInGeoFence: true,
           attendanceId: attendance._id,
           status: 'working',
           timestamp: new Date()
@@ -124,14 +205,12 @@ export const markStepIn = async (req, res) => {
         { upsert: true, new: true }
       );
     } catch (locationError) {
+      console.log('Location update failed:', locationError.message);
     }
-
 
     res.status(201).json({
       success: true,
-      message: isManagerStepIn
-        ? "Step In marked successfully by manager - no location restriction"
-        : "Step In marked successfully - location validated",
+      message: "Step In marked successfully",
       attendance: {
         _id: attendance._id,
         employeeId: attendance.employeeId,
@@ -144,6 +223,12 @@ export const markStepIn = async (req, res) => {
           longitude: attendance.longitude,
           address: attendance.address
         },
+      },
+      shiftInfo: {
+        detectedShift: autoDetectedShift,
+        providedShift: shift,
+        finalShift: finalShift,
+        shiftTimes: DEFAULT_SHIFT_TIMES[finalShift]
       }
     });
 
@@ -276,7 +361,6 @@ export const updateAttendance = async (req, res) => {
   }
 };
 
-
 export const bulkUpdateAttendance = async (req, res) => {
   try {
     const { attendanceIds, stepIn, stepOut, shift, status } = req.body;
@@ -333,38 +417,30 @@ export const bulkUpdateAttendance = async (req, res) => {
   }
 };
 
-
-// Mark step out with geo-fencing validation
+// Mark step out without geo-fencing validation
 export const markStepOut = async (req, res) => {
   try {
-    // Use authenticated user's ID from JWT token
-    const employeeId = req.user.id;
-    const { attendanceId, note, status, latitude, longitude, address } = req.body;
+    // Handle both employee self step-out and manager step-out
+    const { employeeId, managerId, companyId, attendanceId, note, status, latitude, longitude, address } = req.body;
+    const authenticatedUserId = req.user.id;
+
+    // Determine if this is manager step-out or employee step-out
+    const isManagerStepOut = employeeId && employeeId !== authenticatedUserId;
+    const finalEmployeeId = isManagerStepOut ? employeeId : authenticatedUserId;
 
     console.log('🔔 [markStepOut] Step-out request:', {
-      employeeId,
+      finalEmployeeId,
       attendanceId,
       location: { latitude, longitude },
-      address
+      address,
+      isManagerStepOut
     });
 
-    if (!employeeId && !attendanceId) {
+    if (!finalEmployeeId && !attendanceId) {
       return res.status(400).json({
         success: false,
         message: "Either employeeId or attendanceId is required"
       });
-    }
-
-    // Validate location coordinates if provided
-    if (latitude && longitude) {
-      if (isNaN(latitude) || isNaN(longitude) ||
-        latitude < -90 || latitude > 90 ||
-        longitude < -180 || longitude > 180) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid coordinates provided"
-        });
-      }
     }
 
     const stepOut = new Date();
@@ -376,7 +452,7 @@ export const markStepOut = async (req, res) => {
       attendance = await Attendance.findById(attendanceId);
     } else {
       attendance = await Attendance.findOne({
-        employeeId,
+        employeeId: finalEmployeeId,
         stepOut: { $exists: false }
       });
     }
@@ -389,7 +465,6 @@ export const markStepOut = async (req, res) => {
     }
 
     const totalTime = Math.round((stepOut - attendance.stepIn) / 60000);
-
 
     // Update attendance record
     attendance.stepOut = stepOut;
@@ -405,7 +480,6 @@ export const markStepOut = async (req, res) => {
         latitude: parseFloat(latitude),
         address: address || 'Location not available'
       };
-      attendance.stepOutGeoFenceValidation = stepOutGeoFenceValidation;
     }
 
     await attendance.save();
@@ -426,8 +500,7 @@ export const markStepOut = async (req, res) => {
             parseFloat(latitude),
             parseFloat(longitude),
             address || 'Location not available',
-            null,
-            stepOutGeoFenceValidation
+            null
           );
         }
 
@@ -452,7 +525,6 @@ export const markStepOut = async (req, res) => {
             latitude: parseFloat(latitude),
             longitude: parseFloat(longitude),
             address: address || 'Location not available',
-            isInGeoFence: stepOutGeoFenceValidation?.isValid || false,
           })
         }
       );
@@ -500,31 +572,70 @@ export const checkEmployeeStatus = async (req, res) => {
   try {
     const { employeeId } = req.params;
 
-    // Check if there is an open attendance for this employee
+    console.log(`🔍 [checkEmployeeStatus] Checking status for employee: ${employeeId}`);
+
+    // Get today's date range
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    console.log(`📅 [checkEmployeeStatus] Date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+
+    // Check if there is an open attendance for this employee (currently stepped in)
     const openAttendance = await Attendance.findOne({
       employeeId,
-      stepOut: { $exists: false }
+      stepOut: { $exists: false },
+      stepIn: { $gte: startOfDay, $lt: endOfDay }
     }).populate('employeeId', 'name email');
 
     if (openAttendance) {
+      console.log(`✅ [checkEmployeeStatus] Employee ${employeeId} is currently stepped in today`);
       return res.status(200).json({
+        success: true,
         isSteppedIn: true,
         attendance: openAttendance,
         message: `Employee is currently stepped in since ${new Date(openAttendance.stepIn).toLocaleString()}`
       });
-    } else {
+    }
+
+    // Check if employee has completed attendance for today (stepped out)
+    const completedAttendance = await Attendance.findOne({
+      employeeId,
+      stepOut: { $exists: true },
+      stepIn: { $gte: startOfDay, $lt: endOfDay }
+    }).populate('employeeId', 'name email');
+
+    if (completedAttendance) {
+      console.log(`✅ [checkEmployeeStatus] Employee ${employeeId} has completed attendance today`);
       return res.status(200).json({
+        success: true,
         isSteppedIn: false,
-        message: "Employee is not currently stepped in"
+        isCompleted: true,
+        attendance: completedAttendance,
+        message: `Employee has completed attendance today (${new Date(completedAttendance.stepIn).toLocaleString()} - ${new Date(completedAttendance.stepOut).toLocaleString()})`
       });
     }
+
+    // No attendance record for today
+    console.log(`❌ [checkEmployeeStatus] Employee ${employeeId} has no attendance record for today`);
+    return res.status(200).json({
+      success: true,
+      isSteppedIn: false,
+      isCompleted: false,
+      message: "Employee has no attendance record for today"
+    });
+
   } catch (error) {
-    console.error("Error checking employee status:", error);
-    res.status(500).json({ message: "Error checking employee status", error });
+    console.error("❌ [checkEmployeeStatus] Error checking employee status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error checking employee status",
+      error: error.message
+    });
   }
 };
 
-// Get all attendance for an employee - Show only latest entry per day
+// Get all attendance for an employee - Show only latest entry per day with pagination
 export const getEmployeeAttendance = async (req, res) => {
   try {
     const { employeeId } = req.params;
@@ -532,12 +643,25 @@ export const getEmployeeAttendance = async (req, res) => {
       return res.status(400).json({ message: "employeeId is required in params" });
     }
 
-    // Get all attendance records for this employee
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10; // Default 10 records per page
+    const skip = (page - 1) * limit;
+
+    console.log(`🔍 [getEmployeeAttendance] Fetching attendance for employee: ${employeeId}`);
+    console.log(`📄 [getEmployeeAttendance] Page: ${page}, Limit: ${limit}`);
+
+    // Get total count for pagination
+    const totalRecords = await Attendance.countDocuments({ employeeId });
+
+    // Get all attendance records for this employee with pagination
     const allAttendance = await Attendance.find({ employeeId })
-      .populate("employeeId")
-      .populate("managerId")
-      .populate("managerId.location")
-      .sort({ createdAt: -1 }); // Sort by newest first
+      .populate("employeeId", "name empCode email photo")
+      .populate("managerId", "name email")
+      .select("stepIn stepOut status shift address totalTime stepInImage stepOutImage")
+      .sort({ stepIn: -1 }) // Sort by stepIn date (newest first)
+      .skip(skip)
+      .limit(limit);
 
     // Group by date, keeping only the latest entry per day
     const attendanceMap = new Map();
@@ -555,22 +679,100 @@ export const getEmployeeAttendance = async (req, res) => {
     const uniqueAttendance = Array.from(attendanceMap.values())
       .sort((a, b) => new Date(b.stepIn) - new Date(a.stepIn));
 
-    res.status(200).json({ attendance: uniqueAttendance });
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalRecords / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    console.log(`📊 [getEmployeeAttendance] Found ${uniqueAttendance.length} unique records`);
+    console.log(`📊 [getEmployeeAttendance] Total records: ${totalRecords}, Total pages: ${totalPages}`);
+
+    res.status(200).json({
+      attendance: uniqueAttendance,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalRecords,
+        limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
   } catch (error) {
-    console.error("Error fetching attendance:", error);
-    res.status(500).json({ message: "Error fetching attendance", error });
+    console.error("❌ [getEmployeeAttendance] Error fetching attendance:", error);
+    res.status(500).json({ message: "Error fetching attendance", error: error.message });
   }
 };
 
 // Get all attendance records (for admin reports) - Show only latest entry per employee per day
 export const getAllAttendance = async (req, res) => {
   try {
-    // Get all attendance records
-    const allAttendance = await Attendance.find({})
-      .populate("employeeId")
-      .populate("managerId")
-      .populate("managerId.location")
-      .sort({ createdAt: -1 }); // Sort by newest first
+    // Get company ID from authenticated user
+    const companyId = req.user.companyId;
+    const adminId = req.user.id;
+    const adminRole = req.user.role;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "User must be associated with a company" });
+    }
+
+    // Build filter query based on request parameters
+    const filterQuery = { companyId: companyId };
+
+    // If admin is readonly, show all attendance in the company (read-only access)
+    if (adminRole === 'readonly') {
+      console.log(`Readonly admin ${adminId} - showing all attendance in company for read-only access`);
+    }
+
+    // Add manager filter
+    if (req.query.manager) {
+      filterQuery.managerId = req.query.manager;
+    }
+
+    // Add employee filter
+    if (req.query.employee) {
+      filterQuery.employeeId = req.query.employee;
+    }
+
+    // Add shift filter
+    if (req.query.shift) {
+      filterQuery.shift = req.query.shift;
+    }
+
+    // Add status filter
+    if (req.query.status) {
+      filterQuery.status = req.query.status;
+    }
+
+    // Add date range filter
+    if (req.query.startDate || req.query.endDate) {
+      filterQuery.stepIn = {};
+      if (req.query.startDate) {
+        filterQuery.stepIn.$gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate) {
+        const endDate = new Date(req.query.endDate);
+        endDate.setHours(23, 59, 59, 999); // End of day
+        filterQuery.stepIn.$lte = endDate;
+      }
+    }
+
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50; // Default 50 records per page
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const totalRecords = await Attendance.countDocuments(filterQuery);
+
+    // Optimized query with pagination and selective fields
+    const allAttendance = await Attendance.find(filterQuery)
+      .populate("employeeId", "name empCode email photo") // Include photo field
+      .populate("managerId", "name email") // Only select needed fields
+      .select("stepIn stepOut status shift address employeeId managerId createdAt stepInImage stepOutImage totalTime") // Only select needed fields
+      .sort({ stepIn: -1 }) // Sort by stepIn instead of createdAt for better performance
+      .skip(skip)
+      .limit(limit);
 
     // Group by employee and date, keeping only the latest entry per day
     const attendanceMap = new Map();
@@ -592,7 +794,22 @@ export const getAllAttendance = async (req, res) => {
     const uniqueAttendance = Array.from(attendanceMap.values())
       .sort((a, b) => new Date(b.stepIn) - new Date(a.stepIn));
 
-    res.status(200).json({ attendance: uniqueAttendance });
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalRecords / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.status(200).json({
+      attendance: uniqueAttendance,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalRecords,
+        limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
   } catch (error) {
     console.error("Error fetching all attendance:", error);
     res.status(500).json({ message: "Error fetching all attendance", error });
@@ -625,9 +842,6 @@ export const deleteAttendance = async (req, res) => {
     res.status(500).json({ message: "Error deleting attendance record", error });
   }
 };
-
-
-
 
 export const locationWiseAttendence = async (req, res) => {
   try {
@@ -758,96 +972,6 @@ export const locationWiseAttendence = async (req, res) => {
   }
 };
 
-/* 
-Expected Output Structure:
-[
-  {
-    "_id": "location_id_1",
-    "name": "Location 1",
-    "address": "Address 1",
-    "managers": [
-      {
-        "_id": "manager_id_1",
-        "name": "Manager Name",
-        "location": "location_id_1",
-        "employees": [
-          {
-            "_id": "employee_id_1",
-            "name": "Employee Name",
-            "managerId": "manager_id_1",
-            "attendance": {
-              "attendanceId": "attendance_record_id",
-              "stepIn": "2025-08-30T09:00:00.000Z",
-              "stepOut": "2025-08-30T18:00:00.000Z",
-              "totalTime": 480, // in minutes or seconds as per your preference
-              "stepInImage": "https://example.com/stepin.jpg",
-              "stepOutImage": "https://example.com/stepout.jpg",
-              "longitude": 72.8777,
-              "latitude": 23.0225,
-              "address": "Office Address",
-              "shift": "morning", // morning, evening, night
-              "status": "present", // present, absent, weekoff
-              "location": "location_id_1",
-              "note": "On time",
-              "createdAt": "2025-08-30T09:00:00.000Z",
-              "updatedAt": "2025-08-30T18:00:00.000Z"
-            }
-          },
-          {
-            "_id": "employee_id_2",
-            "name": "Another Employee",
-            "managerId": "manager_id_1",
-            "attendance": {
-              "attendanceId": null,
-              "stepIn": null,
-              "stepOut": null,
-              "totalTime": 0,
-              "stepInImage": null,
-              "stepOutImage": null,
-              "longitude": null,
-              "latitude": null,
-              "address": null,
-              "shift": null,
-              "status": "absent", // Default when no record found
-              "location": null,
-              "note": null,
-              "createdAt": null,
-              "updatedAt": null
-            }
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "_id": "location_id_2", 
-    "name": "Location 2",
-    "address": "Address 2",
-    "managers": [] // Empty array if no managers found
-  }
-]
-
-Usage Examples:
-1. Current date: GET /api/location-wise-attendance
-2. Specific date: GET /api/location-wise-attendance?date=2025-08-15
-3. Date format: YYYY-MM-DD (e.g., 2025-08-30)
-
-Attendance Model Fields Included:
-- employeeId, managerId (used for lookups)
-- stepIn, stepOut (entry/exit times)
-- totalTime (working duration)
-- stepInImage, stepOutImage (photo evidence)
-- longitude, latitude, address (location data)
-- shift (morning/evening/night)
-- status (present/absent/weekoff)
-- location (location reference)
-- note (additional comments)
-- timestamps (createdAt, updatedAt)
-*/
-
-/**
- * Get geo-fenced attendance data for admin dashboard
- */
 // Get employee routes for admin map visualization
 export const getEmployeeRoutes = async (req, res) => {
   try {
@@ -867,7 +991,7 @@ export const getEmployeeRoutes = async (req, res) => {
 
     // Get routes with populated employee data
     const routes = await EmployeeRoute.find(query)
-      .populate('employeeId', 'name empCode designation email')
+      .populate('employeeId', 'name empCode designation email photo')
       .populate('attendanceId', 'stepIn stepOut shift status')
       .sort({ startTime: -1 })
       .limit(50); // Limit to recent 50 routes
@@ -889,7 +1013,6 @@ export const getEmployeeRoutes = async (req, res) => {
         longitude: point.longitude,
         address: point.address,
         timestamp: point.timestamp,
-        isInGeoFence: point.isInGeoFence,
         accuracy: point.accuracy
       })),
       duration: route.duration,
@@ -912,7 +1035,6 @@ export const getEmployeeRoutes = async (req, res) => {
   }
 };
 
-
 // Get live step-ins within the last 24 hours
 export const getLiveStepIns = async (req, res) => {
   try {
@@ -927,7 +1049,7 @@ export const getLiveStepIns = async (req, res) => {
       latitude: { $exists: true, $ne: null },
       longitude: { $exists: true, $ne: null }
     })
-      .populate('employeeId', 'name empCode email designation')
+      .populate('employeeId', 'name empCode email designation photo')
       .populate('managerId', 'name email')
       .sort({ stepIn: -1 })
       .limit(50);
@@ -952,7 +1074,6 @@ export const getLiveStepIns = async (req, res) => {
       status: stepIn.status,
       note: stepIn.note,
       totalTime: stepIn.totalTime,
-      stepOutGeoFenceValidation: stepIn.stepOutGeoFenceValidation,
       createdAt: stepIn.createdAt,
       updatedAt: stepIn.updatedAt
     }));
@@ -977,5 +1098,328 @@ export const getLiveStepIns = async (req, res) => {
       message: "Error fetching live step-ins",
       error: error.message
     });
+  }
+};
+
+// Export Attendance to Excel
+export const exportAttendanceExcel = async (req, res) => {
+  try {
+    const companyId = req.user.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "User must be associated with a company" });
+    }
+
+    // Get company details
+    const company = await Company.findById(companyId);
+
+    // Get employees for this company
+    const employees = await Employee.find({
+      companyId: companyId,
+      role: "employee"
+    }).select('_id');
+
+    const employeeIds = employees.map(emp => emp._id);
+
+    // Get attendance records
+    const attendanceRecords = await Attendance.find({ employeeId: { $in: employeeIds } })
+      .populate('employeeId', 'name empCode email position photo')
+      .populate('managerId', 'name email')
+      .sort({ stepIn: -1 });
+
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Attendance Report');
+
+    // Add headers
+    worksheet.columns = [
+      { header: 'Employee Code', key: 'empCode', width: 15 },
+      { header: 'Employee Name', key: 'name', width: 25 },
+      { header: 'Position', key: 'position', width: 20 },
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Shift', key: 'shift', width: 15 },
+      { header: 'Clock In', key: 'clockIn', width: 20 },
+      { header: 'Clock Out', key: 'clockOut', width: 20 },
+      { header: 'Total Hours', key: 'totalHours', width: 15 },
+      { header: 'Status', key: 'status', width: 15 },
+      { header: 'Manager', key: 'manager', width: 25 },
+      { header: 'Location', key: 'location', width: 30 }
+    ];
+
+    // Add data rows
+    attendanceRecords.forEach(record => {
+      if (record.employeeId) {
+        const totalHours = record.totalTime ? (record.totalTime / 60).toFixed(2) : 'N/A';
+        const clockInTime = record.stepIn ? new Date(record.stepIn).toLocaleString() : 'N/A';
+        const clockOutTime = record.stepOut ? new Date(record.stepOut).toLocaleString() : 'N/A';
+        const date = record.stepIn ? new Date(record.stepIn).toLocaleDateString() : 'N/A';
+
+        worksheet.addRow({
+          empCode: record.employeeId.empCode || 'N/A',
+          name: record.employeeId.name,
+          position: record.employeeId.position || 'N/A',
+          date: date,
+          shift: record.shift || 'N/A',
+          clockIn: clockInTime,
+          clockOut: clockOutTime,
+          totalHours: totalHours,
+          status: record.status || 'N/A',
+          manager: record.managerId ? record.managerId.name : 'N/A',
+          location: record.address || 'N/A'
+        });
+      }
+    });
+
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Set response headers
+    const fileName = `Attendance_${company?.name || 'Report'}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    // Write to response
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error("Error exporting attendance to Excel:", error);
+    res.status(500).json({ message: "Error exporting attendance to Excel", error: error.message });
+  }
+};
+
+// Export Attendance to PDF
+export const exportAttendancePDF = async (req, res) => {
+  try {
+    const companyId = req.user.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "User must be associated with a company" });
+    }
+
+    // Get company details
+    const company = await Company.findById(companyId);
+
+    // Get employees for this company
+    const employees = await Employee.find({
+      companyId: companyId,
+      role: "employee"
+    }).select('_id');
+
+    const employeeIds = employees.map(emp => emp._id);
+
+    // Get attendance records
+    const attendanceRecords = await Attendance.find({ employeeId: { $in: employeeIds } })
+      .populate('employeeId', 'name empCode email position photo')
+      .populate('managerId', 'name email')
+      .sort({ stepIn: -1 });
+
+    // Create PDF document with proper settings
+    const doc = new PDFDocument({
+      margin: 50,
+      size: 'A4',
+      layout: 'landscape', // Use landscape for better table display
+      autoFirstPage: true
+    });
+
+    // Set response headers with unique filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `Attendance_${company?.name?.replace(/\s+/g, '_') || 'Report'}_${timestamp}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    // Pipe the document to response
+    doc.pipe(res);
+
+    // Add header with company logo area
+    doc.rect(50, 50, 700, 80).stroke();
+    doc.fontSize(24).text('ATTENDANCE REPORT', 50, 70, { align: 'center', width: 700 });
+
+    if (company) {
+      doc.fontSize(16).text(company.name, 50, 100, { align: 'center', width: 700 });
+    }
+
+    doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`, 50, 115, { align: 'center', width: 700 });
+
+    // Add table with proper formatting
+    const tableTop = 150;
+    const tableLeft = 50;
+    const tableWidth = 700;
+    const rowHeight = 25;
+    const headerHeight = 30;
+
+    // Table headers
+    const headers = ['Employee Code', 'Employee Name', 'Date', 'Clock In', 'Clock Out', 'Shift', 'Status', 'Location'];
+    const colWidths = [80, 120, 80, 80, 80, 60, 60, 140];
+    let currentX = tableLeft;
+
+    // Draw header background
+    doc.rect(tableLeft, tableTop, tableWidth, headerHeight).fill('#f0f0f0');
+    doc.rect(tableLeft, tableTop, tableWidth, headerHeight).stroke();
+
+    // Draw header text
+    doc.fillColor('black').fontSize(10).font('Helvetica-Bold');
+    headers.forEach((header, index) => {
+      doc.text(header, currentX + 5, tableTop + 8, { width: colWidths[index] - 10, align: 'center' });
+      currentX += colWidths[index];
+    });
+
+    // Draw data rows
+    let currentY = tableTop + headerHeight;
+    let recordCount = 0;
+
+    attendanceRecords.forEach((record, index) => {
+      // Check if we need a new page
+      if (currentY > 500) { // Leave space for footer
+        doc.addPage();
+        currentY = 50;
+
+        // Redraw headers on new page
+        doc.rect(tableLeft, currentY, tableWidth, headerHeight).fill('#f0f0f0');
+        doc.rect(tableLeft, currentY, tableWidth, headerHeight).stroke();
+
+        currentX = tableLeft;
+        doc.fillColor('black').fontSize(10).font('Helvetica-Bold');
+        headers.forEach((header, index) => {
+          doc.text(header, currentX + 5, currentY + 8, { width: colWidths[index] - 10, align: 'center' });
+          currentX += colWidths[index];
+        });
+
+        currentY += headerHeight;
+      }
+
+      if (record.employeeId) {
+        // Alternate row colors
+        if (recordCount % 2 === 0) {
+          doc.rect(tableLeft, currentY, tableWidth, rowHeight).fill('#f9f9f9');
+        }
+        doc.rect(tableLeft, currentY, tableWidth, rowHeight).stroke();
+
+        // Draw row data
+        currentX = tableLeft;
+        doc.fillColor('black').fontSize(9).font('Helvetica');
+
+        const date = record.stepIn ? new Date(record.stepIn).toLocaleDateString() : 'N/A';
+        const clockInTime = record.stepIn ? new Date(record.stepIn).toLocaleTimeString() : 'N/A';
+        const clockOutTime = record.stepOut ? new Date(record.stepOut).toLocaleTimeString() : 'N/A';
+        const location = record.address ? (record.address.length > 20 ? record.address.substring(0, 20) + '...' : record.address) : 'N/A';
+
+        const rowData = [
+          record.employeeId.empCode || 'N/A',
+          record.employeeId.name || 'N/A',
+          date,
+          clockInTime,
+          clockOutTime,
+          record.shift || 'N/A',
+          record.status || 'N/A',
+          location
+        ];
+
+        rowData.forEach((data, index) => {
+          doc.text(data, currentX + 5, currentY + 8, { width: colWidths[index] - 10, align: 'left' });
+          currentX += colWidths[index];
+        });
+
+        currentY += rowHeight;
+        recordCount++;
+      }
+    });
+
+    // Add summary section
+    doc.addPage();
+    doc.fontSize(20).text('ATTENDANCE SUMMARY', 50, 50, { align: 'center', width: 700 });
+    doc.moveDown(2);
+
+    const totalRecords = attendanceRecords.length;
+    const presentCount = attendanceRecords.filter(r => r.status === 'present').length;
+    const absentCount = attendanceRecords.filter(r => r.status === 'absent').length;
+    const lateCount = attendanceRecords.filter(r => r.status === 'late').length;
+
+    // Summary table
+    const summaryTop = doc.y;
+    doc.rect(200, summaryTop, 300, 120).stroke();
+
+    doc.fontSize(14).text('SUMMARY STATISTICS', 200, summaryTop + 10, { align: 'center', width: 300 });
+
+    doc.fontSize(12);
+    doc.text(`Total Records: ${totalRecords}`, 220, summaryTop + 40);
+    doc.text(`Present: ${presentCount}`, 220, summaryTop + 60);
+    doc.text(`Absent: ${absentCount}`, 220, summaryTop + 80);
+    doc.text(`Late: ${lateCount}`, 220, summaryTop + 100);
+
+    // Add footer
+    doc.fontSize(10).text(`Report generated on ${new Date().toLocaleString()}`, 50, 750, { align: 'center', width: 700 });
+
+    // Properly end the document
+    doc.end();
+
+    // Handle document completion
+    doc.on('end', () => {
+      console.log('PDF generation completed successfully');
+    });
+
+    doc.on('error', (err) => {
+      console.error('PDF generation error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Error generating PDF', error: err.message });
+      }
+    });
+
+  } catch (error) {
+    console.error("Error exporting attendance to PDF:", error);
+    res.status(500).json({ message: "Error exporting attendance to PDF", error: error.message });
+  }
+};
+
+// Get attendance summary
+export const getAttendanceSummary = async (req, res) => {
+  try {
+    const companyId = req.user.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "User must be associated with a company" });
+    }
+
+    // Get employees for this company
+    const employees = await Employee.find({
+      companyId: companyId,
+      role: "employee"
+    }).select('_id');
+
+    const employeeIds = employees.map(emp => emp._id);
+
+    // Get attendance records
+    const attendanceRecords = await Attendance.find({ employeeId: { $in: employeeIds } });
+
+    // Calculate summary
+    const summary = {
+      totalRecords: attendanceRecords.length,
+      present: attendanceRecords.filter(r => r.status === 'present').length,
+      absent: attendanceRecords.filter(r => r.status === 'absent').length,
+      late: attendanceRecords.filter(r => r.status === 'late').length,
+      halfDay: attendanceRecords.filter(r => r.status === 'half-day').length,
+      totalHours: attendanceRecords.reduce((sum, r) => sum + (r.totalTime || 0), 0) / 60,
+      morningShift: attendanceRecords.filter(r => r.shift === 'morning').length,
+      eveningShift: attendanceRecords.filter(r => r.shift === 'evening').length,
+      nightShift: attendanceRecords.filter(r => r.shift === 'night').length
+    };
+
+    res.status(200).json({
+      message: "Attendance summary retrieved successfully",
+      summary
+    });
+
+  } catch (error) {
+    console.error("Error getting attendance summary:", error);
+    res.status(500).json({ message: "Error getting attendance summary", error: error.message });
   }
 };

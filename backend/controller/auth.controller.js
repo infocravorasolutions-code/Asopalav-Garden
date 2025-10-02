@@ -1,146 +1,241 @@
-// controllers/authController.js
-import Admin from "../models/admin.models.js";
-import Manager from "../models/manager.models.js";
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
-dotenv.config(); // Ensure this is at the top
-import bcrypt from "bcrypt";
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
+import Admin from '../models/admin.models.js';
+import Manager from '../models/manager.models.js';
+import Employee from '../models/employee.models.js';
 
+// Email configuration
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    service: 'gmail', // You can change this to your preferred email service
+    auth: {
+      user: process.env.EMAIL_USER || 'your-email@gmail.com',
+      pass: process.env.EMAIL_PASS || 'your-app-password'
+    }
+  });
+};
+
+// Forgot Password - Send Reset Email
 export const forgotPassword = async (req, res) => {
   try {
     const { email, userType } = req.body;
+
     if (!email || !userType) {
-      return res.status(400).json({ message: "Email and userType are required" });
+      return res.status(400).json({
+        message: "Email and user type are required"
+      });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    // Find user based on user type
+    let user;
+    let UserModel;
 
-    let userModel = userType === "admin" ? Admin : userType === "manager" ? Manager : null;
-    if (!userModel) return res.status(400).json({ message: "Invalid userType" });
+    switch (userType) {
+      case 'admin':
+        UserModel = Admin;
+        break;
+      case 'manager':
+        UserModel = Manager;
+        break;
+      case 'employee':
+        UserModel = Employee;
+        break;
+      default:
+        return res.status(400).json({
+          message: "Invalid user type"
+        });
+    }
 
-    const user = await userModel.findOneAndUpdate(
-      { email },
-      { otp, otpExpires },
-      { new: true }
-    );
+    user = await UserModel.findOne({ email });
 
-    if (!user) return res.status(404).json({ message: `${userType} not found` });
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found with this email address"
+      });
+    }
 
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = Date.now() + 3600000; // 1 hour from now
 
-//     const transporter = nodemailer.createTransport({
-//   host: "smtp.hostinger.com",
-//   port: 465, // or 587 (for TLS)
-//   secure: true, // true for port 465, false for port 587
-//   auth: {
-//     user: process.env.EMAIL_USER  ,
-//     pass: process.env.EMAIL_PASS, // or App Password if set
-//   },
-// });
+    // Save reset token to user
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpiry = resetTokenExpiry;
+    await user.save();
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  logger: true,
-  debug: true,
-});
+    // Create email transporter
+    const transporter = createTransporter();
 
-// const transporter = nodemailer.createTransport({
-//   host: "smtp.hostinger.com",
-//   port: 465,
-//   secure: true,
-//   auth: {
-//     user: process.env.EMAIL_USER,
-//     pass: process.env.EMAIL_PASS,
-//   },
-//   logger: true,  // logs SMTP commands
-//   debug: true    // include SMTP traffic in logs
-// });
-
-
+    // Email content
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}&type=${userType}`;
 
     const mailOptions = {
-      from: `"YourApp Support" <${process.env.EMAIL_USER}>`,
+      from: process.env.EMAIL_USER || 'your-email@gmail.com',
       to: email,
-      subject: "Your OTP for Password Reset",
+      subject: 'Password Reset Request',
       html: `
-     <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background-color: #ffffff; max-width: 600px; margin: auto;">
-  <h2 style="color: #2d2d2d; font-size: 22px;">🔐 Password Reset Request</h2>
-  
-  <p style="font-size: 16px; color: #555;">
-    Hello,<br />
-    We received a request to reset your password for your <strong>DREnterprice</strong> account.
-  </p>
-
-  <p style="font-size: 16px; color: #555;">Use the OTP below to reset your password:</p>
-
-  <div style="font-size: 28px; font-weight: bold; color: #2d89ff; background: #f0f4ff; padding: 15px; border-radius: 6px; text-align: center; letter-spacing: 4px; margin: 20px 0;">
-    ${otp}
-  </div>
-
-  <p style="font-size: 14px; color: #888;">This OTP is valid for <strong>10 minutes</strong>. Please do not share it with anyone.</p>
-
-  <p style="font-size: 14px; color: #888;">If you didn’t request a password reset, you can safely ignore this email.</p>
-
-  <hr style="margin: 30px 30px; border: none; border-top: 1px solid #eee;" />
-
-  <div style="text-align: center; font-size: 13px; color: #aaa;">
-    &copy; ${new Date().getFullYear()} DREnterprice. All rights reserved.<br />
-  
-  </div>
-</div>
-
-      `,
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Password Reset Request</h2>
+          <p>Hello ${user.name || 'User'},</p>
+          <p>You have requested to reset your password. Click the button below to reset your password:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" 
+               style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Reset Password
+            </a>
+          </div>
+          <p>If the button doesn't work, copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${resetUrl}</p>
+          <p><strong>This link will expire in 1 hour.</strong></p>
+          <p>If you didn't request this password reset, please ignore this email.</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 12px;">
+            This is an automated message. Please do not reply to this email.
+          </p>
+        </div>
+      `
     };
 
+    // Send email
     await transporter.sendMail(mailOptions);
-    console.log(mailOptions)
 
-    res.status(200).json({ message: "OTP sent to your email" });
+    res.status(200).json({
+      message: "Password reset email sent successfully",
+      email: email
+    });
 
-  } catch (err) {
-    console.error("Forgot password error:", err);
-    res.status(500).json({ message: "Error sending OTP", error: err.message });
+  } catch (error) {
+    console.error("Error in forgot password:", error);
+    res.status(500).json({
+      message: "Error sending password reset email",
+      error: error.message
+    });
   }
 };
 
-
-
-console.log("EMAIL_USER:", process.env.EMAIL_USER);
-console.log("EMAIL_PASS:", process.env.EMAIL_PASS);
-
-
-export const verifyOtpAndResetPassword = async (req, res) => {
+// Reset Password - Verify Token and Update Password
+export const resetPassword = async (req, res) => {
   try {
-    const { email, userType, otp, newPassword } = req.body;
+    const { token, newPassword, userType } = req.body;
 
-    if (!email || !userType || !otp || !newPassword) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!token || !newPassword || !userType) {
+      return res.status(400).json({
+        message: "Token, new password, and user type are required"
+      });
     }
 
-    const model = userType === "admin" ? Admin : userType === "manager" ? Manager : null;
-    if (!model) return res.status(400).json({ message: "Invalid user type" });
+    // Find user based on user type
+    let user;
+    let UserModel;
 
-    const user = await model.findOne({ email, otp });
-
-    if (!user) return res.status(400).json({ message: "Invalid OTP or email" });
-    if (user.otpExpires < new Date()) {
-      return res.status(400).json({ message: "OTP expired" });
+    switch (userType) {
+      case 'admin':
+        UserModel = Admin;
+        break;
+      case 'manager':
+        UserModel = Manager;
+        break;
+      case 'employee':
+        UserModel = Employee;
+        break;
+      default:
+        return res.status(400).json({
+          message: "Invalid user type"
+        });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // Find user with valid reset token
+    user = await UserModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpiry: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired reset token"
+      });
+    }
+
+    // Hash new password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update user password and clear reset token
     user.password = hashedPassword;
-    user.otp = null;
-    user.otpExpires = null;
+    user.passwordHash = hashedPassword; // For compatibility
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpiry = undefined;
     await user.save();
 
-    res.status(200).json({ message: "Password reset successful" });
+    res.status(200).json({
+      message: "Password reset successfully"
+    });
 
-  } catch (err) {
-    console.error("Reset password error:", err);
-    res.status(500).json({ message: "Failed to reset password", error: err.message });
+  } catch (error) {
+    console.error("Error in reset password:", error);
+    res.status(500).json({
+      message: "Error resetting password",
+      error: error.message
+    });
+  }
+};
+
+// Verify Reset Token
+export const verifyResetToken = async (req, res) => {
+  try {
+    const { token, userType } = req.query;
+
+    if (!token || !userType) {
+      return res.status(400).json({
+        message: "Token and user type are required"
+      });
+    }
+
+    // Find user based on user type
+    let user;
+    let UserModel;
+
+    switch (userType) {
+      case 'admin':
+        UserModel = Admin;
+        break;
+      case 'manager':
+        UserModel = Manager;
+        break;
+      case 'employee':
+        UserModel = Employee;
+        break;
+      default:
+        return res.status(400).json({
+          message: "Invalid user type"
+        });
+    }
+
+    // Find user with valid reset token
+    user = await UserModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpiry: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired reset token"
+      });
+    }
+
+    res.status(200).json({
+      message: "Token is valid",
+      email: user.email,
+      name: user.name
+    });
+
+  } catch (error) {
+    console.error("Error verifying reset token:", error);
+    res.status(500).json({
+      message: "Error verifying reset token",
+      error: error.message
+    });
   }
 };

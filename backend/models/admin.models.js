@@ -25,9 +25,18 @@ const adminSchema = new Schema({
   },
   role: {
     type: String,
-    enum: ["superadmin", "readonly"],
-    default: "superadmin"
+    enum: ["admin", "readonly", "superadmin"],
+    default: "admin"
   },
+  resetPasswordToken: {
+    type: String,
+    default: undefined
+  },
+  resetPasswordExpiry: {
+    type: Date,
+    default: undefined
+  },
+  logo: { type: String },
   companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
 
   otp: String,

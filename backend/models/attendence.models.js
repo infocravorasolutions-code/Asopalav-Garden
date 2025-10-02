@@ -1,13 +1,34 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
+import { SHIFT_ENUM } from '../constants/shifts.js';
+
 const AttendanceSchema = new mongoose.Schema({
-    employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    date: { type: Date, required: true },
-    stepInTime: Date,
-    stepOutTime: Date,
-    stepInLocation: { type: { type: String, enum: ['Point'], default: 'Point' }, coordinates: [Number] },
-    stepOutLocation: { type: { type: String, enum: ['Point'], default: 'Point' }, coordinates: [Number] },
-    status: String,
-    totalHours: Number
+    employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    managerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Manager' },
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+    stepIn: { type: Date },
+    stepOut: { type: Date },
+    stepInImage: { type: String },
+    stepOutImage: { type: String },
+    latitude: { type: Number },
+    longitude: { type: Number },
+    address: { type: String },
+    stepOutLocation: {
+        latitude: { type: Number },
+        longitude: { type: Number },
+        address: { type: String }
+    },
+    note: { type: String },
+    shift: { type: String, enum: Object.values(SHIFT_ENUM), default: SHIFT_ENUM.MORNING },
+    status: { type: String, enum: ['present', 'absent', 'late', 'half-day'], default: 'present' },
+    totalTime: { type: Number }, // in minutes
+    lastKnownLocation: {
+        latitude: { type: Number },
+        longitude: { type: Number },
+        address: { type: String },
+        lastSeen: { type: Date }
+    },
+    lastLocationUpdate: { type: Date }
 }, { timestamps: true });
-AttendanceSchema.index({ stepInLocation: '2dsphere' });
-module.exports = mongoose.model('Attendance', AttendanceSchema);
+
+const Attendance = mongoose.model('Attendance', AttendanceSchema);
+export default Attendance;
