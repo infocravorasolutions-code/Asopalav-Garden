@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 import StandaloneAgGrid from '../ui/StandaloneAgGrid';
 import ManagerModal from './ManagerModal';
+import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
 
 const ManagersPageNew = () => {
   const { user } = useAuth();
@@ -15,93 +16,19 @@ const ManagersPageNew = () => {
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
   const [selectedManager, setSelectedManager] = useState(null);
 
-  // Dummy managers data
-  const dummyManagers = [
-    {
-      _id: '1',
-      name: 'John Smith',
-      email: 'john.smith@neelkanthlandscape.com',
-      mobile: '+91 98765 43210',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      locationName: 'Mumbai Office',
-      status: 'Active',
-      createdAt: '2024-01-15T10:30:00Z'
-    },
-    {
-      _id: '2',
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@neelkanthlandscape.com',
-      mobile: '+91 98765 43211',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      locationName: 'Delhi Office',
-      status: 'Active',
-      createdAt: '2024-01-20T14:45:00Z'
-    },
-    {
-      _id: '3',
-      name: 'Michael Brown',
-      email: 'michael.brown@neelkanthlandscape.com',
-      mobile: '+91 98765 43212',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      locationName: 'Bangalore Office',
-      status: 'Active',
-      createdAt: '2024-02-01T09:15:00Z'
-    },
-    {
-      _id: '4',
-      name: 'Emily Davis',
-      email: 'emily.davis@neelkanthlandscape.com',
-      mobile: '+91 98765 43213',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      locationName: 'Chennai Office',
-      status: 'Inactive',
-      createdAt: '2024-02-10T16:20:00Z'
-    },
-    {
-      _id: '5',
-      name: 'David Wilson',
-      email: 'david.wilson@neelkanthlandscape.com',
-      mobile: '+91 98765 43214',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      locationName: 'Kolkata Office',
-      status: 'Active',
-      createdAt: '2024-02-15T11:30:00Z'
-    },
-    {
-      _id: '6',
-      name: 'Lisa Anderson',
-      email: 'lisa.anderson@neelkanthlandscape.com',
-      mobile: '+91 98765 43215',
-      companyId: { name: 'NEELKANTH LANDSCAPE' },
-      locationName: 'Pune Office',
-      status: 'Active',
-      createdAt: '2024-02-20T13:45:00Z'
-    }
-  ];
 
   // Fetch managers data from API
   const fetchManagers = async () => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5678/api/manager/all', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await api.get('/manager/all');
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (result.message === 'success') {
-        console.log('API Response:', result.data);
+      if (response.message === 'success') {
+        console.log('API Response:', response.data);
 
         // Map API data to grid format
-        const allManagers = result.data.map(manager => ({
+        const allManagers = response.data.map(manager => ({
           ...manager,
           companyId: manager.companyId || { name: 'NEELKANTH LANDSCAPE' },
           status: manager.isActive ? 'Active' : 'Inactive'
@@ -110,13 +37,11 @@ const ManagersPageNew = () => {
         setManagers(allManagers);
         console.log('Fetched managers:', allManagers.length);
       } else {
-        throw new Error(result.message || 'Failed to fetch managers');
+        throw new Error(response.message || 'Failed to fetch managers');
       }
     } catch (error) {
-      console.error('Error fetching managers:', error);
-      setError(error.message);
-      // Use dummy data as fallback
-      setManagers(dummyManagers);
+      const errorMessage = handleApiError(error, 'Failed to fetch managers');
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -136,26 +61,14 @@ const ManagersPageNew = () => {
   const handleDelete = async (manager) => {
     if (window.confirm(`Are you sure you want to delete ${manager.name}?`)) {
       try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch(`http://localhost:5678/api/manager/${manager._id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        await api.delete(`/manager/${manager._id}`);
 
-        if (response.ok) {
-          // Remove from local state
-          setManagers(prev => prev.filter(m => m._id !== manager._id));
-          console.log('Manager deleted successfully');
-        } else {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to delete manager');
-        }
+        // Remove from local state
+        setManagers(prev => prev.filter(m => m._id !== manager._id));
+        console.log('Manager deleted successfully');
+        handleApiSuccess('Manager deleted successfully!');
       } catch (error) {
-        console.error('Error deleting manager:', error);
-        alert(`Failed to delete manager: ${error.message}`);
+        handleApiError(error, 'Failed to delete manager');
       }
     }
   };
@@ -168,13 +81,6 @@ const ManagersPageNew = () => {
 
   const handleSaveManager = async (formData) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const url = modalMode === 'create'
-        ? 'http://localhost:5678/api/manager/'
-        : `http://localhost:5678/api/manager/${selectedManager._id}`;
-
-      const method = modalMode === 'create' ? 'POST' : 'PUT';
-
       // Prepare request data
       const requestData = {
         ...formData,
@@ -192,45 +98,40 @@ const ManagersPageNew = () => {
         delete requestData.confirmPassword;
       }
 
-      console.log('Saving manager:', { modalMode, requestData, url, method });
+      console.log('Saving manager:', { modalMode, requestData });
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Save response:', result);
-
-        if (modalMode === 'create') {
-          // Add new manager to list
-          setManagers(prev => [...prev, result.manager]);
-        } else {
-          // Update existing manager - ensure we have the correct ID
-          setManagers(prev => prev.map(m =>
-            m._id === selectedManager._id ? { ...m, ...result.manager } : m
-          ));
-        }
-
-        console.log('Manager saved successfully');
-
-        // Refresh the managers list to ensure we have the latest data
-        setTimeout(() => {
-          fetchManagers();
-        }, 500);
+      let response;
+      if (modalMode === 'create') {
+        // Create new manager
+        response = await api.post('/manager/', requestData);
       } else {
-        const errorData = await response.json();
-        console.error('Save error response:', errorData);
-        throw new Error(errorData.message || 'Failed to save manager');
+        // Update existing manager
+        response = await api.put(`/manager/${selectedManager._id}`, requestData);
       }
+
+      console.log('Save response:', response);
+
+      if (modalMode === 'create') {
+        // Add new manager to list
+        setManagers(prev => [...prev, response.manager]);
+      } else {
+        // Update existing manager - ensure we have the correct ID
+        setManagers(prev => prev.map(m =>
+          m._id === selectedManager._id ? { ...m, ...response.manager } : m
+        ));
+      }
+
+      console.log('Manager saved successfully');
+
+      // Refresh the managers list to ensure we have the latest data
+      handleApiSuccess(modalMode === 'create' ? 'Manager created successfully!' : 'Manager updated successfully!');
+      setTimeout(() => {
+        fetchManagers();
+      }, 500);
+
     } catch (error) {
       console.error('Error saving manager:', error);
-      alert(`Failed to save manager: ${error.message}`);
+      handleApiError(error, 'Failed to save manager');
       throw error;
     }
   };
@@ -324,8 +225,8 @@ const ManagersPageNew = () => {
         return (
           <div className="text-left">
             <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${status === 'Active'
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
               }`}>
               {status}
             </span>

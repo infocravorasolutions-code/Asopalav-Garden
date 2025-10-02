@@ -158,7 +158,7 @@ const AppRoutes = () => {
       <Route
         path="/admin/dashboard"
         element={
-          <RoleBasedRoute allowedRoles={['superadmin', 'readonly']}>
+          <RoleBasedRoute allowedRoles={['admin', 'readonly']}>
             <DashboardLayout>
               <AdminDashboard />
             </DashboardLayout>

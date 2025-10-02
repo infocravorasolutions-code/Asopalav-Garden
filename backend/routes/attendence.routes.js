@@ -14,7 +14,8 @@ import {
   getLiveStepIns,
   exportAttendanceExcel,
   exportAttendancePDF,
-  getAttendanceSummary
+  getAttendanceSummary,
+  getShiftInfo
 } from "../controller/attendence.controller.js";
 import { authenticateUser } from "../utils/middlewere.js";
 
@@ -103,5 +104,8 @@ router.get("/export/pdf", authenticateUser, exportAttendancePDF);
 
 // Summary endpoint
 router.get("/summary", authenticateUser, getAttendanceSummary);
+
+// Get shift information for a given time
+router.get("/shift-info", authenticateUser, getShiftInfo);
 
 export default router;

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '../../utils/toast';
 import EnhancedEditCompanyModal from './EnhancedEditCompanyModal';
+import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
 
 const SuperAdminDashboard = () => {
     const [companies, setCompanies] = useState([]);
@@ -42,23 +43,15 @@ const SuperAdminDashboard = () => {
 
     const fetchCompanies = async () => {
         try {
-            const token = localStorage.getItem('superadmin_token');
-            const response = await fetch(`http://localhost:5678/api/superadmin/companies`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                setCompanies(data.data);
+            const response = await api.get('/superadmin/companies');
+            if (response.success) {
+                setCompanies(response.data);
             } else {
                 showError('Failed to fetch companies');
             }
         } catch (error) {
             console.error('Error fetching companies:', error);
-            showError('Network error');
+            handleApiError(error, 'Network error');
         } finally {
             setLoading(false);
         }
@@ -67,28 +60,18 @@ const SuperAdminDashboard = () => {
     const handleCreateCompany = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('superadmin_token');
-            const response = await fetch(`http://localhost:5678/api/superadmin/companies`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
-
-            const data = await response.json();
-            if (data.success) {
+            const response = await api.post('/superadmin/companies', formData);
+            if (response.success) {
                 showSuccess('Company created successfully');
                 setShowCreateModal(false);
                 resetForm();
                 fetchCompanies();
             } else {
-                showError(data.message || 'Failed to create company');
+                showError(response.message || 'Failed to create company');
             }
         } catch (error) {
             console.error('Error creating company:', error);
-            showError('Network error');
+            handleApiError(error, 'Network error');
         }
     };
 
@@ -128,28 +111,19 @@ const SuperAdminDashboard = () => {
                 }
             };
 
-            const response = await fetch(`http://localhost:5678/api/superadmin/companies/${selectedCompany._id}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(updateData),
-            });
-
-            const data = await response.json();
-            if (data.success) {
+            const response = await api.put(`/api/superadmin/companies/${selectedCompany._id}`, updateData);
+            if (response.success) {
                 showSuccess('Company updated successfully');
                 setShowEditModal(false);
                 setSelectedCompany(null);
                 resetForm();
                 fetchCompanies();
             } else {
-                showError(data.message || 'Failed to update company');
+                showError(response.message || 'Failed to update company');
             }
         } catch (error) {
             console.error('Error updating company:', error);
-            showError('Network error');
+            handleApiError(error, 'Network error');
         }
     };
 
@@ -159,25 +133,16 @@ const SuperAdminDashboard = () => {
         }
 
         try {
-            const token = localStorage.getItem('superadmin_token');
-            const response = await fetch(`http://localhost:5678/api/superadmin/companies/${companyId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            const data = await response.json();
-            if (data.success) {
+            const response = await api.delete(`/superadmin/companies/${companyId}`);
+            if (response.success) {
                 showSuccess('Company deleted successfully');
                 fetchCompanies();
             } else {
-                showError(data.message || 'Failed to delete company');
+                showError(response.message || 'Failed to delete company');
             }
         } catch (error) {
             console.error('Error deleting company:', error);
-            showError('Network error');
+            handleApiError(error, 'Network error');
         }
     };
 

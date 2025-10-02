@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '../../utils/toast';
+import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
 
 const SuperAdminForgotPassword = () => {
     const [email, setEmail] = useState('');
@@ -13,25 +14,17 @@ const SuperAdminForgotPassword = () => {
         setLoading(true);
 
         try {
-            const response = await fetch(`http://localhost:5678/api/superadmin/forgot-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email }),
-            });
+            const response = await api.post('/superadmin/forgot-password', { email });
 
-            const data = await response.json();
-
-            if (data.success) {
+            if (response.success) {
                 setEmailSent(true);
-                showSuccess('Password reset email sent successfully');
+                handleApiSuccess('Password reset email sent successfully');
             } else {
-                showError(data.message || 'Failed to send reset email');
+                showError(response.message || 'Failed to send reset email');
             }
         } catch (error) {
             console.error('Forgot password error:', error);
-            showError('Network error. Please try again.');
+            handleApiError(error, 'Network error. Please try again.');
         } finally {
             setLoading(false);
         }

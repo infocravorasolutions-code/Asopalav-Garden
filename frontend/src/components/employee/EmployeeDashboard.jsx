@@ -24,6 +24,7 @@ import StepOutModal from './StepOutModal';
 import MyAttendance from './MyAttendance';
 import { attendanceAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { SHIFT_ENUM } from '../../constants/shifts';
 
 const EmployeeDashboard = () => {
   const { user } = useAuth();
@@ -53,7 +54,7 @@ const EmployeeDashboard = () => {
 
   // Fetch current attendance status
   const fetchCurrentAttendanceStatus = useCallback(async () => {
-    debugger
+
     if (!user?._id) return;
 
     try {
@@ -168,7 +169,7 @@ const EmployeeDashboard = () => {
 
       // Add other data
       formData.append('address', stepInData.address || '');
-      formData.append('shift', stepInData.shift || 'morning');
+      formData.append('shift', stepInData.shift || SHIFT_ENUM.MORNING);
       formData.append('status', stepInData.status || 'present');
       formData.append('latitude', stepInData.latitude || '');
       formData.append('longitude', stepInData.longitude || '');
@@ -414,96 +415,96 @@ const EmployeeDashboard = () => {
         {/* Employee Information */}
         <div className="w-full p-2 sm:p-3 lg:p-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <User className="h-5 w-5 mr-2" />
-                Personal Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <User className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">{user?.name || 'N/A'}</p>
-                    <p className="text-sm text-gray-500">Full Name</p>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <User className="h-5 w-5 mr-2" />
+                  Personal Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <User className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">{user?.name || 'N/A'}</p>
+                      <p className="text-sm text-gray-500">Full Name</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Mail className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">{user?.email || 'N/A'}</p>
+                      <p className="text-sm text-gray-500">Email Address</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Phone className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">{user?.mobile || 'N/A'}</p>
+                      <p className="text-sm text-gray-500">Mobile Number</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Building className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">{user?.designation || 'N/A'}</p>
+                      <p className="text-sm text-gray-500">Designation</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Mail className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">{user?.email || 'N/A'}</p>
-                    <p className="text-sm text-gray-500">Email Address</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Phone className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">{user?.mobile || 'N/A'}</p>
-                    <p className="text-sm text-gray-500">Mobile Number</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Building className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">{user?.designation || 'N/A'}</p>
-                    <p className="text-sm text-gray-500">Designation</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Clock className="h-5 w-5 mr-2" />
-                Today's Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Current Time</span>
-                  <span className="font-semibold">{formatTime(currentTime)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Date</span>
-                  <span className="font-semibold truncate">{formatDate(currentTime)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Status</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(attendanceStatus)}`}>
-                    {getStatusText(attendanceStatus)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Connection</span>
-                  <span className={`flex items-center ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
-                    {isOnline ? (
-                      <Wifi className="h-4 w-4 mr-1" />
-                    ) : (
-                      <WifiOff className="h-4 w-4 mr-1" />
-                    )}
-                    {isOnline ? 'Online' : 'Offline'}
-                  </span>
-                </div>
-                {location && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Clock className="h-5 w-5 mr-2" />
+                  Today's Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Location</span>
-                    <span className="font-semibold text-sm truncate">
-                      {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+                    <span className="text-sm text-gray-600">Current Time</span>
+                    <span className="font-semibold">{formatTime(currentTime)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Date</span>
+                    <span className="font-semibold truncate">{formatDate(currentTime)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Status</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(attendanceStatus)}`}>
+                      {getStatusText(attendanceStatus)}
                     </span>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Connection</span>
+                    <span className={`flex items-center ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
+                      {isOnline ? (
+                        <Wifi className="h-4 w-4 mr-1" />
+                      ) : (
+                        <WifiOff className="h-4 w-4 mr-1" />
+                      )}
+                      {isOnline ? 'Online' : 'Offline'}
+                    </span>
+                  </div>
+                  {location && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Location</span>
+                      <span className="font-semibold text-sm truncate">
+                        {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
 
-      {/* Recent Activity */}
+        {/* Recent Activity */}
         {/* <div className="w-full p-2 sm:p-3 lg:p-4">
           <Card>
           <CardHeader>

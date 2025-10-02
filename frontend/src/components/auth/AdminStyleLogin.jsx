@@ -23,7 +23,7 @@ import {
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
-import CompanyLogo from '../ui/CompanyLogo';
+import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
 
 const AdminStyleLogin = () => {
     const { login, isAuthenticated, loading, error, clearError } = useAuth();
@@ -31,18 +31,19 @@ const AdminStyleLogin = () => {
 
     const [userType, setUserType] = useState('admin');
     const [formData, setFormData] = useState({
-        company: 'ASOPALAV',
+        company: 'NEELKANTH',
         email: '',
         password: ''
     });
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [validationErrors, setValidationErrors] = useState({});
+    const [isTestingAPI, setIsTestingAPI] = useState(false);
 
     const handleUserTypeChange = (type) => {
         console.log('User type changed to:', type);
         setUserType(type);
-        setFormData({ company: 'ASOPALAV', email: '', password: '' });
+        setFormData({ company: 'NEELKANTH', email: '', password: '' });
         setValidationErrors({});
         clearError();
     };
@@ -58,9 +59,10 @@ const AdminStyleLogin = () => {
     const validateForm = () => {
         const errors = {};
 
-        if (userType === 'admin' && !formData.company.trim()) {
-            errors.company = 'Company code is required';
-        }
+        // Company code is now optional for admin login
+        // if (userType === 'admin' && !formData.company.trim()) {
+        //     errors.company = 'Company code is required';
+        // }
 
         if (!formData.email.trim()) {
             errors.email = 'Email is required';
@@ -87,43 +89,36 @@ const AdminStyleLogin = () => {
         try {
             // Handle SuperAdmin login separately
             if (userType === 'superadmin') {
-                const response = await fetch(`http://localhost:5678/api/superadmin/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        email: formData.email,
-                        password: formData.password
-                    }),
+                const response = await api.post('/superadmin/login', {
+                    email: formData.email,
+                    password: formData.password
                 });
 
-                const data = await response.json();
-
-                if (data.success) {
+                if (response.success) {
                     // Store SuperAdmin token and user data
-                    localStorage.setItem('superadmin_token', data.token);
-                    localStorage.setItem('superadmin_user', JSON.stringify(data.user));
+                    localStorage.setItem('superadmin_token', response.token);
+                    localStorage.setItem('superadmin_user', JSON.stringify(response.user));
                     localStorage.setItem('user_role', 'superadmin');
 
                     showSuccess('SuperAdmin login successful!');
                     navigate('/superadmin/dashboard');
                 } else {
-                    showError(data.message || 'SuperAdmin login failed');
+                    showError(response.message || 'SuperAdmin login failed');
                 }
                 return;
             }
 
             // Handle regular user login
             const loginData = {
-                ...formData,
+                email: formData.email,
+                password: formData.password,
                 userType: userType
             };
 
-            console.log('Attempting login with data:', loginData);
-            console.log('User type:', userType);
-            console.log('Form data:', formData);
-
+            // Only include company if it's provided
+            if (formData.company.trim()) {
+                loginData.company = formData.company;
+            }
             const result = await login(loginData);
             console.log('Login result:', result);
 
@@ -144,11 +139,12 @@ const AdminStyleLogin = () => {
             }
         } catch (error) {
             console.error('Login error:', error);
-            showError('Network error. Please try again.');
+            handleApiError(error, 'Network error. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
     };
+
 
     if (loading) {
         return (
@@ -297,12 +293,12 @@ const AdminStyleLogin = () => {
                                 {/* User Type Selector */}
                                 <div className="space-y-3">
                                     <label className="text-sm font-medium text-gray-700">Login As</label>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex flex-col gap-2">
                                         {[
                                             { key: 'admin', label: 'Admin', icon: Shield, color: 'blue' },
                                             { key: 'manager', label: 'Manager', icon: Users, color: 'purple' },
                                             { key: 'employee', label: 'Employee', icon: User, color: 'green' },
-                                            { key: 'superadmin', label: 'SuperAdmin', icon: Crown, color: 'red' }
+                                            // { key: 'superadmin', label: 'SuperAdmin', icon: Crown, color: 'red' }
                                         ].map(({ key, label, icon, color }) => (
                                             <button
                                                 key={key}
@@ -331,16 +327,17 @@ const AdminStyleLogin = () => {
                                 )}
 
                                 <form onSubmit={handleSubmit} className="space-y-6">
-                                    {/* Company Code - Only for Admin */}
+                                    {/* Company Code - Optional for Admin */}
+
                                     {/* {userType === 'admin' && (
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-700 flex items-center">
                                                 <Building className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-blue-500" />
-                                                Company Code
+                                                Company Code (Optional)
                                             </label>
                                             <Input
                                                 type="text"
-                                                placeholder="Enter your company code"
+                                                placeholder="Enter your company code (optional)"
                                                 value={formData.company}
                                                 onChange={handleInputChange('company')}
                                                 disabled={isSubmitting}
@@ -432,13 +429,15 @@ const AdminStyleLogin = () => {
 
                                 {/* Additional Links */}
                                 <div className="space-y-4 pt-4 border-t border-gray-200">
-                                    <div className="text-center">
+                                    <div className="text-center space-y-2">
                                         <a
                                             href="/forgot-password"
                                             className="text-sm text-blue-600 hover:text-blue-500 font-medium"
                                         >
                                             Forgot your password?
                                         </a>
+
+
                                     </div>
 
                                     <div className="text-center">

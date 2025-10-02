@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { SHIFT_ENUM } from '../constants/shifts.js';
 
 const AttendanceSchema = new mongoose.Schema({
     employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
@@ -17,7 +18,7 @@ const AttendanceSchema = new mongoose.Schema({
         address: { type: String }
     },
     note: { type: String },
-    shift: { type: String, enum: ['morning', 'evening', 'night'], default: 'morning' },
+    shift: { type: String, enum: Object.values(SHIFT_ENUM), default: SHIFT_ENUM.MORNING },
     status: { type: String, enum: ['present', 'absent', 'late', 'half-day'], default: 'present' },
     totalTime: { type: Number }, // in minutes
     lastKnownLocation: {

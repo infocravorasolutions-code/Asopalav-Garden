@@ -19,8 +19,9 @@ import {
   Zap
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { api } from '../../services/api';
+import { api, authAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { SHIFT_ENUM } from '../../constants/shifts';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -49,80 +50,27 @@ const AdminDashboard = () => {
     try {
       setRefreshing(true);
 
-      // Fetch all data in parallel
-      const [employeesResponse, attendanceResponse, managersResponse] = await Promise.all([
-        api.get('/api/employee/all'),
-        api.get('/api/attendence/'),
-        api.get('/api/manager/')
-      ]);
+      // Fetch shift-wise data from the new API endpoint
+      const shiftWiseResponse = await authAPI.getShiftWiseData();
+      const data = shiftWiseResponse.data;
 
-      const employees = employeesResponse.data?.data || employeesResponse.data?.employees || [];
-      const attendance = attendanceResponse.data?.attendance || [];
-      const managers = managersResponse.data?.data || managersResponse.data?.managers || [];
+      console.log('Shift-wise data received:', data);
 
-      // Calculate today's date
-      const today = new Date().toDateString();
-
-      // Filter today's attendance
-      const todayAttendance = attendance.filter(record =>
-        new Date(record.stepIn).toDateString() === today
-      );
-
-      // Calculate active employees (checked in today)
-      const activeToday = todayAttendance.filter(record =>
-        record.stepIn && !record.stepOut
-      ).length;
-
-      // Calculate shift-wise data
-      const morningShiftEmployees = employees.filter(emp =>
-        emp.shift === 'Morning Shift (9:00 AM - 5:00 PM)' || emp.shift === 'Morning'
-      ).length;
-
-      const eveningShiftEmployees = employees.filter(emp =>
-        emp.shift === 'Evening Shift (5:00 PM - 11:00 PM)' || emp.shift === 'Evening'
-      ).length;
-
-      const nightShiftEmployees = employees.filter(emp =>
-        emp.shift === 'Night Shift (11:00 PM - 7:00 AM)' || emp.shift === 'Night'
-      ).length;
-
-      // Get active employees by shift
-      const morningActive = todayAttendance.filter(record => {
-        const employee = employees.find(emp =>
-          (emp._id === record.employeeId?._id) || (emp._id === record.employeeId)
-        );
-        return employee && (employee.shift === 'Morning Shift (9:00 AM - 5:00 PM)' || employee.shift === 'Morning') && record.stepIn && !record.stepOut;
-      }).length;
-
-      const eveningActive = todayAttendance.filter(record => {
-        const employee = employees.find(emp =>
-          (emp._id === record.employeeId?._id) || (emp._id === record.employeeId)
-        );
-        return employee && (employee.shift === 'Evening Shift (5:00 PM - 11:00 PM)' || employee.shift === 'Evening') && record.stepIn && !record.stepOut;
-      }).length;
-
-      const nightShiftActive = todayAttendance.filter(record => {
-        const employee = employees.find(emp =>
-          (emp._id === record.employeeId?._id) || (emp._id === record.employeeId)
-        );
-        return employee && (employee.shift === 'Night Shift (11:00 PM - 7:00 AM)' || employee.shift === 'Night') && record.stepIn && !record.stepOut;
-      }).length;
-
-      // Update shift data state
+      // Update shift data state with the data from the API
       setShiftData({
-        morningActive,
-        eveningActive,
-        nightShiftActive,
-        morningShiftEmployees,
-        eveningShiftEmployees,
-        nightShiftEmployees
+        morningActive: data.shiftWiseActive[SHIFT_ENUM.MORNING],
+        eveningActive: data.shiftWiseActive[SHIFT_ENUM.EVENING],
+        nightShiftActive: data.shiftWiseActive[SHIFT_ENUM.NIGHT],
+        morningShiftEmployees: data.shiftWise[SHIFT_ENUM.MORNING],
+        eveningShiftEmployees: data.shiftWise[SHIFT_ENUM.EVENING],
+        nightShiftEmployees: data.shiftWise[SHIFT_ENUM.NIGHT]
       });
 
-      // Update stats with dynamic data matching reference image
+      // Update stats with dynamic data from the API
       setStats([
         {
           title: 'Total Employees',
-          value: employees.length.toString(),
+          value: data.totalEmployees.toString(),
           change: '+12%',
           changeType: 'positive',
           icon: Users,
@@ -130,7 +78,7 @@ const AdminDashboard = () => {
         },
         {
           title: 'Total Supervisors',
-          value: managers.length.toString(),
+          value: data.totalManagers.toString(),
           change: '+8%',
           changeType: 'positive',
           icon: UserCog,
@@ -138,7 +86,7 @@ const AdminDashboard = () => {
         },
         {
           title: 'Working Employees',
-          value: activeToday.toString(),
+          value: data.workingEmployees.toString(),
           change: '+2.1%',
           changeType: 'positive',
           icon: Briefcase,
@@ -146,13 +94,22 @@ const AdminDashboard = () => {
         },
         {
           title: 'Night Shift',
-          value: nightShiftActive.toString(),
+          value: data.shiftWiseActive[SHIFT_ENUM.NIGHT].toString(),
           change: '+5%',
           changeType: 'positive',
           icon: Activity,
           color: 'blue'
         }
       ]);
+
+      console.log('Dashboard data updated:', {
+        totalEmployees: data.totalEmployees,
+        totalManagers: data.totalManagers,
+        workingEmployees: data.workingEmployees,
+        shiftWise: data.shiftWise,
+        shiftWiseActive: data.shiftWiseActive,
+        attendanceRate: data.summary.attendanceRate
+      });
 
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -295,8 +252,8 @@ const AdminDashboard = () => {
             {isReadOnlyAdmin ? 'Read-Only Admin Dashboard' : 'Admin Dashboard'}
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
-            {isReadOnlyAdmin 
-              ? 'View attendance data and generate reports (Read-Only Access)' 
+            {isReadOnlyAdmin
+              ? 'View attendance data and generate reports (Read-Only Access)'
               : 'Manage your workforce and monitor attendance'
             }
           </p>
@@ -363,12 +320,24 @@ const AdminDashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-2">Morning</p>
-                  <p className="text-3xl font-bold text-blue-600 mb-2">{shiftData.morningActive}</p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Morning Shift</p>
+                  <p className="text-3xl font-bold text-orange-600 mb-2">{shiftData.morningActive}</p>
                   <p className="text-xs text-gray-500">of {shiftData.morningShiftEmployees} employees</p>
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: shiftData.morningShiftEmployees > 0
+                            ? `${(shiftData.morningActive / shiftData.morningShiftEmployees) * 100}%`
+                            : '0%'
+                        }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-3 rounded-lg bg-blue-100 flex-shrink-0">
-                  <Sun className="h-6 w-6 text-blue-600" />
+                <div className="p-3 rounded-lg bg-orange-100 flex-shrink-0">
+                  <Sun className="h-6 w-6 text-orange-600" />
                 </div>
               </div>
             </CardContent>
@@ -379,12 +348,24 @@ const AdminDashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-2">Evening</p>
-                  <p className="text-3xl font-bold text-blue-600 mb-2">{shiftData.eveningActive}</p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Evening Shift</p>
+                  <p className="text-3xl font-bold text-purple-600 mb-2">{shiftData.eveningActive}</p>
                   <p className="text-xs text-gray-500">of {shiftData.eveningShiftEmployees} employees</p>
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: shiftData.eveningShiftEmployees > 0
+                            ? `${(shiftData.eveningActive / shiftData.eveningShiftEmployees) * 100}%`
+                            : '0%'
+                        }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-3 rounded-lg bg-blue-100 flex-shrink-0">
-                  <Moon className="h-6 w-6 text-blue-600" />
+                <div className="p-3 rounded-lg bg-purple-100 flex-shrink-0">
+                  <Moon className="h-6 w-6 text-purple-600" />
                 </div>
               </div>
             </CardContent>
@@ -395,18 +376,32 @@ const AdminDashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-2">Night</p>
-                  <p className="text-3xl font-bold text-blue-600 mb-2">{shiftData.nightShiftActive}</p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Night Shift</p>
+                  <p className="text-3xl font-bold text-indigo-600 mb-2">{shiftData.nightShiftActive}</p>
                   <p className="text-xs text-gray-500">of {shiftData.nightShiftEmployees} employees</p>
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: shiftData.nightShiftEmployees > 0
+                            ? `${(shiftData.nightShiftActive / shiftData.nightShiftEmployees) * 100}%`
+                            : '0%'
+                        }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-3 rounded-lg bg-blue-100 flex-shrink-0">
-                  <Zap className="h-6 w-6 text-blue-600" />
+                <div className="p-3 rounded-lg bg-indigo-100 flex-shrink-0">
+                  <Zap className="h-6 w-6 text-indigo-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+
 
       {/* Quick Actions */}
       <div className="mt-6 sm:mt-8">

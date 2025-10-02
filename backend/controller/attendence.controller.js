@@ -7,23 +7,47 @@ import EmployeeRoute from "../models/employeeRoute.models.js";
 import Company from "../models/company.models.js";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
+import { SHIFT_ENUM, SHIFT_TIMES, getShiftByTime } from "../constants/shifts.js";
 
-// Default shift configurations
-const DEFAULT_SHIFT_TIMES = {
-  morning: {
-    stepIn: "07:00",
-    stepOut: "15:00",
-    label: "7 AM - 3 PM (Morning)"
-  },
-  evening: {
-    stepIn: "14:00",
-    stepOut: "22:00",
-    label: "2 PM - 10 PM (Evening)"
-  },
-  night: {
-    stepIn: "22:00",
-    stepOut: "07:00",
-    label: "10 PM - 7 AM (Night)"
+// Use centralized shift configuration
+const DEFAULT_SHIFT_TIMES = SHIFT_TIMES;
+
+// Function to automatically determine shift based on step-in time
+const determineShiftByTime = (stepInTime) => {
+  console.log(`🕐 [determineShiftByTime] Step-in time: ${stepInTime.toISOString()}`);
+
+  const detectedShift = getShiftByTime(stepInTime);
+  console.log(`🔄 [determineShiftByTime] Determined shift: ${detectedShift}`);
+
+  return detectedShift;
+};
+
+// Function to get shift information for a given time
+export const getShiftInfo = async (req, res) => {
+  try {
+    const { time } = req.query;
+    const testTime = time ? new Date(time) : new Date();
+
+    const detectedShift = determineShiftByTime(testTime);
+    const shiftInfo = DEFAULT_SHIFT_TIMES[detectedShift];
+
+    res.status(200).json({
+      success: true,
+      message: "Shift information retrieved successfully",
+      data: {
+        inputTime: testTime.toISOString(),
+        detectedShift,
+        shiftInfo,
+        allShifts: DEFAULT_SHIFT_TIMES
+      }
+    });
+  } catch (error) {
+    console.error("❌ [getShiftInfo] Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error getting shift information",
+      error: error.message
+    });
   }
 };
 
@@ -118,6 +142,12 @@ export const markStepIn = async (req, res) => {
     const stepIn = new Date();
     const stepInImage = req.file ? req.file.filename : null;
 
+    // Automatically determine shift based on step-in time
+    const autoDetectedShift = determineShiftByTime(stepIn);
+    const finalShift = shift || autoDetectedShift;
+
+    console.log(`🔄 [markStepIn] Shift detection: Provided=${shift}, Auto-detected=${autoDetectedShift}, Final=${finalShift}`);
+
     // Create attendance record
     const attendance = new Attendance({
       employeeId: finalEmployeeId,
@@ -129,7 +159,7 @@ export const markStepIn = async (req, res) => {
       latitude: latitude ? parseFloat(latitude) : null,
       address: address || 'Location not available',
       note,
-      shift,
+      shift: finalShift,
       status: status || 'present',
     });
 
@@ -193,6 +223,12 @@ export const markStepIn = async (req, res) => {
           longitude: attendance.longitude,
           address: attendance.address
         },
+      },
+      shiftInfo: {
+        detectedShift: autoDetectedShift,
+        providedShift: shift,
+        finalShift: finalShift,
+        shiftTimes: DEFAULT_SHIFT_TIMES[finalShift]
       }
     });
 

@@ -13,7 +13,18 @@ export const useCompanyTheme = () => {
 };
 
 export const CompanyThemeProvider = ({ children }) => {
-  const { company, isAuthenticated } = useAuth();
+  // Safely get auth context with fallback
+  let company = null;
+  let isAuthenticated = false;
+
+  try {
+    const authContext = useAuth();
+    company = authContext.company;
+    isAuthenticated = authContext.isAuthenticated;
+  } catch (error) {
+    // AuthProvider not ready yet, use defaults
+    console.log('CompanyThemeProvider: AuthProvider not ready, using defaults');
+  }
   const [theme, setTheme] = useState({
     // Default theme
     primaryColor: '#3B82F6',

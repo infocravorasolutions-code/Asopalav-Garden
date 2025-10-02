@@ -98,7 +98,7 @@ export const canManageEmployees = (req, res, next) => {
   }
 
   // Only superadmin and managers can manage employees
-  if (!['superadmin', 'manager'].includes(req.user.role)) {
+  if (!['admin', 'manager'].includes(req.user.role)) {
     return res.status(403).json({
       success: false,
       message: 'Insufficient permissions to manage employees'
@@ -128,7 +128,7 @@ export const canManageManagers = (req, res, next) => {
   }
 
   // Only superadmin and admin can manage managers
-  if (!['superadmin', 'admin'].includes(req.user.role)) {
+  if (!['admin', 'admin'].includes(req.user.role)) {
     return res.status(403).json({
       success: false,
       message: 'Insufficient permissions to manage managers'

@@ -15,21 +15,22 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import attendenceRoutes from "./routes/attendence.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import superAdminRoutes from "./routes/superadmin.routes.js";
-// Export routes removed - functionality moved to frontend
-// Settings routes removed - now using static configuration
 import { autoStepOut, updateStepInUserLocations, updateAllEmployeeLocations } from './controller/cron.controller.js';
 import Employee from "./models/employee.models.js";
-import Manager from "./models/manager.models.js";
-import Admin from "./models/admin.models.js";
-import Company from "./models/company.models.js";
-import Attendance from "./models/attendence.models.js";
+
 // Location routes removed - using manual location fields
+
 import { initializeSocket, startSocketHealthCheck } from './socket/socketServer.js';
 
 dotenv.config();
 const app = express();
 const server = createServer(app);
 const PORT = process.env.PORT || 5678;
+
+
+// Ensure PORT is a number, not a URL
+const portNumber = typeof PORT === 'string' && PORT.includes('http') ? 5678 : parseInt(PORT);
+console.log('  - Final portNumber:', portNumber);
 const MONGO_URI = process.env.MONGODB_URI;
 console.log("MONGO_URI ==> ", MONGO_URI);
 
@@ -155,9 +156,9 @@ mongoose.connect(MONGO_URI)
     // Import employees after DB connection
     // await importEmployees();
 
-    server.listen(PORT, () => {
-      console.log(`🚀 Server is running on http://localhost:${PORT}`);
-      console.log(`🔌 Socket.IO server is running on http://localhost:${PORT}`);
+    server.listen(portNumber, () => {
+      console.log(`🚀 Server is running on http://localhost:${portNumber}`);
+      console.log(`🔌 Socket.IO server is running on http://localhost:${portNumber}`);
     });
   })
   .catch((err) => {

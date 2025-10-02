@@ -23,8 +23,10 @@ import Input from '../ui/Input';
 import Loading from '../ui/Loading';
 import Pagination from '../ui/Pagination';
 import { adminAPI, api } from '../../services/api';
+import { getApiUrl } from '../../config/environment';
 import CopyCellRenderer from '../ui/CopyCellRenderer';
 import toast from 'react-hot-toast';
+import { SHIFT_ENUM } from '../../constants/shifts';
 
 
 const AttendanceManagement = () => {
@@ -64,7 +66,7 @@ const AttendanceManagement = () => {
     const [editForm, setEditForm] = useState({
         stepIn: '',
         stepOut: '',
-        shift: 'morning',
+        shift: SHIFT_ENUM.MORNING,
         status: 'present',
         address: '',
         note: ''
@@ -127,9 +129,9 @@ const AttendanceManagement = () => {
         const absent = data.filter(record => record.status === 'absent').length;
         const totalHours = data.reduce((sum, record) => sum + (record.totalTime || 0), 0) / 60;
 
-        const morningShift = data.filter(record => record.shift === 'morning').length;
-        const eveningShift = data.filter(record => record.shift === 'evening').length;
-        const nightShift = data.filter(record => record.shift === 'night').length;
+        const morningShift = data.filter(record => record.shift === SHIFT_ENUM.MORNING).length;
+        const eveningShift = data.filter(record => record.shift === SHIFT_ENUM.EVENING).length;
+        const nightShift = data.filter(record => record.shift === SHIFT_ENUM.NIGHT).length;
 
         return {
             totalRecords,
@@ -167,7 +169,7 @@ const AttendanceManagement = () => {
                 if (value) params.append(key, value);
             });
 
-            const response = await api.get(`/api/attendence/export/excel?${params.toString()}`, {
+            const response = await api.get(`/attendence/export/excel?${params.toString()}`, {
                 responseType: 'blob'
             });
 
@@ -192,7 +194,7 @@ const AttendanceManagement = () => {
     // Export to PDF using enhanced professional export
     const exportToPDF = async () => {
         try {
-            
+
             if (!attendanceData || attendanceData.length === 0) {
                 toast.error('No attendance data to export');
                 return;
@@ -200,14 +202,14 @@ const AttendanceManagement = () => {
 
             // Import the enhanced PDF export utility
             const { exportAttendanceToPDF } = await import(`../../utils/pdfExportUtils?t=${Date.now()}`);
-            
+
             // Create filename with timestamp
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const filename = `attendance_${timestamp}.pdf`;
-            
+
             // Use the enhanced PDF export function
             await exportAttendanceToPDF(attendanceData, filename);
-            
+
             // Show success message
             const isWebView = window.ReactNativeWebView !== undefined;
             if (isWebView) {
@@ -215,7 +217,7 @@ const AttendanceManagement = () => {
             } else {
                 toast.success('Professional PDF exported successfully');
             }
-            
+
         } catch (error) {
             console.error('Error exporting to PDF:', error);
             toast.error('Failed to export PDF: ' + error.message);
@@ -228,7 +230,7 @@ const AttendanceManagement = () => {
         setEditForm({
             stepIn: attendance.stepIn ? new Date(attendance.stepIn).toISOString().slice(0, 16) : '',
             stepOut: attendance.stepOut ? new Date(attendance.stepOut).toISOString().slice(0, 16) : '',
-            shift: attendance.shift || 'morning',
+            shift: attendance.shift || SHIFT_ENUM.MORNING,
             status: attendance.status || 'present',
             address: attendance.address || '',
             note: attendance.note || ''
@@ -690,11 +692,11 @@ const AttendanceManagement = () => {
                                                             <div className="flex-shrink-0 h-10 w-10 relative">
                                                                 {employee?.photo ? (
                                                                     <img
-                                                                        src={employee.photo.startsWith('data:') 
-                                                                            ? employee.photo 
-                                                                            : employee.photo.startsWith('http') 
-                                                                                ? employee.photo 
-                                                                                : `http://localhost:5678/static/${employee.photo}`
+                                                                        src={employee.photo.startsWith('data:')
+                                                                            ? employee.photo
+                                                                            : employee.photo.startsWith('http')
+                                                                                ? employee.photo
+                                                                                : `${getApiUrl().replace('/api', '')}/static/${employee.photo}`
                                                                         }
                                                                         alt={employee?.name || 'Employee'}
                                                                         className="h-10 w-10 rounded-full object-cover border-2 border-gray-200 absolute top-0 left-0 z-10"
@@ -705,10 +707,9 @@ const AttendanceManagement = () => {
                                                                         }}
                                                                     />
                                                                 ) : null}
-                                                                <div 
-                                                                    className={`h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center ${
-                                                                        employee?.photo ? 'hidden' : 'flex'
-                                                                    }`}
+                                                                <div
+                                                                    className={`h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center ${employee?.photo ? 'hidden' : 'flex'
+                                                                        }`}
                                                                 >
                                                                     <span className="text-blue-600 font-semibold text-sm">
                                                                         {employee?.name?.charAt(0) || 'N/A'}
@@ -734,17 +735,17 @@ const AttendanceManagement = () => {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', { 
-                                                            hour: 'numeric', 
-                                                            minute: '2-digit', 
-                                                            hour12: true 
+                                                        {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', {
+                                                            hour: 'numeric',
+                                                            minute: '2-digit',
+                                                            hour12: true
                                                         }) : 'N/A'}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', { 
-                                                            hour: 'numeric', 
-                                                            minute: '2-digit', 
-                                                            hour12: true 
+                                                        {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', {
+                                                            hour: 'numeric',
+                                                            minute: '2-digit',
+                                                            hour12: true
                                                         }) : 'N/A'}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -792,172 +793,188 @@ const AttendanceManagement = () => {
 
             {/* Edit Attendance Modal */}
             {editModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-1 sm:p-2 md:p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-auto h-[98vh] sm:h-[95vh] md:h-[90vh] flex flex-col overflow-hidden">
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                            <div>
-                                <h2 className="text-xl font-semibold text-gray-900">Edit Attendance Record</h2>
-                                <p className="text-sm text-gray-600 mt-1">
-                                    Employee: {selectedAttendance?.employeeId?.name || 'N/A'}
-                                </p>
+                        <div className="flex items-start sm:items-center justify-between p-4 sm:p-6 border-b border-gray-200">
+                            <div className="flex items-start sm:items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+                                <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                                    <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900 leading-tight">Edit Attendance Record</h2>
+                                    <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
+                                        Employee: {selectedAttendance?.employeeId?.name || 'N/A'}
+                                    </p>
+                                </div>
                             </div>
                             <button
                                 onClick={() => setEditModalOpen(false)}
-                                className="text-gray-400 hover:text-gray-600"
+                                className="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2 p-1"
                             >
-                                <X className="h-6 w-6" />
+                                <X className="h-5 w-5 sm:h-6 sm:w-6" />
                             </button>
                         </div>
 
                         {/* Modal Content */}
-                        <div className="p-6 space-y-6">
-                            {/* Employee Information */}
-                            <div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-4">Employee Information</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                        <Input
-                                            value={selectedAttendance?.employeeId?.name || 'N/A'}
-                                            disabled
-                                            className="bg-gray-50"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                        <Input
-                                            value={selectedAttendance?.employeeId?.email || 'N/A'}
-                                            disabled
-                                            className="bg-gray-50"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Manager</label>
-                                        <Input
-                                            value={selectedAttendance?.managerId?.name || 'N/A'}
-                                            disabled
-                                            className="bg-gray-50"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Current Status</label>
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            {selectedAttendance?.status || 'Present'}
-                                        </span>
+                        <div className="flex-1 overflow-y-auto">
+                            <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
+                                {/* Employee Information */}
+                                <div>
+                                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4 flex items-center space-x-2">
+                                        <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
+                                        <span>Employee Information</span>
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                            <Input
+                                                value={selectedAttendance?.employeeId?.name || 'N/A'}
+                                                disabled
+                                                className="bg-gray-50 text-base sm:text-sm py-2.5 sm:py-2"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                            <Input
+                                                value={selectedAttendance?.employeeId?.email || 'N/A'}
+                                                disabled
+                                                className="bg-gray-50 text-base sm:text-sm py-2.5 sm:py-2"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Manager</label>
+                                            <Input
+                                                value={selectedAttendance?.managerId?.name || 'N/A'}
+                                                disabled
+                                                className="bg-gray-50 text-base sm:text-sm py-2.5 sm:py-2"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Current Status</label>
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                {selectedAttendance?.status || 'Present'}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Attendance Details */}
-                            <div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-4">Attendance Details</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Step In Time *
-                                        </label>
-                                        <div className="relative">
-                                            <Input
-                                                type="datetime-local"
-                                                value={editForm.stepIn}
-                                                onChange={(e) => setEditForm(prev => ({ ...prev, stepIn: e.target.value }))}
-                                                className="pr-10"
-                                            />
-                                            <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Step Out Time
-                                        </label>
-                                        <div className="relative">
-                                            <Input
-                                                type="datetime-local"
-                                                value={editForm.stepOut}
-                                                onChange={(e) => setEditForm(prev => ({ ...prev, stepOut: e.target.value }))}
-                                                placeholder="mm/dd/yyyy --:-- --"
-                                                className="pr-10"
-                                            />
-                                            <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                        </div>
-                                        <p className="text-xs text-gray-500 mt-1">Leave empty if employee hasn't clocked out</p>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Attendance Details */}
+                                <div>
+                                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4 flex items-center space-x-2">
+                                        <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
+                                        <span>Attendance Details</span>
+                                    </h3>
+                                    <div className="space-y-3 sm:space-y-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Shift *
+                                                Step In Time *
                                             </label>
-                                            <select
-                                                value={editForm.shift}
-                                                onChange={(e) => setEditForm(prev => ({ ...prev, shift: e.target.value }))}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            >
-                                                <option value="morning">Morning</option>
-                                                <option value="evening">Evening</option>
-                                                <option value="night">Night</option>
-                                            </select>
+                                            <div className="relative">
+                                                <Input
+                                                    type="datetime-local"
+                                                    value={editForm.stepIn}
+                                                    onChange={(e) => setEditForm(prev => ({ ...prev, stepIn: e.target.value }))}
+                                                    className="pr-10 text-base sm:text-sm py-2.5 sm:py-2"
+                                                />
+                                                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                            </div>
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Status
+                                                Step Out Time
                                             </label>
-                                            <select
-                                                value={editForm.status}
-                                                onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            >
-                                                <option value="present">Present</option>
-                                                <option value="absent">Absent</option>
-                                                <option value="late">Late</option>
-                                                <option value="half-day">Half Day</option>
-                                            </select>
+                                            <div className="relative">
+                                                <Input
+                                                    type="datetime-local"
+                                                    value={editForm.stepOut}
+                                                    onChange={(e) => setEditForm(prev => ({ ...prev, stepOut: e.target.value }))}
+                                                    placeholder="mm/dd/yyyy --:-- --"
+                                                    className="pr-10 text-base sm:text-sm py-2.5 sm:py-2"
+                                                />
+                                                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                            </div>
+                                            <p className="text-xs sm:text-sm text-gray-500 mt-1">Leave empty if employee hasn't clocked out</p>
                                         </div>
-                                    </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Location
-                                        </label>
-                                        <Input
-                                            value={editForm.address}
-                                            onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
-                                            placeholder="Enter location"
-                                        />
-                                    </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Shift *
+                                                </label>
+                                                <select
+                                                    value={editForm.shift}
+                                                    onChange={(e) => setEditForm(prev => ({ ...prev, shift: e.target.value }))}
+                                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm"
+                                                >
+                                                    <option value="morning">Morning</option>
+                                                    <option value="evening">Evening</option>
+                                                    <option value="night">Night</option>
+                                                </select>
+                                            </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Note
-                                        </label>
-                                        <textarea
-                                            value={editForm.note}
-                                            onChange={(e) => setEditForm(prev => ({ ...prev, note: e.target.value }))}
-                                            rows={3}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                            placeholder="Enter any additional notes"
-                                        />
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Status
+                                                </label>
+                                                <select
+                                                    value={editForm.status}
+                                                    onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm"
+                                                >
+                                                    <option value="present">Present</option>
+                                                    <option value="absent">Absent</option>
+                                                    <option value="late">Late</option>
+                                                    <option value="half-day">Half Day</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Location
+                                            </label>
+                                            <Input
+                                                value={editForm.address}
+                                                onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
+                                                placeholder="Enter location"
+                                                className="text-base sm:text-sm py-2.5 sm:py-2"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Note
+                                            </label>
+                                            <textarea
+                                                value={editForm.note}
+                                                onChange={(e) => setEditForm(prev => ({ ...prev, note: e.target.value }))}
+                                                rows={3}
+                                                className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-base sm:text-sm"
+                                                placeholder="Enter any additional notes"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            {/* Add bottom padding to ensure content is fully visible */}
+                            <div className="h-4 sm:h-6"></div>
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 border-t border-gray-200">
                             <Button
                                 variant="outline"
                                 onClick={() => setEditModalOpen(false)}
+                                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-sm sm:text-base font-medium"
                             >
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleSaveAttendance}
-                                className="flex items-center space-x-2"
+                                className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-2.5 sm:py-2 text-sm sm:text-base font-medium"
                             >
-                                <Save className="h-4 w-4" />
                                 <span>Save Changes</span>
                             </Button>
                         </div>

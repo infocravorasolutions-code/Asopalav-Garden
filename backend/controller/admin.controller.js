@@ -1,9 +1,13 @@
 import Admin from "../models/admin.models.js";
-import Company from "../models/company.models.js"
+import Company from "../models/company.models.js";
+import Employee from "../models/employee.models.js";
+import Manager from "../models/manager.models.js";
+import Attendance from "../models/attendence.models.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import companyModels from "../models/company.models.js";
+import { SHIFT_ENUM } from "../constants/shifts.js";
 dotenv.config();
 
 
@@ -119,25 +123,33 @@ export const loginAdmin = async (req, res) => {
   try {
     const { email, password, company } = req.body;
 
-    if (!email || !password || !company) {
-      return res.status(400).json({ message: "Email, password, and company code are required" });
-    }
-
-    // First, find the company by company code
-    const companyData = await Company.findOne({ code: company });
-    if (!companyData) {
-      return res.status(404).json({ message: "Company not found with the provided company code" });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
     // Find admin by email
     const admin = await Admin.findOne({ email: email });
     if (!admin) {
-      return res.status(404).json({ message: "Admin not found" });
+      return res.status(400).json({ message: "Admin not found" });
     }
 
-    // Check if admin belongs to the same company
-    if (!admin.companyId || admin.companyId.toString() !== companyData._id.toString()) {
-      return res.status(403).json({ message: "Admin does not belong to this company" });
+    // If company code is provided, validate it
+    let companyData = null;
+    if (company) {
+      companyData = await Company.findOne({ code: company });
+      if (!companyData) {
+        return res.status(400).json({ message: "Company not found with the provided company code" });
+      }
+
+      // Check if admin belongs to the same company
+      if (!admin.companyId || admin.companyId.toString() !== companyData._id.toString()) {
+        return res.status(403).json({ message: "Admin does not belong to this company" });
+      }
+    } else {
+      // If no company code provided, get admin's company
+      if (admin.companyId) {
+        companyData = await Company.findById(admin.companyId);
+      }
     }
 
     // Verify password
@@ -152,7 +164,7 @@ export const loginAdmin = async (req, res) => {
         email: admin.email,
         role: admin.role,
         userType: "admin",
-        companyId: companyData._id
+        companyId: companyData ? companyData._id : admin.companyId
       },
       JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || "1y" }
@@ -162,5 +174,136 @@ export const loginAdmin = async (req, res) => {
   } catch (error) {
     console.error("Error logging in:", error);
     res.status(500).json({ message: "Error logging in", error });
+  }
+};
+
+// Get shift-wise employee data for admin dashboard
+export const getShiftWiseData = async (req, res) => {
+  try {
+    const companyId = req.user.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID is required" });
+    }
+
+    // Get all employees for the company
+    const employees = await Employee.find({ companyId }).select('shift name empCode email active');
+
+    // Get all managers for the company
+    const managers = await Manager.find({ companyId }).select('name email active');
+
+    // Get today's attendance data
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    const todayAttendance = await Attendance.find({
+      companyId,
+      stepIn: { $gte: startOfDay, $lt: endOfDay }
+    }).populate('employeeId', 'shift name');
+
+    // Calculate working employees (currently stepped in)
+    const workingEmployees = todayAttendance.filter(record =>
+      record.stepIn && !record.stepOut
+    ).length;
+
+    // Calculate shift-wise employee counts without aggregation
+    const shiftWise = {
+      [SHIFT_ENUM.MORNING]: 0,
+      [SHIFT_ENUM.EVENING]: 0,
+      [SHIFT_ENUM.NIGHT]: 0,
+      other: 0
+    };
+
+    employees.forEach(employee => {
+      const shift = employee.shift?.toLowerCase() || '';
+
+      if (shift === SHIFT_ENUM.MORNING || shift.includes('morning') ||
+        shift.includes('9:00') || shift.includes('9:00 am') ||
+        shift.includes('am') || shift.includes('day')) {
+        shiftWise[SHIFT_ENUM.MORNING]++;
+      } else if (shift === SHIFT_ENUM.EVENING || shift.includes('evening') ||
+        shift.includes('5:00') || shift.includes('5:00 pm') ||
+        shift.includes('pm') || shift.includes('afternoon')) {
+        shiftWise[SHIFT_ENUM.EVENING]++;
+      } else if (shift === SHIFT_ENUM.NIGHT || shift.includes('night') ||
+        shift.includes('11:00') || shift.includes('11:00 pm') ||
+        shift.includes('midnight') || shift.includes('late')) {
+        shiftWise[SHIFT_ENUM.NIGHT]++;
+      } else {
+        shiftWise.other++;
+      }
+    });
+
+    // Calculate shift-wise active employees (currently working)
+    const shiftWiseActive = {
+      [SHIFT_ENUM.MORNING]: 0,
+      [SHIFT_ENUM.EVENING]: 0,
+      [SHIFT_ENUM.NIGHT]: 0,
+      other: 0
+    };
+
+    todayAttendance.forEach(record => {
+      if (!record.stepIn || record.stepOut) return; // Skip if not currently active
+
+      const employee = employees.find(emp =>
+        (emp._id.toString() === record.employeeId?._id?.toString()) ||
+        (emp._id.toString() === record.employeeId?.toString())
+      );
+
+      if (employee) {
+        const shift = employee.shift?.toLowerCase() || '';
+
+        if (shift === SHIFT_ENUM.MORNING || shift.includes('morning') ||
+          shift.includes('9:00') || shift.includes('9:00 am') ||
+          shift.includes('am') || shift.includes('day')) {
+          shiftWiseActive[SHIFT_ENUM.MORNING]++;
+        } else if (shift === SHIFT_ENUM.EVENING || shift.includes('evening') ||
+          shift.includes('5:00') || shift.includes('5:00 pm') ||
+          shift.includes('pm') || shift.includes('afternoon')) {
+          shiftWiseActive[SHIFT_ENUM.EVENING]++;
+        } else if (shift === SHIFT_ENUM.NIGHT || shift.includes('night') ||
+          shift.includes('11:00') || shift.includes('11:00 pm') ||
+          shift.includes('midnight') || shift.includes('late')) {
+          shiftWiseActive[SHIFT_ENUM.NIGHT]++;
+        } else {
+          shiftWiseActive.other++;
+        }
+      }
+    });
+
+    // Calculate total counts
+    const totalEmployees = employees.length;
+    const totalManagers = managers.length;
+    const activeEmployees = employees.filter(emp => emp.active).length;
+    const activeManagers = managers.filter(mgr => mgr.active).length;
+
+    res.status(200).json({
+      success: true,
+      message: "Shift-wise data retrieved successfully",
+      data: {
+        totalEmployees,
+        totalManagers,
+        activeEmployees,
+        activeManagers,
+        workingEmployees,
+        shiftWise,
+        shiftWiseActive,
+        todayDate: today.toISOString().split('T')[0],
+        summary: {
+          totalShifts: Object.values(shiftWise).reduce((sum, count) => sum + count, 0),
+          activeShifts: Object.values(shiftWiseActive).reduce((sum, count) => sum + count, 0),
+          attendanceRate: totalEmployees > 0 ? Math.round((workingEmployees / totalEmployees) * 100) : 0
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Error getting shift-wise data:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error getting shift-wise data",
+      error: error.message
+    });
   }
 };

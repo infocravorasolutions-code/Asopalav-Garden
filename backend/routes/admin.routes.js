@@ -8,7 +8,8 @@ import {
   getAllAdmins,
   getAdminById,
   updateAdmin,
-  deleteAdmin
+  deleteAdmin,
+  getShiftWiseData
 } from "../controller/admin.controller.js";
 import {
   getAllAttendance,
@@ -33,6 +34,9 @@ router.delete("/attendance/:attendanceId", authenticateUser, deleteAttendance);
 router.get("/attendance/summary", authenticateUser, getAttendanceSummary);
 router.get("/attendance/export/excel", authenticateUser, exportAttendanceExcel);
 router.get("/attendance/export/pdf", authenticateUser, exportAttendancePDF);
+
+// Admin dashboard data routes
+router.get("/shift-wise-data", authenticateUser, getShiftWiseData);
 
 // Admin CRUD routes (must come after specific routes)
 router.get("/:id", authenticateUser, getAdminById);

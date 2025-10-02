@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { attendanceAPI, userAPI, api } from '../services/api';
+import { api, handleApiError, handleApiSuccess } from '../utils/fetchInterceptor';
 import toast from 'react-hot-toast';
 
 const AttendanceContext = createContext();
@@ -33,34 +33,34 @@ export const AttendanceProvider = ({ children }) => {
     setError(null);
     try {
       console.log('🔍 [fetchAttendance] Fetching with filters:', filters);
-      
-      const response = await attendanceAPI.getAllAttendance(filters);
-      const attendanceData = response.data?.attendance || [];
-      const paginationData = response.data?.pagination || {};
-      
+
+      const response = await api.get('/attendence/all');
+      const attendanceData = response.attendance || [];
+      const paginationData = response.pagination || {};
+
       console.log('📊 [fetchAttendance] Response:', {
         attendanceCount: attendanceData.length,
         pagination: paginationData
       });
-      
+
       // Always set the data from the response
       setAttendanceList(attendanceData);
       setPagination(prev => ({
         ...prev,
         ...paginationData
       }));
-      
+
       console.log('📊 [fetchAttendance] State updated:', {
         attendanceListLength: attendanceData.length,
         pagination: paginationData
       });
-      
+
       return {
         attendance: attendanceData,
         pagination: paginationData
       };
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Failed to fetch attendance data';
+      const errorMessage = handleApiError(err, 'Failed to fetch attendance data');
       setError(errorMessage);
       console.error('Error fetching attendance:', err);
       throw err;
@@ -74,10 +74,10 @@ export const AttendanceProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await attendanceAPI.getAttendanceByEmployee(employeeId, filters);
-      return response.data?.attendance || [];
+      const response = await api.get(`/attendence/employee/${employeeId}`);
+      return response.attendance || [];
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Failed to fetch employee attendance';
+      const errorMessage = handleApiError(err, 'Failed to fetch employee attendance');
       setError(errorMessage);
       console.error('Error fetching employee attendance:', err);
       throw err;
@@ -90,8 +90,8 @@ export const AttendanceProvider = ({ children }) => {
   const fetchManagers = useCallback(async () => {
     try {
       const response = await api.get('/manager/all');
-      setManagers(response.data?.data || response.data || []);
-      return response.data?.data || response.data || [];
+      setManagers(response.data || []);
+      return response.data || [];
     } catch (err) {
       console.error('Error fetching managers:', err);
       return [];
@@ -102,8 +102,8 @@ export const AttendanceProvider = ({ children }) => {
   const fetchEmployees = useCallback(async () => {
     try {
       const response = await api.get('/employee/all');
-      setEmployees(response.data?.data || response.data || []);
-      return response.data?.data || response.data || [];
+      setEmployees(response.data || []);
+      return response.data || [];
     } catch (err) {
       console.error('Error fetching employees:', err);
       return [];
@@ -115,12 +115,12 @@ export const AttendanceProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await attendanceAPI.updateAttendance(id, data);
-      
+      const response = await api.put(`/attendence/${id}`, data);
+
       // Update the record in the list - backend returns { message, attendance }
-      const updatedRecord = response.data.attendance || response.data;
-      setAttendanceList(prev => 
-        prev.map(record => 
+      const updatedRecord = response.attendance || response;
+      setAttendanceList(prev =>
+        prev.map(record =>
           record._id === id ? { ...record, ...updatedRecord } : record
         )
       );
@@ -140,15 +140,15 @@ export const AttendanceProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await attendanceAPI.bulkUpdateAttendance({
+      const response = await api.put('/attendence/bulk-update', {
         attendanceIds,
         updates
       });
       // Refresh the attendance list
       await fetchAttendance();
-      return response.data;
+      return response;
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Failed to bulk update attendance';
+      const errorMessage = handleApiError(err, 'Failed to bulk update attendance');
       setError(errorMessage);
       console.error('Error bulk updating attendance:', err);
       throw err;
@@ -166,10 +166,10 @@ export const AttendanceProvider = ({ children }) => {
 
     try {
       // Add header information
-      const reportDate = new Date().toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      const reportDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       });
       const presentCount = data.filter(record => record.stepIn).length;
       const absentCount = data.filter(record => !record.stepIn).length;
@@ -198,7 +198,7 @@ export const AttendanceProvider = ({ children }) => {
 
       // Sort data by date (ascending - oldest first) for better report readability
       const sortedData = [...data].sort((a, b) => new Date(a.stepIn) - new Date(b.stepIn));
-      
+
       // Convert data to CSV format
       const csvData = sortedData.map(record => [
         new Date(record.stepIn).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }).replace(',', ''),
@@ -220,16 +220,16 @@ export const AttendanceProvider = ({ children }) => {
 
       // Create blob
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      
+
       // Check if in WebView and use appropriate download method
       if (window.ReactNativeWebView) {
         console.log('📱 WebView detected, using native CSV download...');
-        
+
         // Convert blob to base64 for WebView
         const reader = new FileReader();
         reader.onload = () => {
           const base64Data = reader.result;
-          
+
           // Send to React Native using the exact format your app expects
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'download',
@@ -237,7 +237,7 @@ export const AttendanceProvider = ({ children }) => {
             fileName: filename,
             data: base64Data
           }));
-          
+
           console.log('📊 CSV sent to React Native:', filename);
         };
         reader.readAsDataURL(blob);
@@ -268,10 +268,10 @@ export const AttendanceProvider = ({ children }) => {
     try {
       // Import the enhanced PDF export utility
       const { exportAttendanceToPDF } = await import('../utils/pdfExportUtils');
-      
+
       // Use the enhanced PDF export function
       await exportAttendanceToPDF(data, filename);
-      
+
       // Show success message
       const isWebView = window.ReactNativeWebView !== undefined;
       if (isWebView) {
@@ -279,7 +279,7 @@ export const AttendanceProvider = ({ children }) => {
       } else {
         toast.success('PDF exported successfully');
       }
-      
+
     } catch (err) {
       console.error('Error exporting PDF:', err);
       setError('Failed to export PDF: ' + err.message);
@@ -298,10 +298,10 @@ export const AttendanceProvider = ({ children }) => {
     try {
       await api.delete(`/attendence/${id}`);
       setAttendanceList(prev => prev.filter(record => record._id !== id));
-      toast.success('Attendance record deleted successfully');
+      handleApiSuccess('Attendance record deleted successfully');
       return { success: true };
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to delete attendance record';
+      const message = handleApiError(error, 'Failed to delete attendance record');
       setError(message);
       toast.error(message);
       return { success: false, error: message };
@@ -316,34 +316,34 @@ export const AttendanceProvider = ({ children }) => {
     setError(null);
     try {
       console.log('🔍 [fetchPaginatedAttendance] Fetching with filters:', filters);
-      
-      const response = await attendanceAPI.getAllAttendance(filters);
-      const attendanceData = response.data?.attendance || [];
-      const paginationData = response.data?.pagination || {};
-      
+
+      const response = await api.get('/attendence/all');
+      const attendanceData = response.attendance || [];
+      const paginationData = response.pagination || {};
+
       console.log('📊 [fetchPaginatedAttendance] Response:', {
         attendanceCount: attendanceData.length,
         pagination: paginationData,
         limit: filters.limit
       });
-      
+
       setAttendanceList(attendanceData);
       setPagination(prev => ({
         ...prev,
         ...paginationData
       }));
-      
+
       console.log('📊 [fetchPaginatedAttendance] State updated:', {
         attendanceListLength: attendanceData.length,
         pagination: paginationData
       });
-      
+
       return {
         attendance: attendanceData,
         pagination: paginationData
       };
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Failed to fetch attendance data';
+      const errorMessage = handleApiError(err, 'Failed to fetch attendance data');
       setError(errorMessage);
       console.error('Error fetching attendance:', err);
       throw err;

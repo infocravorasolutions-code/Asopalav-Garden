@@ -1,45 +1,36 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { UserPlus, Edit, Trash2, Users, Search, Filter, RefreshCw, Download, Eye, MoreVertical } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 import StandaloneAgGrid from '../ui/StandaloneAgGrid';
 import EnhancedEmployeeModal from './EnhancedEmployeeModal';
+import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
+import { SHIFT_ENUM } from '../../constants/shifts';
 
 const TeamPage = () => {
   const { user } = useAuth();
   const { primaryColor } = useCompanyTheme();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [showOnlyMyTeam, setShowOnlyMyTeam] = useState(true);
+  const [showOnlyMyTeam] = useState(true);
 
 
 
-  const fetchTeam = async () => {
+  const fetchTeam = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('authToken');
-
       // Choose endpoint based on filter
       const endpoint = showOnlyMyTeam ?
-        'http://localhost:5678/api/employee/team' :
-        'http://localhost:5678/api/employee/all';
+        '/employee/team' :
+        '/employee/all';
 
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const result = await api.get(endpoint);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
       if (result.message === 'success') {
         console.log('Team API Response:', result.data);
 
@@ -58,48 +49,38 @@ const TeamPage = () => {
     } catch (error) {
       console.error('Error fetching team:', error);
       setError(error.message);
+      handleApiError(error, 'Failed to fetch team members');
     } finally {
       setLoading(false);
     }
-  };
+  }, [showOnlyMyTeam]);
 
   useEffect(() => {
     fetchTeam();
-  }, [user?.companyId, showOnlyMyTeam]);
+  }, [user?.companyId, showOnlyMyTeam, fetchTeam]);
 
   // Event handlers for CRUD operations
-  const handleEdit = (employee) => {
+  const handleEdit = useCallback((employee) => {
     setSelectedEmployee(employee);
     setModalMode('edit');
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (employee) => {
+  const handleDelete = useCallback(async (employee) => {
     if (window.confirm(`Are you sure you want to remove ${employee.name} from your team?`)) {
       try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch(`http://localhost:5678/api/employee/${employee._id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        await api.delete(`/employee/${employee._id}`);
 
-        if (response.ok) {
-          // Remove from local state
-          setEmployees(prev => prev.filter(e => e._id !== employee._id));
-          console.log('Team member removed successfully');
-        } else {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to remove team member');
-        }
+        // Remove from local state
+        setEmployees(prev => prev.filter(e => e._id !== employee._id));
+        console.log('Team member removed successfully');
+        handleApiSuccess('Team member removed successfully');
       } catch (error) {
         console.error('Error removing team member:', error);
-        alert(`Failed to remove team member: ${error.message}`);
+        handleApiError(error, 'Failed to remove team member');
       }
     }
-  };
+  }, []);
 
   const handleCreateEmployee = () => {
     setSelectedEmployee(null);
@@ -109,55 +90,43 @@ const TeamPage = () => {
 
   const handleSaveEmployee = async (formData) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const url = modalMode === 'create'
-        ? 'http://localhost:5678/api/employee/'
-        : `http://localhost:5678/api/employee/${selectedEmployee._id}`;
-
-      const method = modalMode === 'create' ? 'POST' : 'PUT';
-
       // Backend will automatically set managerId based on who is creating the employee
       const requestData = formData;
 
-      console.log('Saving team member:', { modalMode, requestData, url, method });
+      console.log('Saving team member:', { modalMode, requestData });
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Save response:', result);
-
-        if (modalMode === 'create') {
-          // Add new team member to list
-          setEmployees(prev => [...prev, result.employee]);
-        } else {
-          // Update existing team member
-          setEmployees(prev => prev.map(e =>
-            e._id === selectedEmployee._id ? { ...e, ...result.employee } : e
-          ));
-        }
-
-        console.log('Team member saved successfully');
-
-        // Refresh the team list
-        setTimeout(() => {
-          fetchTeam();
-        }, 500);
+      let response;
+      if (modalMode === 'create') {
+        // Create new team member
+        response = await api.post('/employee/', requestData);
       } else {
-        const errorData = await response.json();
-        console.error('Save error response:', errorData);
-        throw new Error(errorData.message || 'Failed to save team member');
+        // Update existing team member
+        response = await api.put(`/employee/${selectedEmployee._id}`, requestData);
       }
+
+      console.log('Save response:', response);
+
+      if (modalMode === 'create') {
+        // Add new team member to list
+        setEmployees(prev => [...prev, response.employee]);
+      } else {
+        // Update existing team member
+        setEmployees(prev => prev.map(e =>
+          e._id === selectedEmployee._id ? { ...e, ...response.employee } : e
+        ));
+      }
+
+      console.log('Team member saved successfully');
+
+      // Refresh the team list
+      handleApiSuccess(modalMode === 'create' ? 'Team member created successfully!' : 'Team member updated successfully!');
+      setTimeout(() => {
+        fetchTeam();
+      }, 500);
+
     } catch (error) {
       console.error('Error saving team member:', error);
-      alert(`Failed to save team member: ${error.message}`);
+      handleApiError(error, 'Failed to save team member');
       throw error;
     }
   };
@@ -237,7 +206,7 @@ const TeamPage = () => {
       field: 'shift',
       width: 120,
       cellRenderer: (params) => {
-        const shift = params.value || 'morning';
+        const shift = params.value || SHIFT_ENUM.MORNING;
         const shiftColors = {
           morning: 'bg-yellow-100 text-yellow-800',
           evening: 'bg-orange-100 text-orange-800',

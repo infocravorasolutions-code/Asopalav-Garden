@@ -6,6 +6,7 @@ import StandaloneAgGrid from '../ui/StandaloneAgGrid';
 import EmployeeModal from './EmployeeModal';
 import CopyCellRenderer from '../ui/CopyCellRenderer';
 import toast from 'react-hot-toast';
+import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
 
 const EmployeesPage = () => {
   const { user } = useAuth();
@@ -21,23 +22,11 @@ const EmployeesPage = () => {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5678/api/employee/all', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/employee/all');
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (result.message === 'success') {
-        console.log('API Response:', result.data);
-
+      if (response.message === 'success') {
         // Map API data to grid format
-        const allEmployees = result.data.map(employee => ({
+        const allEmployees = response.data.map(employee => ({
           ...employee,
           companyId: employee.companyId || { name: 'NEELKANTH LANDSCAPE' },
           status: employee.active ? 'Active' : 'Inactive'
@@ -46,11 +35,10 @@ const EmployeesPage = () => {
         setEmployees(allEmployees);
         console.log('Fetched employees:', allEmployees.length);
       } else {
-        throw new Error(result.message || 'Failed to fetch employees');
+        throw new Error(response.message || 'Failed to fetch employees');
       }
     } catch (error) {
-      console.error('Error fetching employees:', error);
-      toast.error(`Failed to fetch employees: ${error.message}`);
+      handleApiError(error, 'Failed to fetch employees');
     } finally {
       setLoading(false);
     }
@@ -70,27 +58,14 @@ const EmployeesPage = () => {
   const handleDelete = useCallback(async (employee) => {
     if (window.confirm(`Are you sure you want to delete ${employee.name}?`)) {
       try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch(`http://localhost:5678/api/employee/${employee._id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        await api.delete(`/employee/${employee._id}`);
 
-        if (response.ok) {
-          // Remove from local state
-          setEmployees(prev => prev.filter(e => e._id !== employee._id));
-          console.log('Employee deleted successfully');
-          toast.success('Employee deleted successfully!');
-        } else {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to delete employee');
-        }
+        // Remove from local state
+        setEmployees(prev => prev.filter(e => e._id !== employee._id));
+        console.log('Employee deleted successfully');
+        handleApiSuccess('Employee deleted successfully!');
       } catch (error) {
-        console.error('Error deleting employee:', error);
-        toast.error(`Failed to delete employee: ${error.message}`);
+        handleApiError(error, 'Failed to delete employee');
       }
     }
   }, []);
@@ -103,14 +78,7 @@ const EmployeesPage = () => {
 
   const handleSaveEmployee = async (formData) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const url = modalMode === 'create'
-        ? 'http://localhost:5678/api/employee/'
-        : `http://localhost:5678/api/employee/${selectedEmployee._id}`;
-
-      const method = modalMode === 'create' ? 'POST' : 'PUT';
-
-      console.log('Saving employee:', { modalMode, formData, url, method });
+      console.log('Saving employee:', { modalMode, formData });
       console.log('Form data details:', {
         name: formData.name,
         email: formData.email,
@@ -119,44 +87,38 @@ const EmployeesPage = () => {
         hasAssignedManager: !!formData.assignedManager
       });
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Save response:', result);
-
-        if (modalMode === 'create') {
-          // Add new employee to list
-          setEmployees(prev => [...prev, result.employee]);
-        } else {
-          // Update existing employee
-          setEmployees(prev => prev.map(e =>
-            e._id === selectedEmployee._id ? { ...e, ...result.employee } : e
-          ));
-        }
-
-        console.log('Employee saved successfully');
-
-        // Refresh the employees list to ensure we have the latest data
-        toast.success(modalMode === 'create' ? 'Employee created successfully!' : 'Employee updated successfully!');
-        setTimeout(() => {
-          fetchEmployees();
-        }, 500);
+      let response;
+      if (modalMode === 'create') {
+        // Create new employee
+        response = await api.post('/employee/', formData);
       } else {
-        const errorData = await response.json();
-        console.error('Save error response:', errorData);
-        throw new Error(errorData.message || 'Failed to save employee');
+        // Update existing employee
+        response = await api.put(`/employee/${selectedEmployee._id}`, formData);
       }
+
+      console.log('Save response:', response);
+
+      if (modalMode === 'create') {
+        // Add new employee to list
+        setEmployees(prev => [...prev, response.employee]);
+      } else {
+        // Update existing employee
+        setEmployees(prev => prev.map(e =>
+          e._id === selectedEmployee._id ? { ...e, ...response.employee } : e
+        ));
+      }
+
+      console.log('Employee saved successfully');
+
+      // Refresh the employees list to ensure we have the latest data
+      handleApiSuccess(modalMode === 'create' ? 'Employee created successfully!' : 'Employee updated successfully!');
+      setTimeout(() => {
+        fetchEmployees();
+      }, 500);
+
     } catch (error) {
       console.error('Error saving employee:', error);
-      toast.error(`Failed to save employee: ${error.message}`);
+      handleApiError(error, 'Failed to save employee');
       throw error;
     }
   };
@@ -300,8 +262,8 @@ const EmployeesPage = () => {
         return (
           <div className="text-left">
             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${managerName === 'Not Assigned'
-                ? 'bg-gray-100 text-gray-600'
-                : 'bg-blue-100 text-blue-800'
+              ? 'bg-gray-100 text-gray-600'
+              : 'bg-blue-100 text-blue-800'
               }`}>
               {managerName}
             </span>

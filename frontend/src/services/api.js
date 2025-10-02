@@ -1,9 +1,11 @@
 import axios from 'axios';
-import config from '../config/environment.js';
+import { config } from '../config/environment.js';
 import { handleApiError } from '../utils/toast.js';
+import { getApiUrl } from '../config/environment.js';
+
 
 // API Base Configuration
-const API_BASE_URL = config.api.baseURL;
+const API_BASE_URL = getApiUrl()
 
 // Create axios instance
 export const api = axios.create({
@@ -62,13 +64,13 @@ export const authAPI = {
       let endpoint = '';
       switch (userType) {
         case 'admin':
-          endpoint = '/api/admin/login';
+          endpoint = '/admin/login';
           break;
         case 'manager':
-          endpoint = '/api/manager/login';
+          endpoint = '/manager/login';
           break;
         case 'employee':
-          endpoint = '/api/employee/login';
+          endpoint = '/employee/login';
           break;
         default:
           throw new Error('Invalid user type');
@@ -92,7 +94,7 @@ export const authAPI = {
   // Forgot password
   forgotPassword: async (email, userType) => {
     try {
-      const response = await api.post('/api/auth/forgot-password', {
+      const response = await api.post('/auth/forgot-password', {
         email,
         userType
       });
@@ -102,10 +104,23 @@ export const authAPI = {
     }
   },
 
+  // Get shift-wise data for admin dashboard
+  getShiftWiseData: async () => {
+    try {
+      console.log('API - Fetching shift-wise data...');
+      const response = await api.get('/admin/shift-wise-data');
+      console.log('API - Shift-wise data response:', response);
+      return response.data;
+    } catch (error) {
+      console.error('API - Error fetching shift-wise data:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Reset password
   resetPassword: async (token, newPassword, userType) => {
     try {
-      const response = await api.post('/api/auth/reset-password', {
+      const response = await api.post('/auth/reset-password', {
         token,
         newPassword,
         userType
@@ -119,7 +134,7 @@ export const authAPI = {
   // Verify reset token
   verifyResetToken: async (token, userType) => {
     try {
-      const response = await api.get('/api/auth/verify-reset-token', {
+      const response = await api.get('/auth/verify-reset-token', {
         params: { token, userType }
       });
       return response.data;
@@ -131,7 +146,7 @@ export const authAPI = {
   // Verify OTP and reset password (legacy)
   verifyOTP: async (data) => {
     try {
-      const response = await api.post('/api/auth/verify-otp', data);
+      const response = await api.post('/auth/verify-otp', data);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -150,7 +165,7 @@ export const adminAPI = {
   // Get admin profile
   getProfile: async () => {
     try {
-      const response = await api.get('/api/admin/profile');
+      const response = await api.get('/admin/profile');
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -160,7 +175,7 @@ export const adminAPI = {
   // Get company details
   getCompany: async () => {
     try {
-      const response = await api.get('/api/admin/company');
+      const response = await api.get('/admin/company');
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -170,7 +185,7 @@ export const adminAPI = {
   // Get dashboard data
   getDashboard: async () => {
     try {
-      const response = await api.get('/api/admin/dashboard');
+      const response = await api.get('/admin/dashboard');
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -180,7 +195,7 @@ export const adminAPI = {
   // Get all employees
   getEmployees: async (params = {}) => {
     try {
-      const response = await api.get('/api/employee/all', { params });
+      const response = await api.get('/employee/all', { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -190,7 +205,7 @@ export const adminAPI = {
   // Get all managers
   getManagers: async (params = {}) => {
     try {
-      const response = await api.get('/api/manager/all', { params });
+      const response = await api.get('/manager/all', { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -200,7 +215,7 @@ export const adminAPI = {
   // Get attendance data
   getAttendance: async (params = {}) => {
     try {
-      const response = await api.get('/api/admin/attendance', { params });
+      const response = await api.get('/admin/attendance', { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -210,7 +225,7 @@ export const adminAPI = {
   // Get muster roll report
   getMusterRollReport: async (params = '') => {
     try {
-      const response = await api.get(`/api/employee/muster-roll?${params}`);
+      const response = await api.get(`/employee/muster-roll?${params}`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -220,7 +235,7 @@ export const adminAPI = {
   // Get attendance summary
   getAttendanceSummary: async () => {
     try {
-      const response = await api.get('/api/admin/attendance/summary');
+      const response = await api.get('/admin/attendance/summary');
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -230,7 +245,7 @@ export const adminAPI = {
   // Update attendance record
   updateAttendance: async (attendanceId, data) => {
     try {
-      const response = await api.put(`/api/admin/attendance/${attendanceId}`, data);
+      const response = await api.put(`/admin/attendance/${attendanceId}`, data);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -240,7 +255,7 @@ export const adminAPI = {
   // Delete attendance record
   deleteAttendance: async (attendanceId) => {
     try {
-      const response = await api.delete(`/api/admin/attendance/${attendanceId}`);
+      const response = await api.delete(`/admin/attendance/${attendanceId}`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -250,7 +265,7 @@ export const adminAPI = {
   // Get managers for filter dropdown
   getManagers: async () => {
     try {
-      const response = await api.get('/api/manager');
+      const response = await api.get('/manager');
       return { managers: response.data.data || [] };
     } catch (error) {
       throw error.response?.data || error.message;
@@ -260,7 +275,7 @@ export const adminAPI = {
   // Get employees for filter dropdown
   getEmployees: async () => {
     try {
-      const response = await api.get('/api/employee');
+      const response = await api.get('/employee');
       return { employees: response.data.data || [] };
     } catch (error) {
       throw error.response?.data || error.message;
@@ -270,7 +285,7 @@ export const adminAPI = {
   // Step in (employee clock in)
   stepIn: async (data) => {
     try {
-      const response = await api.post('/api/attendence/step-in', data);
+      const response = await api.post('/attendence/step-in', data);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -280,7 +295,7 @@ export const adminAPI = {
   // Step out (employee clock out)
   stepOut: async (data) => {
     try {
-      const response = await api.post('/api/attendence/step-out', data);
+      const response = await api.post('/attendence/step-out', data);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -293,7 +308,7 @@ export const companyAPI = {
   // Get company details
   getCompanyDetails: async () => {
     try {
-      const response = await api.get('/api/company');
+      const response = await api.get('/company');
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -303,7 +318,7 @@ export const companyAPI = {
   // Update company details
   updateCompany: async (data) => {
     try {
-      const response = await api.put('/api/company', data);
+      const response = await api.put('/company', data);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -316,7 +331,7 @@ export const exportAPI = {
   // Export attendance to Excel
   exportAttendanceToExcel: async (data) => {
     try {
-      const response = await api.post('/api/export/attendance/excel', data, {
+      const response = await api.post('/export/attendance/excel', data, {
         responseType: 'blob'
       });
 
@@ -339,7 +354,7 @@ export const exportAPI = {
   // Export attendance to PDF
   exportAttendanceToPDF: async (data) => {
     try {
-      const response = await api.post('/api/export/attendance/pdf', data, {
+      const response = await api.post('/export/attendance/pdf', data, {
         responseType: 'blob'
       });
 
@@ -362,7 +377,7 @@ export const exportAPI = {
   // Export employees to Excel
   exportEmployeesToExcel: async (data) => {
     try {
-      const response = await api.post('/api/export/employees/excel', data, {
+      const response = await api.post('/export/employees/excel', data, {
         responseType: 'blob'
       });
 
@@ -385,7 +400,7 @@ export const exportAPI = {
   // Get attendance summary
   getAttendanceSummary: async (data) => {
     try {
-      const response = await api.post('/api/export/attendance/summary', data);
+      const response = await api.post('/export/attendance/summary', data);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -394,12 +409,12 @@ export const exportAPI = {
 };
 
 export const attendanceAPI = {
-  stepIn: (data) => api.post('/api/attendence/step-in', data, {
+  stepIn: (data) => api.post('/attendence/step-in', data, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   }),
-  stepOut: (data) => api.post('/api/attendence/step-out', data, {
+  stepOut: (data) => api.post('/attendence/step-out', data, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -410,7 +425,7 @@ export const attendanceAPI = {
     if (params.limit) queryParams.append('limit', params.limit);
 
     const queryString = queryParams.toString();
-    const url = `/api/attendence/employee/${employeeId}${queryString ? `?${queryString}` : ''}`;
+    const url = `/attendence/employee/${employeeId}${queryString ? `?${queryString}` : ''}`;
     return api.get(url);
   },
 }

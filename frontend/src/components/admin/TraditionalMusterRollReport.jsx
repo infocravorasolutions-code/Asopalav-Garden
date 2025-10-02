@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Download, Filter, Search, FileText, X } from 'lucide-react';
 import { adminAPI, api } from '../../services/api';
-import { showSuccess, showError } from '../../utils/toast';
+import toast, { showSuccess, showError } from '../../utils/toast';
 
 const TraditionalMusterRollReport = () => {
   const [reportData, setReportData] = useState([]);
@@ -27,7 +27,7 @@ const TraditionalMusterRollReport = () => {
     setLoading(true);
     try {
       // Fetch employees first
-      const employeesResponse = await api.get('/api/employee/all');
+      const employeesResponse = await api.get('/employee/all');
       const employees = employeesResponse.data.data;
 
       // Fetch attendance data for the current month
@@ -114,7 +114,7 @@ const TraditionalMusterRollReport = () => {
     setLoading(true);
     try {
       // Fetch employees
-      const employeesResponse = await api.get('/api/employee/all');
+      const employeesResponse = await api.get('/employee/all');
       let employees = employeesResponse.data.data;
 
       console.log('All employees before filtering:', employees.length);
@@ -251,20 +251,27 @@ const TraditionalMusterRollReport = () => {
 
       // Import the enhanced PDF export utility
       const { exportTraditionalMusterRollToPDF } = await import('../../utils/pdfExportUtils');
-      
+
       // Create filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `nilkanth_muster_roll_${timestamp}.pdf`;
-      
-      // Use the enhanced PDF export function with Nilkanth Landscape branding
-      await exportTraditionalMusterRollToPDF(reportData, dateRange, filename);
-      
+
+      // Get company code from company info
+      const companyCode = companyinfo?.code || companyinfo?.companyCode || 'NEELKANTH';
+      const fallbackLogoUrl = companyinfo?.logoUrl || null;
+
+      // Use the enhanced PDF export function with company branding
+      await exportTraditionalMusterRollToPDF(reportData, dateRange, filename, {
+        companyCode,
+        fallbackLogoUrl
+      });
+
       // Show success message
       const isWebView = window.ReactNativeWebView !== undefined;
       if (isWebView) {
-        toast.success('Nilkanth Landscape muster roll PDF export initiated in mobile app');
+        toast.showSuccess(`${companyinfo?.name || 'Company'} muster roll PDF export initiated in mobile app`);
       } else {
-        toast.success('Nilkanth Landscape muster roll PDF exported successfully');
+        toast.showSuccess(`${companyinfo?.name || 'Company'} muster roll PDF exported successfully`);
       }
     } catch (error) {
       console.error('Error exporting to PDF:', error);

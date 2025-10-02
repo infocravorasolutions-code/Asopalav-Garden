@@ -21,21 +21,23 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
+// import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 import toast from 'react-hot-toast';
 import Webcam from 'react-webcam';
-import { api } from '../../services/api';
+import { api } from '../../utils/fetchInterceptor';
 import { getLocationWithAutoFallback } from '../../utils/locationUtils';
+import { SHIFT_ENUM } from '../../constants/shifts';
+import { attendanceAPI } from '../../services/api';
 
 const StepInStepOut = () => {
     const { user } = useAuth();
-    const { primaryColor } = useCompanyTheme();
+    // const { primaryColor } = useCompanyTheme();
 
     // State for employees and attendance
     const [employees, setEmployees] = useState([]);
     const [attendanceList, setAttendanceList] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [, setError] = useState(null);
 
     // State for step in/out functionality
     const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -50,7 +52,7 @@ const StepInStepOut = () => {
     // Form data
     const [location, setLocation] = useState('');
     const [note, setNote] = useState('');
-    const [shift, setShift] = useState('morning');
+    const [shift, setShift] = useState(SHIFT_ENUM.MORNING);
     const [status, setStatus] = useState('present');
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
@@ -82,14 +84,14 @@ const StepInStepOut = () => {
     const fetchEmployees = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await api.get('/api/employee/team');
-            if (response.data && response.data.data) {
-                setEmployees(response.data.data);
+            const response = await api.get('/employee/team');
+            if (response.data) {
+                setEmployees(response.data);
             } else {
                 setEmployees([]);
             }
-        } catch (error) {
-            console.error('Error fetching employees:', error);
+        } catch {
+            console.error('Error fetching employees');
             setError('Failed to fetch employees');
             toast.error('Failed to fetch employees');
         } finally {
@@ -100,11 +102,16 @@ const StepInStepOut = () => {
     // Fetch attendance data
     const fetchAttendance = useCallback(async () => {
         try {
-            const response = await api.get('/api/attendence/');
-            if (response.data && response.data.attendance) {
-                setAttendanceList(response.data.attendance);
+            console.log('Fetching attendance data...');
+            const response = await api.get('/attendence/');
+            console.log('Attendance API response:', response);
+
+            if (response.attendance) {
+                setAttendanceList(response.attendance);
+                console.log('Attendance data loaded:', response.attendance.length, 'records');
             } else {
                 setAttendanceList([]);
+                console.log('No attendance data found');
             }
         } catch (error) {
             console.error('Error fetching attendance:', error);
@@ -116,7 +123,7 @@ const StepInStepOut = () => {
     const getCurrentLocation = useCallback(async () => {
         try {
             const locationData = await getLocationWithAutoFallback();
-            
+
             setLatitude(locationData.latitude.toString());
             setLongitude(locationData.longitude.toString());
             setLocation(locationData.address);
@@ -127,8 +134,8 @@ const StepInStepOut = () => {
             } else {
                 toast.success('Location captured successfully!');
             }
-        } catch (error) {
-            console.error('Error getting location:', error);
+        } catch {
+            console.error('Error getting location');
             // Even if there's an error, use the fallback
             setLatitude("23.0341367");
             setLongitude("72.5723255");
@@ -171,17 +178,64 @@ const StepInStepOut = () => {
             }
 
             return null;
-        } catch (error) {
+        } catch {
             return null;
         }
     };
 
     // Initialize data
     useEffect(() => {
-        fetchEmployees();
-        fetchAttendance();
-        getCurrentLocation();
+        const initializeData = async () => {
+            try {
+                console.log('Initializing StepInStepOut data...');
+                await Promise.all([
+                    fetchEmployees(),
+                    fetchAttendance()
+                ]);
+                getCurrentLocation();
+                console.log('StepInStepOut data initialized successfully');
+
+                // Force refresh attendance data after initial load to ensure we have the latest records
+                setTimeout(async () => {
+                    console.log('🔄 Secondary attendance refresh after initialization...');
+                    await fetchAttendance();
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error initializing data:', error);
+                toast.error('Failed to load initial data');
+            }
+        };
+
+        initializeData();
     }, [fetchEmployees, fetchAttendance, getCurrentLocation]);
+
+    // Auto-refresh data every 30 seconds to keep status up-to-date
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            try {
+                console.log('Auto-refreshing attendance data...');
+                await fetchAttendance();
+            } catch (error) {
+                console.error('Auto-refresh failed:', error);
+            }
+        }, 30000); // 30 seconds
+
+        return () => clearInterval(interval);
+    }, [fetchAttendance]);
+
+    // Force refresh function for manual updates
+    const forceRefreshAttendance = useCallback(async () => {
+        try {
+            console.log('🔄 Force refreshing attendance data...');
+            await fetchAttendance();
+            console.log('✅ Attendance data force refreshed');
+            toast.success('Data refreshed successfully');
+        } catch (error) {
+            console.error('❌ Force refresh failed:', error);
+            toast.error('Failed to refresh data');
+        }
+    }, [fetchAttendance]);
 
     // Camera functions
     const capture = useCallback(() => {
@@ -221,39 +275,73 @@ const StepInStepOut = () => {
     };
 
     // Get employee status
-    const getEmployeeStatus = (employeeId) => {
+    const getEmployeeStatus = useCallback((employeeId) => {
         const today = new Date().toDateString();
 
-        const todayAttendance = attendanceList.find(a => {
+        console.log('🔍 Getting employee status for:', employeeId);
+        console.log('📅 Today:', today);
+        console.log('📊 Total attendance records:', attendanceList.length);
+
+        // Find all attendance records for this employee today
+        const todayAttendanceRecords = attendanceList.filter(a => {
             const isCurrentEmployee = a.employeeId?._id === employeeId || a.employeeId === employeeId;
-            const isToday = new Date(a.stepIn).toDateString() === today;
+            const isToday = a.stepIn ? new Date(a.stepIn).toDateString() === today : false;
             return isCurrentEmployee && isToday;
         });
 
-        if (!todayAttendance) {
+        console.log('📋 Today\'s attendance records for employee:', todayAttendanceRecords.length);
+
+        if (!todayAttendanceRecords || todayAttendanceRecords.length === 0) {
+            console.log('❌ No attendance records found for today');
             return { status: 'not-clocked', text: 'Not Clocked', color: 'gray', image: null };
         }
 
-        if (todayAttendance.stepIn && !todayAttendance.stepOut) {
+        // Get the most recent attendance record for today
+        const latestAttendance = todayAttendanceRecords.sort((a, b) =>
+            new Date(b.stepIn) - new Date(a.stepIn)
+        )[0];
+
+        console.log('🎯 Latest attendance record:', {
+            employeeId,
+            today,
+            latestAttendance: {
+                _id: latestAttendance._id,
+                stepIn: latestAttendance.stepIn,
+                stepOut: latestAttendance.stepOut,
+                stepInImage: latestAttendance.stepInImage,
+                stepOutImage: latestAttendance.stepOutImage
+            },
+            hasStepIn: !!latestAttendance.stepIn,
+            hasStepOut: !!latestAttendance.stepOut,
+            stepInTime: latestAttendance.stepIn,
+            stepOutTime: latestAttendance.stepOut
+        });
+
+        // If employee has stepped in but not stepped out (stepOut is null/undefined), they are currently clocked in
+        if (latestAttendance.stepIn && (latestAttendance.stepOut === null || latestAttendance.stepOut === undefined)) {
+            console.log('✅ Employee is currently CLOCKED IN');
             return {
                 status: 'clocked-in',
                 text: 'Clocked In',
                 color: 'green',
-                image: todayAttendance.stepInImage
+                image: latestAttendance.stepInImage
             };
         }
 
-        if (todayAttendance.stepIn && todayAttendance.stepOut) {
+        // If employee has both stepped in and stepped out, they are clocked out
+        if (latestAttendance.stepIn && latestAttendance.stepOut) {
+            console.log('✅ Employee is CLOCKED OUT');
             return {
                 status: 'clocked-out',
                 text: 'Clocked Out',
                 color: 'orange',
-                image: todayAttendance.stepOutImage || todayAttendance.stepInImage
+                image: latestAttendance.stepOutImage || latestAttendance.stepInImage
             };
         }
 
+        console.log('❌ No valid status found, defaulting to not-clocked');
         return { status: 'not-clocked', text: 'Not Clocked', color: 'gray', image: null };
-    };
+    }, [attendanceList]);
 
     // Handle step in/out
     const handleStepInOut = async (employeeId, type) => {
@@ -300,7 +388,7 @@ const StepInStepOut = () => {
                     if (autoLocation) {
                         finalLocation = `Auto-detected: ${autoLocation}`;
                     }
-                } catch (error) {
+                } catch {
                     // Continue with default
                 }
             }
@@ -325,17 +413,21 @@ const StepInStepOut = () => {
             formData.append('note', 'Step out via manager');
             formData.append('status', 'present');
 
-            const response = await api.post('/api/attendence/step-out', formData);
+            const response = await attendanceAPI.stepOut(formData);
 
             if (response.data.success) {
                 toast.success(`${employee.name} successfully clocked out!`);
-                await fetchAttendance();
-                await fetchEmployees();
+                console.log('Refreshing data after successful step-out...');
+                await Promise.all([
+                    fetchAttendance(),
+                    fetchEmployees()
+                ]);
+                console.log('Data refreshed after step-out');
             } else {
-                toast.error(response.data.message || 'Failed to clock out employee');
+                toast.error(response.message || 'Failed to clock out employee');
             }
-        } catch (error) {
-            console.error('Step out error:', error);
+        } catch {
+            console.error('Step out error');
             toast.error('Failed to clock out employee. Please try again.');
         } finally {
             setIsSubmitting(false);
@@ -367,8 +459,8 @@ const StepInStepOut = () => {
                     finalLocation = 'Location not available';
                     toast.error('Could not detect location from GPS coordinates');
                 }
-            } catch (error) {
-                console.error('Error in auto-location:', error);
+            } catch {
+                console.error('Error in auto-location');
                 finalLocation = 'Location not available';
                 toast.error('Error detecting location from GPS');
             }
@@ -378,7 +470,6 @@ const StepInStepOut = () => {
 
         try {
             setIsSubmitting(true);
-
             const base64Data = capturedImage.split(',')[1];
             const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(res => res.blob());
 
@@ -396,22 +487,51 @@ const StepInStepOut = () => {
             formData.append('latitude', parseFloat(latitude) || 0);
             formData.append('address', finalLocation);
             formData.append('note', note);
+            formData.append("stepOut", null)
 
+            console.log("formData ==> ", formData);
             if (stepType === 'step-in') {
                 formData.append('stepInImage', file);
             }
 
             let response;
             if (stepType === 'step-in') {
-                response = await api.post('/api/attendence/step-in', formData);
-            } else {
-                response = await api.post('/api/attendence/step-out', formData);
-            }
+                const response = await attendanceAPI.stepIn(formData);
+                console.log('Step in response:', response);
 
-            if (response.data.success) {
-                toast.success(`${selectedEmployee.name} successfully ${stepType === 'step-in' ? 'clocked in' : 'clocked out'}!`);
             } else {
-                toast.error(response.data.message || `Failed to ${stepType} employee`);
+                await attendanceAPI.stepOut(formData);
+
+            }
+            if (response.data.success === true) {
+                toast.success(`${selectedEmployee.name} successfully ${stepType === 'step-in' ? 'clocked in' : 'clocked out'}!`);
+
+                // Refresh data to get the latest status
+                console.log('Refreshing data after successful attendance operation...');
+
+                // Force refresh attendance data to get latest records
+                try {
+                    await fetchAttendance();
+                    console.log('Attendance data refreshed successfully');
+
+                    // Also refresh employees to ensure data consistency
+                    await fetchEmployees();
+                    console.log('Employee data refreshed successfully');
+
+                    // Additional check: fetch attendance again to ensure we have the latest data
+                    setTimeout(async () => {
+                        console.log('Secondary attendance refresh...');
+                        await fetchAttendance();
+                    }, 1000);
+
+                } catch (error) {
+                    console.error('Error refreshing data:', error);
+                    toast.error('Data refresh failed, but operation was successful');
+                }
+
+                console.log('Data refreshed after attendance operation');
+            } else {
+                toast.error(response.message || `Failed to ${stepType} employee`);
                 return;
             }
 
@@ -420,11 +540,8 @@ const StepInStepOut = () => {
             setSelectedEmployee(null);
             setLocation('');
             setNote('');
-
-            await fetchAttendance();
-            await fetchEmployees();
-        } catch (error) {
-            toast.error('Failed to submit attendance. Please try again.');
+        } catch {
+            console.log('Failed to submit attendance. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -444,7 +561,7 @@ const StepInStepOut = () => {
 
             return matchesSearch && matchesStatus;
         });
-    }, [employees, debouncedSearchTerm, statusFilter, attendanceList]);
+    }, [employees, debouncedSearchTerm, statusFilter, getEmployeeStatus]);
 
     // Statistics
     const stats = {
@@ -470,19 +587,7 @@ const StepInStepOut = () => {
                 {/* Manual Refresh Button */}
                 <div className="flex items-center space-x-4 mt-4 sm:mt-0">
                     <button
-                        onClick={async () => {
-                            try {
-                                console.log('Manual refresh triggered');
-                                await Promise.all([
-                                    fetchEmployees(),
-                                    fetchAttendance()
-                                ]);
-                                toast.success('Data refreshed successfully');
-                            } catch (error) {
-                                console.error('Manual refresh failed:', error);
-                                toast.error('Failed to refresh data. Please check your connection.');
-                            }
-                        }}
+                        onClick={forceRefreshAttendance}
                         disabled={loading}
                         className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
                     >
@@ -546,7 +651,7 @@ const StepInStepOut = () => {
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <div className="flex-1">
                         <div className="relative">
-                            <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                            {/* <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" /> */}
                             <input
                                 type="text"
                                 placeholder="Search employees by name or email..."
@@ -575,6 +680,7 @@ const StepInStepOut = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                 {filteredEmployees.map(employee => {
                     const status = getEmployeeStatus(employee._id);
+                    console.log("status ==> ", status);
                     const displayImage = status.image || employee.photo;
 
                     return (
@@ -615,8 +721,8 @@ const StepInStepOut = () => {
                             {/* Enhanced Status Badge */}
                             <div className="mb-4">
                                 <span className={`inline-flex px-3 py-1.5 text-xs font-medium rounded-full ${status.color === 'green' ? 'bg-green-100 text-green-800' :
-                                        status.color === 'orange' ? 'bg-orange-100 text-orange-800' :
-                                            'bg-gray-100 text-gray-800'
+                                    status.color === 'orange' ? 'bg-orange-100 text-orange-800' :
+                                        'bg-gray-100 text-gray-800'
                                     }`}>
                                     {status.text}
                                 </span>
@@ -814,7 +920,7 @@ const StepInStepOut = () => {
                                             <MapPin className="h-5 w-5 mr-2 text-blue-600" />
                                             Attendance Details
                                         </h4>
-                                        
+
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -892,7 +998,7 @@ const StepInStepOut = () => {
                                         : 'Review your photo and fill in the details above to confirm'
                                     }
                                 </p>
-                                
+
                                 {capturedImage && (
                                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                         <button

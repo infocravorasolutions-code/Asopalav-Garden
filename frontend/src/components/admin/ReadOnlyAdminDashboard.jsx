@@ -37,9 +37,9 @@ const ReadOnlyAdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch attendance data
-      const attendanceResponse = await api.get('/api/attendence');
+      const attendanceResponse = await api.get('/attendence');
       const attendance = attendanceResponse.data.attendance || [];
       setAttendanceData(attendance);
 
@@ -211,7 +211,7 @@ const ReadOnlyAdminDashboard = () => {
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Available Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card 
+            <Card
               className="cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() => navigate('/admin/attendance')}
             >
@@ -228,7 +228,7 @@ const ReadOnlyAdminDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card 
+            <Card
               className="cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() => navigate('/admin/reports')}
             >
@@ -245,7 +245,7 @@ const ReadOnlyAdminDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card 
+            <Card
               className="cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() => navigate('/admin/analytics')}
             >
@@ -332,7 +332,7 @@ const ReadOnlyAdminDashboard = () => {
               <div>
                 <h3 className="text-sm font-medium text-blue-800">Read-Only Access</h3>
                 <p className="text-sm text-blue-700 mt-1">
-                  You have read-only access to the attendance system. You can view attendance data, 
+                  You have read-only access to the attendance system. You can view attendance data,
                   generate reports, and analyze trends, but cannot modify employee data or system settings.
                 </p>
               </div>

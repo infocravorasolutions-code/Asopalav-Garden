@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { showSuccess, showError } from '../../utils/toast';
+import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
 
 const SuperAdminLogin = () => {
     const [formData, setFormData] = useState({
@@ -25,30 +26,22 @@ const SuperAdminLogin = () => {
         setLoading(true);
 
         try {
-            const response = await fetch(`http://localhost:5678/api/superadmin/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
+            const response = await api.post('/superadmin/login', formData);
 
-            const data = await response.json();
-
-            if (data.success) {
+            if (response.success) {
                 // Store SuperAdmin token and user data
-                localStorage.setItem('superadmin_token', data.token);
-                localStorage.setItem('superadmin_user', JSON.stringify(data.user));
+                localStorage.setItem('superadmin_token', response.token);
+                localStorage.setItem('superadmin_user', JSON.stringify(response.user));
                 localStorage.setItem('user_role', 'superadmin');
 
                 showSuccess('Login successful!');
                 navigate('/superadmin/dashboard');
             } else {
-                showError(data.message || 'Login failed');
+                showError(response.message || 'Login failed');
             }
         } catch (error) {
             console.error('Login error:', error);
-            showError('Network error. Please try again.');
+            handleApiError(error, 'Network error. Please try again.');
         } finally {
             setLoading(false);
         }

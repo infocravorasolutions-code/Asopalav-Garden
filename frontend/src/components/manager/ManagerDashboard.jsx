@@ -47,7 +47,7 @@ const ManagerDashboard = () => {
 
         // Fetch employees from API using the configured API service
         console.log('Making API call to /api/employee/team...');
-        const response = await api.get('/api/employee/team');
+        const response = await api.get('/employee/team');
         const data = response.data;
         console.log('API Response:', data);
 
@@ -123,7 +123,7 @@ const ManagerDashboard = () => {
       // Check attendance status for each employee
       for (const employee of employeesList) {
         try {
-          const statusResponse = await api.get(`/api/attendence/status/${employee.id}`);
+          const statusResponse = await api.get(`/attendence/status/${employee.id}`);
           console.log(`Attendance status for ${employee.name}:`, statusResponse.data);
 
           if (statusResponse.data.success) {
@@ -200,7 +200,7 @@ const ManagerDashboard = () => {
 
       // Fetch employees from API using the configured API service
       console.log('Making API call to /api/employee/team...');
-      const response = await api.get('/api/employee/team');
+      const response = await api.get('/employee/team');
       const data = response.data;
       console.log('API Response:', data);
 
@@ -385,30 +385,15 @@ const ManagerDashboard = () => {
           <p className="text-sm text-gray-500 mt-1">
             Managing {totalEmployees} team members
           </p>
-          {/* Company Verification */}
-          <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm font-medium text-blue-800">
-                Company: {company?.name || 'Loading...'}
-              </span>
-            </div>
-            <div className="text-xs text-blue-600 mt-1">
-              Company ID: {user?.companyId || 'Not available'}
-            </div>
-            <div className="text-xs text-blue-600">
-              Showing employees from your company only
-            </div>
-          </div>
+
         </div>
-        <div className="flex items-center space-x-4 mt-4 sm:mt-0">
+        <div className="flex items-center space-x-3 mt-4 sm:mt-0">
           <Button
             onClick={fetchEmployees}
             variant="outline"
-            className="flex items-center space-x-2 touch-manipulation min-h-[44px]"
+            className="flex items-center justify-center space-x-2 px-4 py-2.5 h-10 w-auto min-w-[100px] touch-manipulation border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            <RefreshCw className="h-4 w-4" />
-            <span>Refresh</span>
+            <span className="text-sm font-medium">Refresh</span>
           </Button>
           <Button
             onClick={async () => {
@@ -423,9 +408,9 @@ const ManagerDashboard = () => {
               }
             }}
             variant="outline"
-            className="flex items-center space-x-2 text-sm touch-manipulation min-h-[44px]"
+            className="flex items-center justify-center space-x-2 px-4 py-2.5 h-10 w-auto min-w-[120px] touch-manipulation border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            <span>Refresh Status</span>
+            <span className="text-sm font-medium">Refresh Status</span>
           </Button>
         </div>
       </div>
