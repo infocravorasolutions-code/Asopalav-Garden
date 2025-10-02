@@ -82,7 +82,7 @@ const MyAttendance = () => {
             managerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             record.shift?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             record.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            address.toLowerCase().includes(searchTerm.toLowerCase());
+            address.toLowerCase().includes(searchTerm.toLowerCase()); 
 
         const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
 
