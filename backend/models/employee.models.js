@@ -58,6 +58,31 @@ const UserSchema = new mongoose.Schema({
     // Employee Photo
     photo: { type: String }, // URL or filename of employee photo
 
+    // Site assignment
+    assignedSiteId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Site',
+        default: null
+    },
+    assignedSiteName: { type: String },
+    assignedSiteCode: { type: String },
+    
+    // Point assignments within the site
+    assignedPoints: [{
+        pointId: { 
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: 'Site.points'
+        },
+        pointName: { type: String },
+        pointCode: { type: String },
+        isRequired: { type: Boolean, default: false },
+        assignedDate: { type: Date, default: Date.now },
+        assignedBy: { 
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: 'Admin' 
+        }
+    }],
+
     // Legacy fields for backward compatibility
     position: { type: String },
     active: { type: Boolean, default: true }

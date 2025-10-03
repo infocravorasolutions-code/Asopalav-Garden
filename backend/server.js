@@ -15,6 +15,7 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import attendenceRoutes from "./routes/attendence.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import superAdminRoutes from "./routes/superadmin.routes.js";
+import siteRoutes from "./routes/site.routes.js";
 import { autoStepOut, updateStepInUserLocations, updateAllEmployeeLocations } from './controller/cron.controller.js';
 import Employee from "./models/employee.models.js";
 
@@ -53,6 +54,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/attendence", attendenceRoutes);
 app.use("/api", companyRoutes);
 app.use("/api/superadmin", superAdminRoutes);
+app.use("/api/sites", siteRoutes);
 // Export routes removed - functionality moved to frontend
 
 // Settings routes removed - now using static configuration
