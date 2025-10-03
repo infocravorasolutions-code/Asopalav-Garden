@@ -100,6 +100,13 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
             color: 'orange'
           },
           {
+            id: 'sites',
+            label: 'Site Management',
+            icon: MapPin,
+            path: '/admin/sites',
+            color: 'teal'
+          },
+          {
             id: 'Report',
             label: 'Report',
             icon: FileText,
@@ -215,8 +222,9 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
               item.color === 'purple' ? 'bg-purple-500/20 text-purple-600 border-l-4 border-purple-500' :
                 item.color === 'orange' ? 'bg-orange-500/20 text-orange-600 border-l-4 border-orange-500' :
                   item.color === 'indigo' ? 'bg-indigo-500/20 text-indigo-600 border-l-4 border-indigo-500' :
-                    item.color === 'red' ? 'bg-red-500/20 text-red-600 border-l-4 border-red-500' :
-                      'bg-gray-500/20 text-gray-600 border-l-4 border-gray-500')
+                    item.color === 'teal' ? 'bg-teal-500/20 text-teal-600 border-l-4 border-teal-500' :
+                      item.color === 'red' ? 'bg-red-500/20 text-red-600 border-l-4 border-red-500' :
+                        'bg-gray-500/20 text-gray-600 border-l-4 border-gray-500')
           : isLogoutItem
             ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'

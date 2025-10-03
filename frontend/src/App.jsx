@@ -9,6 +9,7 @@ import ManagersPageNew from './components/admin/ManagersPageNew';
 import EmployeesPage from './components/admin/EmployeesPage';
 import TraditionalMusterRollReport from './components/admin/TraditionalMusterRollReport';
 import AttendanceManagement from './components/admin/AttendanceManagement';
+import SiteManagement from './components/admin/SiteManagement';
 import ManagerDashboard from './components/manager/ManagerDashboard';
 import TeamPage from './components/manager/TeamPage';
 import StepInStepOut from './components/manager/StepInStepOut';
@@ -207,6 +208,17 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <DashboardLayout>
               <AttendanceManagement />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/sites"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <SiteManagement />
             </DashboardLayout>
           </ProtectedRoute>
         }
