@@ -4,6 +4,7 @@
 /* Import WebView compatibility styles */
 @import './styles/webview-compatibility.css';
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
