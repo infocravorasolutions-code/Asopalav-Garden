@@ -27,7 +27,9 @@ export const createEmployee = async (req, res) => {
       hasMobile: !!req.body.mobile,
       hasAddress: !!req.body.address,
       assignedManager: req.body.assignedManager,
-      managerId: req.body.managerId
+      managerId: req.body.managerId,
+      assignedSiteId: req.body.assignedSiteId,
+      assignedPointsCount: req.body.assignedPoints?.length || 0
     });
 
     const {
@@ -45,6 +47,8 @@ export const createEmployee = async (req, res) => {
       accountNumber,
       ifscCode,
       photo,
+      assignedSiteId,
+      assignedPoints
     } = req.body;
 
     // Validate required fields
@@ -155,7 +159,9 @@ export const createEmployee = async (req, res) => {
       createdByRole: createdByRole,
       createdById: createdBy,
       role: "employee",
-      active: true
+      active: true,
+      assignedSiteId: assignedSiteId || null,
+      assignedPoints: assignedPoints || []
     });
 
     console.log("💾 [createEmployee] Saving employee to database...");
@@ -325,6 +331,8 @@ export const updateEmployee = async (req, res) => {
       updateData: updateData,
       assignedManager: updateData.assignedManager,
       managerId: updateData.managerId,
+      assignedSiteId: updateData.assignedSiteId,
+      assignedPointsCount: updateData.assignedPoints?.length || 0,
       userRole: currentUserRole,
       userId: currentUserId,
       companyId: companyId
@@ -399,6 +407,37 @@ export const updateEmployee = async (req, res) => {
 
     // Remove assignedManager field as it's not part of the schema
     delete updateData.assignedManager;
+
+    // Handle site assignment if provided
+    if (updateData.assignedSiteId !== undefined) {
+      if (updateData.assignedSiteId) {
+        console.log("🏗️ [updateEmployee] Site assigned:", updateData.assignedSiteId);
+      } else {
+        // If site is being cleared, clear all site-related fields
+        updateData.assignedSiteId = null;
+        updateData.assignedPoints = []; // Clear points when site is cleared
+        console.log("🔄 [updateEmployee] Clearing site assignment");
+      }
+    }
+
+    // Handle point assignments if provided
+    if (updateData.assignedPoints !== undefined) {
+      if (Array.isArray(updateData.assignedPoints)) {
+        // Process points to ensure proper structure
+        updateData.assignedPoints = updateData.assignedPoints.map(point => ({
+          pointId: point.pointId,
+          pointName: point.pointName,
+          pointCode: point.pointCode,
+          isRequired: point.isRequired || false,
+          assignedDate: point.assignedDate || new Date(),
+          assignedBy: point.assignedBy || currentUserId
+        }));
+        console.log("📍 [updateEmployee] Processing point assignments:", updateData.assignedPoints.length);
+      } else {
+        updateData.assignedPoints = [];
+        console.log("🔄 [updateEmployee] Clearing point assignments");
+      }
+    }
 
     console.log("💾 [updateEmployee] Final update data:", updateData);
 

@@ -48,6 +48,7 @@ const StepInStepOut = () => {
     const [cameraReady, setCameraReady] = useState(false);
     const [imageLoading, setImageLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [locationLoading, setLocationLoading] = useState(false);
 
     // Form data
     const [location, setLocation] = useState('');
@@ -102,6 +103,14 @@ const StepInStepOut = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [siteFilter, setSiteFilter] = useState('all');
+    const [pointFilter, setPointFilter] = useState('all');
+    
+    // Site and point data
+    const [sites, setSites] = useState([]);
+    const [loadingSites, setLoadingSites] = useState(false);
+    const [selectedSitePoints, setSelectedSitePoints] = useState([]);
+    const [loadingPoints, setLoadingPoints] = useState(false);
 
     const webcamRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -141,6 +150,69 @@ const StepInStepOut = () => {
         }
     }, []);
 
+    // Fetch sites
+    const fetchSites = useCallback(async () => {
+        setLoadingSites(true);
+        try {
+            console.log('Fetching sites...');
+            const response = await api.get('/sites');
+            
+            console.log('Sites response:', response);
+            console.log('Sites data:', response.data);
+            
+            // Check if response.data is an array directly (from fetchInterceptor)
+            if (Array.isArray(response.data)) {
+                console.log('Sites fetched successfully (direct array):', response.data);
+                setSites(response.data);
+            } else if (response.data && response.data.success && response.data.data) {
+                console.log('Sites fetched successfully (wrapped):', response.data.data);
+                setSites(response.data.data || []);
+            } else {
+                console.error('Failed to fetch sites - response structure:', response.data);
+                setSites([]);
+            }
+        } catch (error) {
+            console.error('Error fetching sites:', error);
+            setSites([]);
+        } finally {
+            setLoadingSites(false);
+        }
+    }, []);
+
+    // Fetch points for selected site
+    const fetchSitePoints = useCallback(async (siteId) => {
+        if (!siteId) {
+            setSelectedSitePoints([]);
+            return;
+        }
+        
+        setLoadingPoints(true);
+        try {
+            console.log('Fetching points for site:', siteId);
+            const response = await api.get(`/sites/${siteId}`);
+            
+            console.log('Site response:', response);
+            console.log('Site data:', response.data);
+            
+            // Check if response.data is a site object directly (from fetchInterceptor)
+            if (response.data && response.data.points) {
+                console.log('Site points fetched (direct object):', response.data.points);
+                setSelectedSitePoints(response.data.points || []);
+            } else if (response.data && response.data.success && response.data.data && response.data.data.points) {
+                console.log('Site points fetched (wrapped):', response.data.data.points);
+                setSelectedSitePoints(response.data.data.points || []);
+            } else {
+                console.error('Failed to fetch site points - response structure:', response.data);
+                setSelectedSitePoints([]);
+            }
+        } catch (error) {
+            console.error('Error fetching site points:', error);
+            setSelectedSitePoints([]);
+        } finally {
+            setLoadingPoints(false);
+        }
+    }, []);
+
     // Fetch attendance data
     const fetchAttendance = useCallback(async () => {
         try {
@@ -163,6 +235,7 @@ const StepInStepOut = () => {
 
     // Get current location with fallback
     const getCurrentLocation = useCallback(async () => {
+        setLocationLoading(true);
         try {
             const locationData = await getLocationWithAutoFallback();
 
@@ -183,6 +256,8 @@ const StepInStepOut = () => {
             setLongitude("72.5723255");
             setLocation("Ahmedabad, Gujarat, India (Default)");
             toast.success('Using default location (Ahmedabad, Gujarat)');
+        } finally {
+            setLocationLoading(false);
         }
     }, []);
 
@@ -239,32 +314,41 @@ const StepInStepOut = () => {
         }
     };
 
-    // Initialize data
+     // Initialize data
+     useEffect(() => {
+         const initializeData = async () => {
+             try {
+                 console.log('Initializing StepInStepOut data...');
+                 await Promise.all([
+                     fetchEmployees(),
+                     fetchAttendance(),
+                     fetchSites()
+                 ]);
+                 console.log('StepInStepOut data initialized successfully');
+
+                 // Force refresh attendance data after initial load to ensure we have the latest records
+                 setTimeout(async () => {
+                     console.log('🔄 Secondary attendance refresh after initialization...');
+                     await fetchAttendance();
+                 }, 2000);
+
+             } catch (error) {
+                 console.error('Error initializing data:', error);
+                 toast.error('Failed to load initial data');
+             }
+         };
+
+         initializeData();
+     }, [fetchEmployees, fetchAttendance, fetchSites]);
+
+    // Fetch points when site filter changes
     useEffect(() => {
-        const initializeData = async () => {
-            try {
-                console.log('Initializing StepInStepOut data...');
-                await Promise.all([
-                    fetchEmployees(),
-                    fetchAttendance()
-                ]);
-                getCurrentLocation();
-                console.log('StepInStepOut data initialized successfully');
-
-                // Force refresh attendance data after initial load to ensure we have the latest records
-                setTimeout(async () => {
-                    console.log('🔄 Secondary attendance refresh after initialization...');
-                    await fetchAttendance();
-                }, 2000);
-
-            } catch (error) {
-                console.error('Error initializing data:', error);
-                toast.error('Failed to load initial data');
-            }
-        };
-
-        initializeData();
-    }, [fetchEmployees, fetchAttendance, getCurrentLocation]);
+        if (siteFilter && siteFilter !== 'all') {
+            fetchSitePoints(siteFilter);
+        } else {
+            setSelectedSitePoints([]);
+        }
+    }, [siteFilter, fetchSitePoints]);
 
     // Auto-refresh data every 30 seconds to keep status up-to-date
     useEffect(() => {
@@ -410,17 +494,17 @@ const StepInStepOut = () => {
 
         const currentStatus = getEmployeeStatus(employeeId);
 
-        if (type === 'step-in') {
-            if (currentStatus.status === 'clocked-in') {
-                toast.error(`${employee.name} is already clocked in. Please step out first.`);
-                return;
-            }
-            setSelectedEmployee(employee);
-            setStepType(type);
-            setShowCamera(true);
-            setLocation('');
-            setNote('');
-            setShift('morning');
+         if (type === 'step-in') {
+             if (currentStatus.status === 'clocked-in') {
+                 toast.error(`${employee.name} is already clocked in. Please step out first.`);
+                 return;
+             }
+             setSelectedEmployee(employee);
+             setStepType(type);
+             setShowCamera(true);
+             setLocation('');
+             setNote('');
+             setShift('morning');
         } else if (type === 'step-out') {
             if (currentStatus.status !== 'clocked-in') {
                 toast.error(`${employee.name} is not currently clocked in.`);
@@ -442,7 +526,7 @@ const StepInStepOut = () => {
                 try {
                     const autoLocation = await getAddressFromCoordinates(latitude, longitude);
                     if (autoLocation) {
-                        finalLocation = `Auto-detected: ${autoLocation}`;
+                        finalLocation = `${autoLocation}`;
                     }
                 } catch {
                     // Continue with default
@@ -508,9 +592,9 @@ const StepInStepOut = () => {
                 const autoLocation = await getAddressFromCoordinates(latitude, longitude);
 
                 if (autoLocation) {
-                    finalLocation = `Auto-detected: ${autoLocation}`;
+                    finalLocation = `${autoLocation}`;
                     setLocation(finalLocation);
-                    toast.success(`Location auto-detected: ${autoLocation}`);
+                    toast.success(`Location ${autoLocation}`);
                 } else {
                     finalLocation = 'Location not available';
                     toast.error('Could not detect location from GPS coordinates');
@@ -624,9 +708,19 @@ const StepInStepOut = () => {
             const employeeStatus = getEmployeeStatus(employee._id);
             const matchesStatus = statusFilter === 'all' || employeeStatus.status === statusFilter;
 
-            return matchesSearch && matchesStatus;
+            // Site filter
+            const matchesSite = siteFilter === 'all' || 
+                (employee.assignedSiteId && employee.assignedSiteId === siteFilter);
+
+            // Point filter
+            const matchesPoint = pointFilter === 'all' || 
+                (employee.assignedPoints && employee.assignedPoints.some(point => 
+                    point.pointId === pointFilter || point._id === pointFilter
+                ));
+
+            return matchesSearch && matchesStatus && matchesSite && matchesPoint;
         });
-    }, [employees, debouncedSearchTerm, statusFilter, getEmployeeStatus]);
+    }, [employees, debouncedSearchTerm, statusFilter, siteFilter, pointFilter, getEmployeeStatus]);
 
     // Statistics
     const stats = {
@@ -649,26 +743,50 @@ const StepInStepOut = () => {
                     </p>
                 </div>
 
-                {/* Manual Refresh Button */}
-                <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-                    <button
-                        onClick={forceRefreshAttendance}
-                        disabled={loading}
-                        className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Loading...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="h-4 w-4" />
-                                Refresh Data
-                            </>
-                        )}
-                    </button>
-                </div>
+                 {/* Auto Location Detection and Manual Refresh */}
+                 <div className="flex items-center space-x-4 mt-4 sm:mt-0">
+                     {/* Auto Location Detection Button */}
+                     {/* <button
+                         onClick={getCurrentLocation}
+                         disabled={locationLoading}
+                         className="flex items-center space-x-2 px-4 py-2 text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors touch-manipulation min-h-[44px]"
+                         title="Auto-detect current location"
+                     >
+                         {locationLoading ? (
+                             <>
+                                 <Loader2 className="h-4 w-4 animate-spin" />
+                                 <span className="text-sm">Detecting...</span>
+                             </>
+                         ) : (
+                             <>
+                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                 </svg>
+                                 <span className="text-sm">Detect Auto Location</span>
+                             </>
+                         )}
+                     </button> */}
+
+                     {/* Manual Refresh Button */}
+                     <button
+                         onClick={forceRefreshAttendance}
+                         disabled={loading}
+                         className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
+                     >
+                         {loading ? (
+                             <>
+                                 <Loader2 className="h-4 w-4 animate-spin" />
+                                 Loading...
+                             </>
+                         ) : (
+                             <>
+                                 <RefreshCw className="h-4 w-4" />
+                                 Refresh Data
+                             </>
+                         )}
+                     </button>
+                 </div>
             </div>
 
             {/* Statistics Cards */}
@@ -713,31 +831,122 @@ const StepInStepOut = () => {
 
             {/* Search and Filter */}
             <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200">
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                    <div className="flex-1">
-                        <div className="relative">
-                            {/* <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" /> */}
-                            <input
-                                type="text"
-                                placeholder="Search employees by name or email..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
-                            />
+                <div className="space-y-4">
+                    {/* Search Bar */}
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                        <div className="flex-1">
+                            <div className="relative">
+                                <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search employees by name or email..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
+                                />
+                            </div>
+                        </div>
+                        <div className="sm:w-48">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
+                            >
+                                <option value="all">All Status</option>
+                                <option value="not-clocked">Not Clocked</option>
+                                <option value="clocked-in">Clocked In</option>
+                                <option value="clocked-out">Clocked Out</option>
+                            </select>
                         </div>
                     </div>
-                    <div className="sm:w-48">
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="not-clocked">Not Clocked</option>
-                            <option value="clocked-in">Clocked In</option>
-                            <option value="clocked-out">Clocked Out</option>
-                        </select>
+
+                    {/* Site and Point Filters */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Filter by Assigned Site
+                            </label>
+                            <select
+                                value={siteFilter}
+                                onChange={(e) => {
+                                    setSiteFilter(e.target.value);
+                                    setPointFilter('all'); // Reset point filter when site changes
+                                }}
+                                disabled={loadingSites}
+                                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation disabled:bg-gray-100"
+                            >
+                                <option value="all">All Sites</option>
+                                {sites.map((site) => (
+                                    <option key={site._id} value={site._id}>
+                                        {site.name} ({site.siteCode})
+                                    </option>
+                                ))}
+                            </select>
+                            {loadingSites && (
+                                <p className="text-xs text-gray-500 mt-1">Loading sites...</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Filter by Assigned Point
+                            </label>
+                            <select
+                                value={pointFilter}
+                                onChange={(e) => setPointFilter(e.target.value)}
+                                disabled={loadingPoints || siteFilter === 'all'}
+                                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation disabled:bg-gray-100"
+                            >
+                                <option value="all">All Points</option>
+                                {selectedSitePoints.map((point) => (
+                                    <option key={point._id} value={point._id}>
+                                        {point.name} ({point.pointCode})
+                                    </option>
+                                ))}
+                            </select>
+                            {loadingPoints && (
+                                <p className="text-xs text-gray-500 mt-1">Loading points...</p>
+                            )}
+                            {siteFilter === 'all' && (
+                                <p className="text-xs text-gray-500 mt-1">Select a site first to filter by points</p>
+                            )}
+                        </div>
                     </div>
+
+                    {/* Filter Summary */}
+                    {(siteFilter !== 'all' || pointFilter !== 'all') && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <span className="text-sm font-medium text-blue-800">
+                                        Active Filters:
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setSiteFilter('all');
+                                        setPointFilter('all');
+                                    }}
+                                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                >
+                                    Clear All
+                                </button>
+                            </div>
+                            <div className="mt-2 text-xs text-blue-700">
+                                {siteFilter !== 'all' && (
+                                    <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2">
+                                        Site: {sites.find(s => s._id === siteFilter)?.name || 'Unknown'}
+                                    </span>
+                                )}
+                                {pointFilter !== 'all' && (
+                                    <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                        Point: {selectedSitePoints.find(p => p._id === pointFilter)?.name || 'Unknown'}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -859,25 +1068,51 @@ const StepInStepOut = () => {
             {showCamera && (
                 <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4 animate-in fade-in duration-300">
                     <div className="bg-white rounded-xl w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[95vh] sm:max-h-[90vh] shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col">
-                        {/* Mobile-Optimized Header */}
-                        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
-                            <div>
-                                <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
-                                    {stepType === 'step-in' ? 'Step In' : 'Step Out'} - {selectedEmployee?.name}
-                                </h3>
-                                <p className="text-sm text-gray-600">Capture photo and enter details</p>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    setShowCamera(false);
-                                    setCapturedImage(null);
-                                    setSelectedEmployee(null);
-                                }}
-                                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
-                            >
-                                <X className="h-5 w-5 sm:h-6 sm:w-6" />
-                            </button>
-                        </div>
+                         {/* Mobile-Optimized Header */}
+                         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
+                             <div className="flex-1">
+                                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                                     {stepType === 'step-in' ? 'Step In' : 'Step Out'} - {selectedEmployee?.name}
+                                 </h3>
+                                 <p className="text-sm text-gray-600">Capture photo and enter details</p>
+                             </div>
+                             
+                             {/* Auto Location Detection Button in Modal Header */}
+                             <div className="flex items-center space-x-2">
+                                 <button
+                                     onClick={getCurrentLocation}
+                                     disabled={locationLoading}
+                                     className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors touch-manipulation min-h-[40px]"
+                                     title="Auto-detect current location"
+                                 >
+                                     {locationLoading ? (
+                                         <>
+                                             <Loader2 className="h-4 w-4 animate-spin" />
+                                             <span className="text-xs">Detecting...</span>
+                                         </>
+                                     ) : (
+                                         <>
+                                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                             </svg>
+                                             <span className="text-xs">Auto Location</span>
+                                         </>
+                                     )}
+                                 </button>
+                                 
+                                 <button
+                                     onClick={() => {
+                                         setShowCamera(false);
+                                         setCapturedImage(null);
+                                         setSelectedEmployee(null);
+                                     }}
+                                     className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+                                 >
+                                     <X className="h-5 w-5 sm:h-6 sm:w-6" />
+                                 </button>
+                             </div>
+                         </div>
 
                         {/* Mobile-Optimized Camera Section */}
                         <div className="p-4 sm:p-6 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ 
@@ -974,12 +1209,16 @@ const StepInStepOut = () => {
                             </div>
 
                             {/* Enhanced Form Fields */}
-                            {capturedImage && (
-                                <div className="space-y-6">
+                            <div className="space-y-6">
                                     <div className="bg-gray-50 rounded-xl p-4">
                                         <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                             <MapPin className="h-5 w-5 mr-2 text-blue-600" />
                                             Attendance Details
+                                            {!capturedImage && (
+                                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                    Set before photo
+                                                </span>
+                                            )}
                                         </h4>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1005,21 +1244,75 @@ const StepInStepOut = () => {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                        <div className="mt-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                     Location <span className="text-blue-600 text-xs">(Auto-detected or manual entry)</span>
                                                 </label>
-                                                <input
-                                                    type="text"
-                                                    value={location}
-                                                    onChange={(e) => setLocation(e.target.value)}
-                                                    placeholder="Enter your current location or leave empty for auto-detection..."
-                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                                                />
+                                                <div className="flex space-x-2">
+                                                    <div className="flex-1 relative">
+                                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                            <MapPin className="h-4 w-4 text-gray-400" />
+                                                        </div>
+                                                        <input
+                                                            type="text"
+                                                            value={location}
+                                                            onChange={(e) => setLocation(e.target.value)}
+                                                            placeholder="Enter your current location or use auto-detect..."
+                                                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                        />
+                                                    </div>
+                                                    {/* <button
+                                                        type="button"
+                                                        onClick={getCurrentLocation}
+                                                        disabled={locationLoading}
+                                                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2 min-w-[60px]"
+                                                        title="Auto-detect current location"
+                                                    >
+                                                        {locationLoading ? (
+                                                            <>
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                                <span className="text-sm">Detecting...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                </svg>
+                                                                <span className="text-sm">Auto Detect</span>
+                                                            </>
+                                                        )}
+                                                    </button> */}
+                                                </div>
+                                                {location && (
+                                                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center text-xs text-green-700">
+                                                                <CheckCircle className="h-3 w-3 mr-1" />
+                                                                <span className="font-medium">Location set:</span>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setLocation('');
+                                                                    setLatitude('');
+                                                                    setLongitude('');
+                                                                }}
+                                                                className="text-xs text-red-600 hover:text-red-800 underline"
+                                                                title="Clear location"
+                                                            >
+                                                                Clear
+                                                            </button>
+                                                        </div>
+                                                        <div className="mt-1 text-xs text-green-600">
+                                                            {location.length > 60 ? `${location.substring(0, 60)}...` : location}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            <div>
+                                            <div className="mt-4">
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">Shift</label>
                                                 <select
                                                     value={shift}
@@ -1070,7 +1363,6 @@ const StepInStepOut = () => {
                                         </div>
                                     </div>
                                 </div>
-                            )}
                         </div>
 
                         {/* Enhanced Instructions and Actions */}
@@ -1078,8 +1370,8 @@ const StepInStepOut = () => {
                             <div className="text-center">
                                 <p className="text-sm text-gray-600 mb-4">
                                     {!capturedImage
-                                        ? 'Position your face in the camera and tap the camera button to capture, or upload a photo'
-                                        : 'Review your photo and fill in the details above to confirm'
+                                        ? 'Set your location details below, then position your face in the camera and tap the camera button to capture, or upload a photo'
+                                        : 'Review your photo and location details above to confirm'
                                     }
                                 </p>
 

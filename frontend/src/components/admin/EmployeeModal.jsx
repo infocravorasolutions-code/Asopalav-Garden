@@ -596,19 +596,30 @@ const EmployeeModal = ({
 
     if (!validateForm()) return;
 
+    // Transform form data for backend compatibility
+    const transformedData = {
+      ...formData,
+      // Map assignedSite to assignedSiteId
+      assignedSiteId: formData.assignedSite || null,
+      // Remove the frontend-specific field
+      assignedSite: undefined
+    };
+
     // Debug logging for form submission
     console.log('EmployeeModal - Form submission data:', {
-      name: formData.name,
-      email: formData.email,
-      assignedManager: formData.assignedManager,
-      managerId: formData.managerId,
-      hasAssignedManager: !!formData.assignedManager,
-      formDataKeys: Object.keys(formData)
+      name: transformedData.name,
+      email: transformedData.email,
+      assignedManager: transformedData.assignedManager,
+      managerId: transformedData.managerId,
+      hasAssignedManager: !!transformedData.assignedManager,
+      assignedSiteId: transformedData.assignedSiteId,
+      assignedPointsCount: transformedData.assignedPoints?.length || 0,
+      formDataKeys: Object.keys(transformedData)
     });
 
     setLoading(true);
     try {
-      await onSave(formData);
+      await onSave(transformedData);
       onClose(); // Close modal on successful save
     } catch {
       // Error is already handled by the parent component (EmployeesPage)

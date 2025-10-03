@@ -147,6 +147,13 @@ const Sidebar = ({ isOpen, onToggle, userType }) => {
           color: 'green'
         },
         {
+          id: 'attendance',
+          label: 'Attendance',
+          icon: Calendar,
+          path: '/manager/attendance',
+          color: 'orange'
+        },
+        {
           id: 'logout',
           label: 'Logout',
           icon: LogOut,
