@@ -27,7 +27,7 @@ export const getCompanyLogoPath = (companyCode) => {
 
     if (logoFileName) {
         // Return the path to the logo in the company-logo folder
-        return `/src/company-logo/${logoFileName}`;
+        return `/assets/${logoFileName}`;
     }
 
     return null;

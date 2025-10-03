@@ -216,27 +216,27 @@ const EmployeesPage = () => {
       ),
       hide: window.innerWidth < 1024
     },
-    {
-      headerName: 'Shift',
-      field: 'shift',
-      width: 200,
-      minWidth: 180,
-      cellRenderer: (params) => {
-        const shift = params.value || 'Morning Shift (7:00 AM - 3:00 PM)';
-        const shiftColors = {
-          'Morning Shift (7:00 AM - 3:00 PM)': 'bg-yellow-100 text-yellow-800',
-          'Evening Shift (3:00 PM - 11:00 PM)': 'bg-orange-100 text-orange-800',
-          'Night Shift (11:00 PM - 7:00 AM)': 'bg-purple-100 text-purple-800'
-        };
-        return (
-          <div className="text-left">
-            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${shiftColors[shift] || 'bg-gray-100 text-gray-800'}`}>
-              {shift}
-            </span>
-          </div>
-        );
-      }
-    },
+    // {
+    //   headerName: 'Shift',
+    //   field: 'shift',
+    //   width: 200,
+    //   minWidth: 180,
+    //   cellRenderer: (params) => {
+    //     const shift = params.value || 'Morning Shift (7:00 AM - 3:00 PM)';
+    //     const shiftColors = {
+    //       'Morning Shift (7:00 AM - 3:00 PM)': 'bg-yellow-100 text-yellow-800',
+    //       'Evening Shift (3:00 PM - 11:00 PM)': 'bg-orange-100 text-orange-800',
+    //       'Night Shift (11:00 PM - 7:00 AM)': 'bg-purple-100 text-purple-800'
+    //     };
+    //     return (
+    //       <div className="text-left">
+    //         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${shiftColors[shift] || 'bg-gray-100 text-gray-800'}`}>
+    //           {shift}
+    //         </span>
+    //       </div>
+    //     );
+    //   }
+    // },
     {
       headerName: 'Emp Code',
       field: 'empCode',
@@ -271,20 +271,20 @@ const EmployeesPage = () => {
         );
       }
     },
-    {
-      headerName: 'Created By',
-      field: 'createdById.name',
-      width: 150,
-      minWidth: 120,
-      cellRenderer: (params) => (
-        <div className="text-gray-600 text-xs sm:text-sm text-left">
-          {params.data.createdById ?
-            (typeof params.data.createdById === 'object' ? params.data.createdById.name : params.data.createdById)
-            : 'Admin'}
-        </div>
-      ),
-      hide: window.innerWidth < 1024
-    },
+    // {
+    //   headerName: 'Created By',
+    //   field: 'createdById.name',
+    //   width: 150,
+    //   minWidth: 120,
+    //   cellRenderer: (params) => (
+    //     <div className="text-gray-600 text-xs sm:text-sm text-left">
+    //       {params.data.createdById ?
+    //         (typeof params.data.createdById === 'object' ? params.data.createdById.name : params.data.createdById)
+    //         : 'Admin'}
+    //     </div>
+    //   ),
+    //   hide: window.innerWidth < 1024
+    // },
     {
       headerName: 'Created',
       field: 'createdAt',
