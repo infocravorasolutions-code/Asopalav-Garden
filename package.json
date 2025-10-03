@@ -1,0 +1,11 @@
+{
+  "name": "nilkanth-landscape",
+  "version": "1.0.0",
+  "description": "Nilkanth Landscape Management System",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
