@@ -21,6 +21,7 @@ const AttendanceSchema = new mongoose.Schema({
     shift: { type: String, enum: Object.values(SHIFT_ENUM), default: SHIFT_ENUM.MORNING },
     status: { type: String, enum: ['present', 'absent', 'late', 'half-day'], default: 'present' },
     totalTime: { type: Number }, // in minutes
+    locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
     lastKnownLocation: {
         latitude: { type: Number },
         longitude: { type: Number },

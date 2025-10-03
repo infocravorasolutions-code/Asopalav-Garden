@@ -306,7 +306,7 @@ export const recordStepIn = async (req, res) => {
     if (existingAttendance) {
       return res.status(400).json({
         success: false,
-        message: "Already stepped in today"
+        message: "Employee is already stepped in today"
       });
     }
 

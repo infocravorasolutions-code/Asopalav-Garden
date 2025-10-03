@@ -30,6 +30,46 @@ import { SHIFT_ENUM } from '../../constants/shifts';
 
 
 const AttendanceManagement = () => {
+    // Predefined locations with full addresses that managers can select from dropdown
+    const predefinedLocations = [
+        { 
+            name: 'Riverfront west side સી plan', 
+            address: 'unnamed road, Ranna Park, - 380007, Gujarat, India'
+        },
+        { 
+            name: 'Flower park Point 2 Gate 2', 
+            address: 'Sabarmati Riverfront road, Kochrab, - 380043, Gujarat, India'
+        },
+        { 
+            name: 'Flower park point 1 Gate 1', 
+            address: 'Sabarmati Riverfront Road, Paldi, Navrangpura - 380006, Gujarat, India'
+        },
+        { 
+            name: 'Flower park point 3 Gate 3', 
+            address: 'Sabarmati Riverfront road, Kochrab, - 380043, Gujarat, India'
+        },
+        { 
+            name: 'Shbhas Garden Park point 1 gate 2', 
+            address: 'Sabarmati Riverfront Promenade, Dudheshwar, - 380014, Gujarat, India'
+        },
+        { 
+            name: 'Shbhas Garden Point 2 Gate 1', 
+            address: 'Riverfront Road, Dudheshwar, - 380027, Gujarat, India'
+        }
+    ];
+
+    // Function to check if address matches a predefined location
+    const getSelectedLocation = (address) => {
+        if (!address) return 'Not Assigned';
+        
+        // Check if the address exactly matches any predefined location address
+        const matchedLocation = predefinedLocations.find(location => 
+            address === location.address || address.includes(location.address)
+        );
+        
+        return matchedLocation ? matchedLocation.name : 'Not Assigned';
+    };
+
     const [attendanceData, setAttendanceData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [pagination, setPagination] = useState({
@@ -46,6 +86,7 @@ const AttendanceManagement = () => {
         employee: '',
         shift: '',
         status: '',
+        assignedSite: '',
         startDate: '',
         endDate: ''
     });
@@ -144,22 +185,79 @@ const AttendanceManagement = () => {
         };
     };
 
-    // Filter data based on search term
+    // Filter data based on search term and other filters
     const filteredData = useMemo(() => {
-        if (!searchTerm) {
-            return attendanceData;
+        let filtered = attendanceData;
+
+        // Apply search term filter
+        if (searchTerm) {
+            filtered = filtered.filter(record => {
+                const employee = record.employeeId;
+                const searchLower = searchTerm.toLowerCase();
+                return (
+                    employee?.name?.toLowerCase().includes(searchLower) ||
+                    employee?.email?.toLowerCase().includes(searchLower) ||
+                    record.address?.toLowerCase().includes(searchLower)
+                );
+            });
         }
 
-        return attendanceData.filter(record => {
-            const employee = record.employeeId;
-            const searchLower = searchTerm.toLowerCase();
-            return (
-                employee?.name?.toLowerCase().includes(searchLower) ||
-                employee?.email?.toLowerCase().includes(searchLower) ||
-                record.address?.toLowerCase().includes(searchLower)
-            );
-        });
-    }, [attendanceData, searchTerm]);
+        // Apply assigned site filter
+        if (filters.assignedSite) {
+            filtered = filtered.filter(record => {
+                const selectedLocation = getSelectedLocation(record.address);
+                return selectedLocation === filters.assignedSite;
+            });
+        }
+
+        // Apply manager filter
+        if (filters.manager) {
+            filtered = filtered.filter(record => {
+                return record.managerId?._id === filters.manager;
+            });
+        }
+
+        // Apply employee filter
+        if (filters.employee) {
+            filtered = filtered.filter(record => {
+                return record.employeeId?._id === filters.employee;
+            });
+        }
+
+        // Apply shift filter
+        if (filters.shift) {
+            filtered = filtered.filter(record => {
+                return record.shift === filters.shift;
+            });
+        }
+
+        // Apply status filter
+        if (filters.status) {
+            filtered = filtered.filter(record => {
+                return record.status === filters.status;
+            });
+        }
+
+        // Apply date range filter
+        if (filters.startDate) {
+            const startDate = new Date(filters.startDate);
+            filtered = filtered.filter(record => {
+                const recordDate = new Date(record.stepIn);
+                return recordDate >= startDate;
+            });
+        }
+
+        if (filters.endDate) {
+            const endDate = new Date(filters.endDate);
+            endDate.setHours(23, 59, 59, 999); // Include the entire end date
+            filtered = filtered.filter(record => {
+                const recordDate = new Date(record.stepIn);
+                return recordDate <= endDate;
+            });
+        }
+
+        return filtered;
+    }, [attendanceData, searchTerm, filters]);
 
     // Export to Excel
     const exportToExcel = async () => {
@@ -201,7 +299,19 @@ const AttendanceManagement = () => {
             }
 
             // Import the enhanced PDF export utility
-            const { exportAttendanceToPDF } = await import(`../../utils/pdfExportUtils?t=${Date.now()}`);
+            let exportAttendanceToPDF;
+            try {
+                const pdfUtils = await import('../../utils/pdfExportUtils');
+                exportAttendanceToPDF = pdfUtils.exportAttendanceToPDF || pdfUtils.default?.exportAttendanceToPDF;
+
+                if (!exportAttendanceToPDF) {
+                    throw new Error('PDF export function not found');
+                }
+            } catch (error) {
+                console.error('Error importing PDF utils:', error);
+                toast.error('Failed to load PDF export utility. Please try again.');
+                return;
+            }
 
             // Create filename with timestamp
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -289,6 +399,7 @@ const AttendanceManagement = () => {
             employee: '',
             shift: '',
             status: '',
+            assignedSite: '',
             startDate: '',
             endDate: ''
         });
@@ -375,33 +486,7 @@ const AttendanceManagement = () => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <Card>
-                    <CardContent className="p-3 sm:p-4">
-                        <div className="flex items-center justify-between">
-                            <div className="min-w-0 flex-1">
-                                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Records</p>
-                                <p className="text-lg sm:text-2xl font-bold text-gray-900">{summary.totalRecords}</p>
-                                <p className="text-xs sm:text-sm text-gray-500">100% attendance rate</p>
-                            </div>
-                            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 flex-shrink-0" />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="p-3 sm:p-4">
-                        <div className="flex items-center justify-between">
-                            <div className="min-w-0 flex-1">
-                                <p className="text-xs sm:text-sm font-medium text-gray-600">Present</p>
-                                <p className="text-lg sm:text-2xl font-bold text-green-600">{summary.present}</p>
-                                <p className="text-xs sm:text-sm text-gray-500">{summary.totalHours}h total</p>
-                            </div>
-                            <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 flex-shrink-0" />
-                        </div>
-                    </CardContent>
-                </Card>
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                 <Card>
                     <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center justify-between">
@@ -415,11 +500,19 @@ const AttendanceManagement = () => {
                     </CardContent>
                 </Card>
 
+                <Card>
+                    <CardContent className="p-3 sm:p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600">Avg Hours</p>
+                                <p className="text-lg sm:text-2xl font-bold text-gray-900">{summary.totalHours}h</p>
+                                <p className="text-xs sm:text-sm text-gray-500">per employee</p>
+                            </div>
+                            <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 flex-shrink-0" />
+                        </div>
+                    </CardContent>
+                </Card>
 
-            </div>
-
-            {/* Shift Breakdown */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <Card>
                     <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center justify-between">
@@ -461,13 +554,14 @@ const AttendanceManagement = () => {
             <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 gap-4">
                 <div className="flex-1">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                         <Input
                             type="text"
-                            placeholder="Search by name, email, or location..."
+                            placeholder="Search by name, email, or Ic"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 w-full touch-manipulation min-h-[44px]"
+                            className="pl-10 pr-4 w-full touch-manipulation min-h-[44px] text-sm sm:text-base"
+                            style={{ paddingLeft: '2.5rem' }}
                         />
                     </div>
                 </div>
@@ -556,6 +650,23 @@ const AttendanceManagement = () => {
                             </div>
 
                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Site</label>
+                                <select
+                                    value={filters.assignedSite}
+                                    onChange={(e) => handleFilterChange('assignedSite', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">All Sites</option>
+                                    {predefinedLocations.map((location, index) => (
+                                        <option key={index} value={location.name}>
+                                            {location.name}
+                                        </option>
+                                    ))}
+                                    <option value="Not Assigned">Not Assigned</option>
+                                </select>
+                            </div>
+
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                                 <Input
                                     type="date"
@@ -564,7 +675,10 @@ const AttendanceManagement = () => {
                                     className="w-full"
                                 />
                             </div>
+                        </div>
 
+                        {/* Filter Row 3 */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
                                 <Input
@@ -596,7 +710,7 @@ const AttendanceManagement = () => {
                 </Card>
             )}
 
-            {/* AG Grid */}
+            {/* Attendance Records */}
             <Card className="flex-1 min-h-0">
                 <CardContent className="p-0 h-full flex flex-col">
                     {loading ? (
@@ -623,160 +737,324 @@ const AttendanceManagement = () => {
                             </Button>
                         </div>
                     ) : (
-                        <div className="flex-1 min-h-0" style={{
-                            height: window.innerWidth < 768 ? '400px' : '600px',
-                            width: '100%',
-                            minHeight: window.innerWidth < 768 ? '300px' : '400px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            overflow: 'hidden'
-                        }}>
-                            {/* Simple HTML Table */}
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Employee
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Date
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Shift
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Clock In
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Clock Out
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Status
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Location
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {filteredData.map((record, index) => {
-                                            const employee = record.employeeId;
-                                            const getStatusColor = (status) => {
-                                                switch (status) {
-                                                    case 'present': return 'bg-green-100 text-green-800';
-                                                    case 'absent': return 'bg-red-100 text-red-800';
-                                                    case 'late': return 'bg-orange-100 text-orange-800';
-                                                    case 'half-day': return 'bg-blue-100 text-blue-800';
-                                                    default: return 'bg-gray-100 text-gray-800';
-                                                }
-                                            };
-                                            const getShiftColor = (shift) => {
-                                                switch (shift) {
-                                                    case 'morning': return 'bg-blue-100 text-blue-800';
-                                                    case 'evening': return 'bg-orange-100 text-orange-800';
-                                                    case 'night': return 'bg-purple-100 text-purple-800';
-                                                    default: return 'bg-gray-100 text-gray-800';
-                                                }
-                                            };
+                        <div className="flex-1 min-h-0 overflow-y-auto">
+                            {/* Desktop Table View */}
+                            <div className="hidden md:block">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Employee
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Date
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Shift
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Clock In
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Clock Out
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Status
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Location
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Assigned Site
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {filteredData.map((record, index) => {
+                                                const employee = record.employeeId;
+                                                const getStatusColor = (status) => {
+                                                    switch (status) {
+                                                        case 'present': return 'bg-green-100 text-green-800';
+                                                        case 'absent': return 'bg-red-100 text-red-800';
+                                                        case 'late': return 'bg-orange-100 text-orange-800';
+                                                        case 'half-day': return 'bg-blue-100 text-blue-800';
+                                                        default: return 'bg-gray-100 text-gray-800';
+                                                    }
+                                                };
+                                                const getShiftColor = (shift) => {
+                                                    switch (shift) {
+                                                        case 'morning': return 'bg-blue-100 text-blue-800';
+                                                        case 'evening': return 'bg-orange-100 text-orange-800';
+                                                        case 'night': return 'bg-purple-100 text-purple-800';
+                                                        default: return 'bg-gray-100 text-gray-800';
+                                                    }
+                                                };
 
-                                            return (
-                                                <tr key={record._id || index} className="hover:bg-gray-50">
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="flex items-center">
-                                                            <div className="flex-shrink-0 h-10 w-10 relative">
-                                                                {employee?.photo ? (
-                                                                    <img
-                                                                        src={employee.photo.startsWith('data:')
-                                                                            ? employee.photo
-                                                                            : employee.photo.startsWith('http')
+                                                return (
+                                                    <tr key={record._id || index} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="flex items-center">
+                                                                <div className="flex-shrink-0 h-10 w-10 relative">
+                                                                    {employee?.photo ? (
+                                                                        <img
+                                                                            src={employee.photo.startsWith('data:')
                                                                                 ? employee.photo
-                                                                                : `${getApiUrl().replace('/api', '')}/static/${employee.photo}`
-                                                                        }
-                                                                        alt={employee?.name || 'Employee'}
-                                                                        className="h-10 w-10 rounded-full object-cover border-2 border-gray-200 absolute top-0 left-0 z-10"
-                                                                        onError={(e) => {
-                                                                            // Fallback to placeholder if image fails to load
-                                                                            e.target.style.display = 'none';
-                                                                            e.target.nextElementSibling.style.display = 'flex';
-                                                                        }}
-                                                                    />
-                                                                ) : null}
-                                                                <div
-                                                                    className={`h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center ${employee?.photo ? 'hidden' : 'flex'
-                                                                        }`}
+                                                                                : employee.photo.startsWith('http')
+                                                                                    ? employee.photo
+                                                                                    : `${getApiUrl().replace('/api', '')}/static/${employee.photo}`
+                                                                            }
+                                                                            alt={employee?.name || 'Employee'}
+                                                                            className="h-10 w-10 rounded-full object-cover border-2 border-gray-200 absolute top-0 left-0 z-10"
+                                                                            onError={(e) => {
+                                                                                // Fallback to placeholder if image fails to load
+                                                                                e.target.style.display = 'none';
+                                                                                e.target.nextElementSibling.style.display = 'flex';
+                                                                            }}
+                                                                        />
+                                                                    ) : null}
+                                                                    <div
+                                                                        className={`h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center ${employee?.photo ? 'hidden' : 'flex'
+                                                                            }`}
+                                                                    >
+                                                                        <span className="text-blue-600 font-semibold text-sm">
+                                                                            {employee?.name?.charAt(0) || 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="ml-4">
+                                                                    <div className="text-sm font-medium text-gray-900">
+                                                                        {employee?.name || 'N/A'}
+                                                                    </div>
+                                                                    <div className="text-sm text-gray-500">
+                                                                        {employee?.empCode || 'N/A'}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {new Date(record.stepIn).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(record.shift)}`}>
+                                                                {record.shift || 'N/A'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', {
+                                                                hour: 'numeric',
+                                                                minute: '2-digit',
+                                                                hour12: true
+                                                            }) : 'N/A'}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', {
+                                                                hour: 'numeric',
+                                                                minute: '2-digit',
+                                                                hour12: true
+                                                            }) : 'N/A'}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(record.status)}`}>
+                                                                {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'N/A'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" title={record.address || 'N/A'}>
+                                                            {record.address || 'N/A'}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                                                {getSelectedLocation(record.address)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                            <div className="flex space-x-2">
+                                                                <button
+                                                                    onClick={() => handleEditAttendance(record)}
+                                                                    className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded text-xs"
                                                                 >
-                                                                    <span className="text-blue-600 font-semibold text-sm">
-                                                                        {employee?.name?.charAt(0) || 'N/A'}
-                                                                    </span>
-                                                                </div>
+                                                                    Edit
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteAttendance(record)}
+                                                                    className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-2 py-1 rounded text-xs"
+                                                                >
+                                                                    Delete
+                                                                </button>
                                                             </div>
-                                                            <div className="ml-4">
-                                                                <div className="text-sm font-medium text-gray-900">
-                                                                    {employee?.name || 'N/A'}
-                                                                </div>
-                                                                <div className="text-sm text-gray-500">
-                                                                    {employee?.empCode || 'N/A'}
-                                                                </div>
-                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Mobile Card View */}
+                            <div className="md:hidden space-y-4 p-4">
+                                {filteredData.map((record, index) => {
+                                    const employee = record.employeeId;
+                                    const getStatusColor = (status) => {
+                                        switch (status) {
+                                            case 'present': return 'bg-green-100 text-green-800';
+                                            case 'absent': return 'bg-red-100 text-red-800';
+                                            case 'late': return 'bg-orange-100 text-orange-800';
+                                            case 'half-day': return 'bg-blue-100 text-blue-800';
+                                            default: return 'bg-gray-100 text-gray-800';
+                                        }
+                                    };
+                                    const getShiftColor = (shift) => {
+                                        switch (shift) {
+                                            case 'morning': return 'bg-blue-100 text-blue-800';
+                                            case 'evening': return 'bg-orange-100 text-orange-800';
+                                            case 'night': return 'bg-purple-100 text-purple-800';
+                                            default: return 'bg-gray-100 text-gray-800';
+                                        }
+                                    };
+
+                                    return (
+                                        <div key={record._id || index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                                            {/* Employee Info Header */}
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                                    <div className="relative flex-shrink-0">
+                                                        {employee?.photo ? (
+                                                            <img
+                                                                src={employee.photo.startsWith('data:')
+                                                                    ? employee.photo
+                                                                    : employee.photo.startsWith('http')
+                                                                        ? employee.photo
+                                                                        : `${getApiUrl().replace('/api', '')}/static/${employee.photo}`
+                                                                }
+                                                                alt={employee?.name || 'Employee'}
+                                                                className="h-12 w-12 rounded-full object-cover border-2 border-gray-200"
+                                                                onError={(e) => {
+                                                                    e.target.style.display = 'none';
+                                                                    e.target.nextElementSibling.style.display = 'flex';
+                                                                }}
+                                                            />
+                                                        ) : null}
+                                                        <div
+                                                            className={`h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center ${employee?.photo ? 'hidden' : 'flex'
+                                                                }`}
+                                                        >
+                                                            <span className="text-blue-600 font-semibold text-lg">
+                                                                {employee?.name?.charAt(0) || 'N/A'}
+                                                            </span>
                                                         </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {/* Status indicator */}
+                                                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h3 className="text-base font-semibold text-gray-900 truncate">
+                                                            {employee?.name || 'N/A'}
+                                                        </h3>
+                                                        <p className="text-sm text-gray-600 truncate">
+                                                            {employee?.email || 'N/A'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex-shrink-0 ml-2">
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(record.status)}`}>
+                                                        {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'N/A'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Date and Shift */}
+                                            <div className="flex items-center space-x-4 mb-3">
+                                                <div className="flex items-center space-x-1">
+                                                    <Calendar className="h-4 w-4 text-gray-400" />
+                                                    <span className="text-sm text-gray-600">
                                                         {new Date(record.stepIn).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(record.shift)}`}>
-                                                            {record.shift || 'N/A'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center space-x-1">
+                                                    <Clock className="h-4 w-4 text-gray-400" />
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(record.shift)}`}>
+                                                        {record.shift || 'N/A'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Timings */}
+                                            <div className="flex items-center space-x-4 mb-3">
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">In: </span>
+                                                    <span className="font-medium text-gray-900">
                                                         {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', {
                                                             hour: 'numeric',
                                                             minute: '2-digit',
                                                             hour12: true
                                                         }) : 'N/A'}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">Out: </span>
+                                                    <span className="font-medium text-gray-900">
                                                         {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', {
                                                             hour: 'numeric',
                                                             minute: '2-digit',
                                                             hour12: true
                                                         }) : 'N/A'}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(record.status)}`}>
-                                                            {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'N/A'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" title={record.address || 'N/A'}>
-                                                        {record.address || 'N/A'}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                        <div className="flex space-x-2">
-                                                            <button
-                                                                onClick={() => handleEditAttendance(record)}
-                                                                className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded text-xs"
-                                                            >
-                                                                Edit
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteAttendance(record)}
-                                                                className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-2 py-1 rounded text-xs"
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Location */}
+                                            <div className="flex items-start space-x-2 mb-3">
+                                                <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                                                <span className="text-sm text-gray-600 flex-1">
+                                                    {record.address || 'N/A'}
+                                                </span>
+                                            </div>
+
+                                            {/* Assigned Site */}
+                                            <div className="flex items-center space-x-2 mb-3">
+                                                <span className="text-sm text-gray-600">Site:</span>
+                                                <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                                    {getSelectedLocation(record.address)}
+                                                </span>
+                                            </div>
+
+                                            {/* Remarks */}
+                                            {record.note && (
+                                                <div className="flex items-start space-x-2 mb-3">
+                                                    <FileText className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                                                    <span className="text-sm text-gray-600 flex-1">
+                                                        Remarks: {record.note}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Actions */}
+                                            <div className="flex justify-end space-x-2 pt-3 border-t border-gray-100">
+                                                <button
+                                                    onClick={() => handleEditAttendance(record)}
+                                                    className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="Edit"
+                                                >
+                                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteAttendance(record)}
+                                                    className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Delete"
+                                                >
+                                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             {/* Pagination Controls */}

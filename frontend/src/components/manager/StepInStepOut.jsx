@@ -51,11 +51,52 @@ const StepInStepOut = () => {
 
     // Form data
     const [location, setLocation] = useState('');
+    const [selectedLocationName, setSelectedLocationName] = useState('');
     const [note, setNote] = useState('');
     const [shift, setShift] = useState(SHIFT_ENUM.MORNING);
     const [status, setStatus] = useState('present');
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
+
+    // Predefined locations with full addresses
+    const predefinedLocations = [
+        { 
+            name: 'Riverfront west side સી plan', 
+            lat: 23.0008397, 
+            lng: 72.5658486,
+            address: 'unnamed road, Ranna Park, - 380007, Gujarat, India'
+        },
+        { 
+            name: 'Flower park Point 2 Gate 2', 
+            lat: 23.020939, 
+            lng: 72.573550,
+            address: 'Sabarmati Riverfront road, Kochrab, - 380043, Gujarat, India'
+        },
+        { 
+            name: 'Flower park point 1 Gate 1', 
+            lat: 23.021981, 
+            lng: 72.573805,
+            address: 'Sabarmati Riverfront Road, Paldi, Navrangpura - 380006, Gujarat, India'
+        },
+        { 
+            name: 'Flower park point 3 Gate 3', 
+            lat: 23.016429, 
+            lng: 72.573197,
+            address: 'Sabarmati Riverfront road, Kochrab, - 380043, Gujarat, India'
+        },
+        { 
+            name: 'Shbhas Garden Park point 1 gate 2', 
+            lat: 23.056495, 
+            lng: 72.581995,
+            address: 'Sabarmati Riverfront Promenade, Dudheshwar, - 380014, Gujarat, India'
+        },
+        { 
+            name: 'Shbhas Garden Point 2 Gate 1', 
+            lat: 23.058519, 
+            lng: 72.584500,
+            address: 'Riverfront Road, Dudheshwar, - 380027, Gujarat, India'
+        }
+    ];
 
     // Search and filter
     const [searchTerm, setSearchTerm] = useState('');
@@ -65,11 +106,12 @@ const StepInStepOut = () => {
     const webcamRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    // Video constraints for webcam
+    // Video constraints for webcam - Mobile Optimized
     const videoConstraints = {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        width: { ideal: window.innerWidth < 768 ? 640 : 1280 },
+        height: { ideal: window.innerWidth < 768 ? 480 : 720 },
         facingMode: facingMode,
+        aspectRatio: { ideal: 4/3 }
     };
 
     // Debounced search
@@ -143,6 +185,20 @@ const StepInStepOut = () => {
             toast.success('Using default location (Ahmedabad, Gujarat)');
         }
     }, []);
+
+    // Handle predefined location selection
+    const handleLocationSelect = (selectedLocation) => {
+        if (selectedLocation) {
+            setSelectedLocationName(selectedLocation.name);
+            setLatitude(selectedLocation.lat.toString());
+            setLongitude(selectedLocation.lng.toString());
+            setLocation(selectedLocation.address); // Use full address instead of name
+            toast.success(`Location selected: ${selectedLocation.name}`);
+        } else {
+            setSelectedLocationName('');
+            setLocation('');
+        }
+    };
 
     // Convert coordinates to address
     const getAddressFromCoordinates = async (lat, lng) => {
@@ -496,15 +552,22 @@ const StepInStepOut = () => {
 
             let response;
             if (stepType === 'step-in') {
-                const response = await attendanceAPI.stepIn(formData);
+                response = await attendanceAPI.stepIn(formData);
                 console.log('Step in response:', response);
-
             } else {
-                await attendanceAPI.stepOut(formData);
-
+                response = await attendanceAPI.stepOut(formData);
+                console.log('Step out response:', response);
             }
+            
             if (response.data.success === true) {
                 toast.success(`${selectedEmployee.name} successfully ${stepType === 'step-in' ? 'clocked in' : 'clocked out'}!`);
+
+                // Close modal first
+                setShowCamera(false);
+                setCapturedImage(null);
+                setSelectedEmployee(null);
+                setLocation('');
+                setNote('');
 
                 // Refresh data to get the latest status
                 console.log('Refreshing data after successful attendance operation...');
@@ -531,17 +594,19 @@ const StepInStepOut = () => {
 
                 console.log('Data refreshed after attendance operation');
             } else {
-                toast.error(response.message || `Failed to ${stepType} employee`);
+                toast.error(response.data.message || `Failed to ${stepType} employee`);
                 return;
             }
-
+        } catch (error) {
+            console.error('Failed to submit attendance:', error);
+            toast.error('Failed to submit attendance. Please try again.');
+            
+            // Close modal even on error to prevent user from being stuck
             setShowCamera(false);
             setCapturedImage(null);
             setSelectedEmployee(null);
             setLocation('');
             setNote('');
-        } catch {
-            console.log('Failed to submit attendance. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -790,76 +855,72 @@ const StepInStepOut = () => {
                 </div>
             )}
 
-            {/* Enhanced Camera Modal */}
+            {/* Mobile-Responsive Camera Modal */}
             {showCamera && (
-                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[95vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-300">
-                        {/* Enhanced Header */}
-                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 rounded-t-2xl text-white">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-4">
-                                    <div className="p-3 bg-white bg-opacity-20 rounded-xl">
-                                        <Camera className="h-6 w-6" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xl sm:text-2xl font-bold">
-                                            {stepType === 'step-in' ? 'Step In' : 'Step Out'} - {selectedEmployee?.name}
-                                        </h3>
-                                        <p className="text-blue-100 text-sm sm:text-base">Capture photo and enter details</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        setShowCamera(false);
-                                        setCapturedImage(null);
-                                        setSelectedEmployee(null);
-                                    }}
-                                    className="p-2 rounded-lg text-white hover:bg-white hover:bg-opacity-20 transition-colors"
-                                >
-                                    <X className="h-6 w-6" />
-                                </button>
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-xl w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[95vh] sm:max-h-[90vh] shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col">
+                        {/* Mobile-Optimized Header */}
+                        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
+                            <div>
+                                <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                                    {stepType === 'step-in' ? 'Step In' : 'Step Out'} - {selectedEmployee?.name}
+                                </h3>
+                                <p className="text-sm text-gray-600">Capture photo and enter details</p>
                             </div>
+                            <button
+                                onClick={() => {
+                                    setShowCamera(false);
+                                    setCapturedImage(null);
+                                    setSelectedEmployee(null);
+                                }}
+                                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+                            >
+                                <X className="h-5 w-5 sm:h-6 sm:w-6" />
+                            </button>
                         </div>
 
-                        {/* Camera/Image Content */}
-                        <div className="p-6">
+                        {/* Mobile-Optimized Camera Section */}
+                        <div className="p-4 sm:p-6 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ 
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: '#cbd5e1 #f1f5f9'
+                        }}>
                             <div className="relative mb-6">
                                 {!capturedImage ? (
-                                    <div className="relative">
+                                    <div className="relative w-full" style={{ aspectRatio: '4/3' }}>
                                         <Webcam
                                             ref={webcamRef}
                                             audio={false}
                                             screenshotFormat="image/jpeg"
                                             videoConstraints={videoConstraints}
-                                            className="w-full h-80 object-cover rounded-lg"
+                                            className="w-full h-full object-cover rounded-lg"
                                             onUserMedia={() => setCameraReady(true)}
                                         />
 
-                                        {/* Enhanced Camera Controls */}
-                                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-4">
+                                        {/* Mobile-Optimized Camera Controls */}
+                                        <div className="absolute bottom-3 sm:bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-3 sm:space-x-4">
                                             <button
                                                 onClick={switchCamera}
-                                                className="p-3 bg-white bg-opacity-90 rounded-full shadow-lg hover:bg-white hover:scale-110 transition-all duration-200"
+                                                className="p-2 sm:p-3 bg-white bg-opacity-90 rounded-full shadow-lg hover:bg-white transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
                                                 title="Switch Camera"
                                             >
-                                                <RotateCcw className="h-5 w-5 text-gray-700" />
+                                                <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5 text-gray-700" />
                                             </button>
 
                                             <button
                                                 onClick={capture}
                                                 disabled={!cameraReady}
-                                                className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 hover:scale-110 transition-all duration-200"
+                                                className="p-3 sm:p-4 bg-blue-600 rounded-full shadow-lg hover:bg-blue-700 disabled:opacity-50 transition-colors touch-manipulation min-h-[56px] min-w-[56px] flex items-center justify-center"
                                                 title="Capture Photo"
                                             >
-                                                <Camera className="h-6 w-6 text-white" />
+                                                <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                                             </button>
 
                                             <button
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="p-3 bg-white bg-opacity-90 rounded-full shadow-lg hover:bg-white hover:scale-110 transition-all duration-200"
+                                                className="p-2 sm:p-3 bg-white bg-opacity-90 rounded-full shadow-lg hover:bg-white transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
                                                 title="Upload Photo"
                                             >
-                                                <Upload className="h-5 w-5 text-gray-700" />
+                                                <Upload className="h-4 w-4 sm:h-5 sm:w-5 text-gray-700" />
                                             </button>
                                         </div>
 
@@ -873,32 +934,32 @@ const StepInStepOut = () => {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="relative">
+                                    <div className="relative w-full" style={{ aspectRatio: '4/3' }}>
                                         <img
                                             src={capturedImage}
                                             alt="Captured attendance"
-                                            className="w-full h-80 object-cover rounded-lg"
+                                            className="w-full h-full object-cover rounded-lg"
                                             onLoad={() => setImageLoading(false)}
                                         />
 
-                                        {/* Image Controls */}
-                                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-4">
+                                        {/* Mobile-Optimized Image Controls */}
+                                        <div className="absolute bottom-3 sm:bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-3 sm:space-x-4">
                                             <button
                                                 onClick={retake}
-                                                className="p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white"
+                                                className="p-2 sm:p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
                                             >
-                                                <RotateCcw className="h-5 w-5 text-gray-700" />
+                                                <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5 text-gray-700" />
                                             </button>
 
                                             <button
                                                 onClick={submitAttendance}
                                                 disabled={isSubmitting}
-                                                className="p-4 bg-green-600 rounded-full shadow-lg hover:bg-green-700 disabled:opacity-50"
+                                                className="p-3 sm:p-4 bg-green-600 rounded-full shadow-lg hover:bg-green-700 disabled:opacity-50 transition-colors touch-manipulation min-h-[56px] min-w-[56px] flex items-center justify-center"
                                             >
                                                 {isSubmitting ? (
-                                                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                                                    <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 text-white animate-spin" />
                                                 ) : (
-                                                    <Check className="h-6 w-6 text-white" />
+                                                    <Check className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                                                 )}
                                             </button>
                                         </div>
@@ -924,7 +985,30 @@ const StepInStepOut = () => {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Location <span className="text-blue-600 text-xs">(Optional - will auto-detect from GPS)</span>
+                                                    Select Site <span className="text-blue-600 text-xs">(Optional)</span>
+                                                </label>
+                                                <select
+                                                    value={selectedLocationName}
+                                                    onChange={(e) => {
+                                                        const selectedLocation = predefinedLocations.find(loc => loc.name === e.target.value);
+                                                        handleLocationSelect(selectedLocation);
+                                                    }}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                >
+                                                    <option value="">Choose a site...</option>
+                                                    {predefinedLocations.map((loc, index) => (
+                                                        <option key={index} value={loc.name}>
+                                                            {loc.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Location <span className="text-blue-600 text-xs">(Auto-detected or manual entry)</span>
                                                 </label>
                                                 <input
                                                     type="text"
@@ -990,7 +1074,7 @@ const StepInStepOut = () => {
                         </div>
 
                         {/* Enhanced Instructions and Actions */}
-                        <div className="p-6 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-200">
+                        <div className="p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-200 flex-shrink-0">
                             <div className="text-center">
                                 <p className="text-sm text-gray-600 mb-4">
                                     {!capturedImage

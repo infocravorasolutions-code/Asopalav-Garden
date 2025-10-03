@@ -1,11 +1,16 @@
 
-const IS_DEVELOPMENT = false; // Change to true for development, false for production
+const IS_DEVELOPMENT = true; // Change to true for development, false for production
 
 const getApiUrl = () => {
+  
   if (IS_DEVELOPMENT) {
-    return "http://localhost:5678/api";
+    const localUrl = "http://localhost:5678/api";
+    console.log('🔧 [Environment] Using LOCAL backend:', localUrl);
+    return localUrl;
   } else {
-    return "https://api.neelkanthlandscape.info/api";
+    const prodUrl = "https://api.neelkanthlandscape.info/api";
+    console.log('🔧 [Environment] Using PRODUCTION backend:', prodUrl);
+    return prodUrl;
   }
 };
 

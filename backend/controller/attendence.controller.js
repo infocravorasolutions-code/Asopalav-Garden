@@ -14,11 +14,7 @@ const DEFAULT_SHIFT_TIMES = SHIFT_TIMES;
 
 // Function to automatically determine shift based on step-in time
 const determineShiftByTime = (stepInTime) => {
-  console.log(`🕐 [determineShiftByTime] Step-in time: ${stepInTime.toISOString()}`);
-
   const detectedShift = getShiftByTime(stepInTime);
-  console.log(`🔄 [determineShiftByTime] Determined shift: ${detectedShift}`);
-
   return detectedShift;
 };
 
@@ -42,7 +38,6 @@ export const getShiftInfo = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("❌ [getShiftInfo] Error:", error);
     res.status(500).json({
       success: false,
       message: "Error getting shift information",
@@ -53,10 +48,10 @@ export const getShiftInfo = async (req, res) => {
 
 // Mark step in without geo-fencing validation
 export const markStepIn = async (req, res) => {
-  try {
+  try {  
     // For manager step-in: employeeId comes from body, managerId from JWT token
     // For employee step-in: employeeId comes from JWT token, managerId from body
-    const { employeeId, managerId, companyId, longitude, latitude, address, note, shift, status } = req.body;
+    const { employeeId, managerId, companyId, longitude, latitude, address, note, shift, status, locationId } = req.body;
     const authenticatedUserId = req.user.id;
 
     // Determine if this is manager step-in or employee step-in
@@ -106,38 +101,24 @@ export const markStepIn = async (req, res) => {
 
     // Check if there is already an open attendance for this employee
     const openAttendance = await Attendance.findOne({ employeeId: finalEmployeeId, stepOut: { $exists: false } });
-    if (openAttendance) {
-      return res.status(400).json({
-        success: false,
-        message: "Already stepped in. Please step out before stepping in again."
-      });
-    }
 
-    // Check if employee has already completed attendance for today
+    // Allow multiple step-ins per day - removed the restriction
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
-    console.log(`🔍 [markStepIn] Checking for completed attendance today for employee: ${finalEmployeeId}`);
-    console.log(`📅 [markStepIn] Date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+    // Check for any existing attendance today
+    const todayAttendance = await Attendance.find({
+      employeeId: finalEmployeeId,
+      stepIn: { $gte: startOfDay, $lt: endOfDay }
+    }).sort({ stepIn: -1 });
 
-    const todayCompletedAttendance = await Attendance.findOne({
+    // Check if there are any completed attendances that might block this
+    const completedTodayAttendance = await Attendance.findOne({
       employeeId: finalEmployeeId,
       stepIn: { $gte: startOfDay, $lt: endOfDay },
       stepOut: { $exists: true }
     });
-
-    if (todayCompletedAttendance) {
-      console.log(`❌ [markStepIn] Employee ${finalEmployeeId} already completed attendance today`);
-      console.log(`📊 [markStepIn] Previous attendance: ${todayCompletedAttendance.stepIn} to ${todayCompletedAttendance.stepOut}`);
-
-      return res.status(400).json({
-        success: false,
-        message: "You have already completed your attendance for today. Please come back tomorrow."
-      });
-    }
-
-    console.log(`✅ [markStepIn] No completed attendance found for today, proceeding with step-in`);
 
     const stepIn = new Date();
     const stepInImage = req.file ? req.file.filename : null;
@@ -145,8 +126,6 @@ export const markStepIn = async (req, res) => {
     // Automatically determine shift based on step-in time
     const autoDetectedShift = determineShiftByTime(stepIn);
     const finalShift = shift || autoDetectedShift;
-
-    console.log(`🔄 [markStepIn] Shift detection: Provided=${shift}, Auto-detected=${autoDetectedShift}, Final=${finalShift}`);
 
     // Create attendance record
     const attendance = new Attendance({
@@ -161,6 +140,7 @@ export const markStepIn = async (req, res) => {
       note,
       shift: finalShift,
       status: status || 'present',
+      locationId: locationId || null,
     });
 
     await attendance.save();
@@ -181,7 +161,7 @@ export const markStepIn = async (req, res) => {
       });
       await route.save();
     } catch (routeError) {
-      console.log('Route tracking failed:', routeError.message);
+      // Route tracking failed silently
     }
 
     // Update employee location status (optional)
@@ -205,12 +185,12 @@ export const markStepIn = async (req, res) => {
         { upsert: true, new: true }
       );
     } catch (locationError) {
-      console.log('Location update failed:', locationError.message);
+      // Location update failed silently
     }
 
-    res.status(201).json({
+    const response = {
       success: true,
-      message: "Step In marked successfully",
+      message: "Step In marked successfully (Multiple step-ins allowed)",
       attendance: {
         _id: attendance._id,
         employeeId: attendance.employeeId,
@@ -230,10 +210,11 @@ export const markStepIn = async (req, res) => {
         finalShift: finalShift,
         shiftTimes: DEFAULT_SHIFT_TIMES[finalShift]
       }
-    });
+    };
+
+    res.status(201).json(response);
 
   } catch (error) {
-    console.error("❌ [markStepIn] Error:", error);
     res.status(500).json({
       success: false,
       message: "Error marking step in",
@@ -337,8 +318,6 @@ export const updateAttendance = async (req, res) => {
       attendance: updatedAttendance
     });
   } catch (error) {
-    console.error("Error updating attendance:", error);
-
     // Provide more specific error messages
     if (error.name === 'ValidationError') {
       return res.status(400).json({
@@ -412,7 +391,6 @@ export const bulkUpdateAttendance = async (req, res) => {
       modifiedCount: result.modifiedCount
     });
   } catch (error) {
-    console.error("Error bulk updating attendance:", error);
     res.status(500).json({ message: "Error bulk updating attendance", error });
   }
 };
@@ -428,13 +406,6 @@ export const markStepOut = async (req, res) => {
     const isManagerStepOut = employeeId && employeeId !== authenticatedUserId;
     const finalEmployeeId = isManagerStepOut ? employeeId : authenticatedUserId;
 
-    console.log('🔔 [markStepOut] Step-out request:', {
-      finalEmployeeId,
-      attendanceId,
-      location: { latitude, longitude },
-      address,
-      isManagerStepOut
-    });
 
     if (!finalEmployeeId && !attendanceId) {
       return res.status(400).json({
@@ -506,10 +477,9 @@ export const markStepOut = async (req, res) => {
 
         // End the route
         await route.endRoute();
-        console.log('🗺️ [markStepOut] Route tracking completed for employee:', attendance.employeeId);
       }
     } catch (routeError) {
-      console.error('⚠️ [markStepOut] Failed to complete route tracking:', routeError);
+      // Route tracking failed silently
     }
 
     // Update employee location status
@@ -529,10 +499,8 @@ export const markStepOut = async (req, res) => {
         }
       );
     } catch (locationError) {
-      console.error('⚠️ [markStepOut] Failed to update location:', locationError);
+      // Location update failed silently
     }
-
-    console.log('✅ [markStepOut] Step-out successful for employee:', attendance.employeeId);
 
     res.status(200).json({
       success: true,
@@ -558,7 +526,6 @@ export const markStepOut = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ [markStepOut] Error:", error);
     res.status(500).json({
       success: false,
       message: "Error marking step out",
@@ -572,14 +539,10 @@ export const checkEmployeeStatus = async (req, res) => {
   try {
     const { employeeId } = req.params;
 
-    console.log(`🔍 [checkEmployeeStatus] Checking status for employee: ${employeeId}`);
-
     // Get today's date range
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-
-    console.log(`📅 [checkEmployeeStatus] Date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
 
     // Check if there is an open attendance for this employee (currently stepped in)
     const openAttendance = await Attendance.findOne({
@@ -589,7 +552,6 @@ export const checkEmployeeStatus = async (req, res) => {
     }).populate('employeeId', 'name email');
 
     if (openAttendance) {
-      console.log(`✅ [checkEmployeeStatus] Employee ${employeeId} is currently stepped in today`);
       return res.status(200).json({
         success: true,
         isSteppedIn: true,
@@ -606,7 +568,6 @@ export const checkEmployeeStatus = async (req, res) => {
     }).populate('employeeId', 'name email');
 
     if (completedAttendance) {
-      console.log(`✅ [checkEmployeeStatus] Employee ${employeeId} has completed attendance today`);
       return res.status(200).json({
         success: true,
         isSteppedIn: false,
@@ -617,7 +578,6 @@ export const checkEmployeeStatus = async (req, res) => {
     }
 
     // No attendance record for today
-    console.log(`❌ [checkEmployeeStatus] Employee ${employeeId} has no attendance record for today`);
     return res.status(200).json({
       success: true,
       isSteppedIn: false,
@@ -626,7 +586,6 @@ export const checkEmployeeStatus = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ [checkEmployeeStatus] Error checking employee status:", error);
     res.status(500).json({
       success: false,
       message: "Error checking employee status",
@@ -647,9 +606,6 @@ export const getEmployeeAttendance = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10; // Default 10 records per page
     const skip = (page - 1) * limit;
-
-    console.log(`🔍 [getEmployeeAttendance] Fetching attendance for employee: ${employeeId}`);
-    console.log(`📄 [getEmployeeAttendance] Page: ${page}, Limit: ${limit}`);
 
     // Get total count for pagination
     const totalRecords = await Attendance.countDocuments({ employeeId });
@@ -684,9 +640,6 @@ export const getEmployeeAttendance = async (req, res) => {
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
-    console.log(`📊 [getEmployeeAttendance] Found ${uniqueAttendance.length} unique records`);
-    console.log(`📊 [getEmployeeAttendance] Total records: ${totalRecords}, Total pages: ${totalPages}`);
-
     res.status(200).json({
       attendance: uniqueAttendance,
       pagination: {
@@ -699,7 +652,6 @@ export const getEmployeeAttendance = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("❌ [getEmployeeAttendance] Error fetching attendance:", error);
     res.status(500).json({ message: "Error fetching attendance", error: error.message });
   }
 };
@@ -720,9 +672,6 @@ export const getAllAttendance = async (req, res) => {
     const filterQuery = { companyId: companyId };
 
     // If admin is readonly, show all attendance in the company (read-only access)
-    if (adminRole === 'readonly') {
-      console.log(`Readonly admin ${adminId} - showing all attendance in company for read-only access`);
-    }
 
     // Add manager filter
     if (req.query.manager) {
@@ -811,7 +760,6 @@ export const getAllAttendance = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error fetching all attendance:", error);
     res.status(500).json({ message: "Error fetching all attendance", error });
   }
 };
@@ -838,7 +786,6 @@ export const deleteAttendance = async (req, res) => {
 
     res.status(200).json({ message: "Attendance record deleted successfully" });
   } catch (error) {
-    console.error("Error deleting attendance:", error);
     res.status(500).json({ message: "Error deleting attendance record", error });
   }
 };
@@ -964,7 +911,6 @@ export const locationWiseAttendence = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Error in locationWiseAttendance:", err);
     res.status(500).json({
       success: false,
       error: "Internal server error"
@@ -1026,7 +972,6 @@ export const getEmployeeRoutes = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ [getEmployeeRoutes] Error:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching employee routes',
@@ -1040,8 +985,6 @@ export const getLiveStepIns = async (req, res) => {
   try {
     const now = new Date();
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    console.log('🔄 [getLiveStepIns] Fetching step-ins from last 24 hours...');
 
     // Get all step-ins from the last 24 hours
     const liveStepIns = await Attendance.find({
@@ -1078,8 +1021,6 @@ export const getLiveStepIns = async (req, res) => {
       updatedAt: stepIn.updatedAt
     }));
 
-    console.log(`✅ [getLiveStepIns] Found ${formattedStepIns.length} live step-ins`);
-
     res.status(200).json({
       success: true,
       message: "Live step-ins retrieved successfully",
@@ -1092,7 +1033,6 @@ export const getLiveStepIns = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ [getLiveStepIns] Error:', error);
     res.status(500).json({
       success: false,
       message: "Error fetching live step-ins",
@@ -1188,7 +1128,6 @@ export const exportAttendanceExcel = async (req, res) => {
     res.end();
 
   } catch (error) {
-    console.error("Error exporting attendance to Excel:", error);
     res.status(500).json({ message: "Error exporting attendance to Excel", error: error.message });
   }
 };
@@ -1364,18 +1303,16 @@ export const exportAttendancePDF = async (req, res) => {
 
     // Handle document completion
     doc.on('end', () => {
-      console.log('PDF generation completed successfully');
+      // PDF generation completed successfully
     });
 
     doc.on('error', (err) => {
-      console.error('PDF generation error:', err);
       if (!res.headersSent) {
         res.status(500).json({ message: 'Error generating PDF', error: err.message });
       }
     });
 
   } catch (error) {
-    console.error("Error exporting attendance to PDF:", error);
     res.status(500).json({ message: "Error exporting attendance to PDF", error: error.message });
   }
 };
@@ -1419,7 +1356,6 @@ export const getAttendanceSummary = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error getting attendance summary:", error);
     res.status(500).json({ message: "Error getting attendance summary", error: error.message });
   }
 };

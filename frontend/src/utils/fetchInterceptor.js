@@ -5,9 +5,11 @@
 
 import toast from 'react-hot-toast';
 
-// API Configuration
-const API_BASE_URL = 'https://api.neelkanthlandscape.info/api';
-// const API_BASE_URL = 'http://localhost:5678/api';
+// API Configuration - Import from environment config
+import { getApiUrl } from '../config/environment.js';
+
+const API_BASE_URL = getApiUrl();
+console.log('🔧 [fetchInterceptor] Using API URL:', API_BASE_URL);
 // Request interceptor to add auth token and common headers
 const addAuthHeaders = (url, options = {}) => {
     const token = localStorage.getItem('authToken');
