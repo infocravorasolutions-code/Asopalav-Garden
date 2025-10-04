@@ -12,7 +12,10 @@ import {
     loginEmployee,
     getMusterRollReport,
     exportMusterRollExcel,
-    exportMusterRollPDF
+    exportMusterRollPDF,
+    assignSiteToEmployee,
+    assignPointsToEmployee,
+    getEmployeeSiteAssignment
 } from "../controller/employee.controller.js";
 
 import { authenticateUser } from "../utils/middlewere.js";
@@ -30,5 +33,10 @@ router.get("/muster-roll/export/pdf", authenticateUser, requireRole(['superadmin
 router.get("/:id", authenticateUser, getEmployee);
 router.put("/:id", authenticateUser, canManageEmployees, updateEmployee);
 router.delete("/:id", authenticateUser, canManageEmployees, deleteEmployee);
+
+// Site and point assignment routes
+router.post("/:id/assign-site", authenticateUser, canManageEmployees, assignSiteToEmployee);
+router.post("/:id/assign-points", authenticateUser, canManageEmployees, assignPointsToEmployee);
+router.get("/:id/site-assignment", authenticateUser, getEmployeeSiteAssignment);
 
 export default router;

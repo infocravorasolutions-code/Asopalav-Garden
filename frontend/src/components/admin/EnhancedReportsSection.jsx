@@ -17,10 +17,16 @@ import {
 import { useAttendance } from '../../contexts/AttendanceContext';
 import { useEmployee } from '../../contexts/EmployeeContext';
 import { useManager } from '../../contexts/ManagerContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { exportTraditionalMusterRollToPDF } from '../../utils/pdfExportUtils';
 import toast from 'react-hot-toast';
 
 const EnhancedReportsSection = () => {
+  const { user } = useAuth();
+  
+  // Check if user is readonly admin
+  const isReadOnlyAdmin = user?.role === 'readonly';
+  
   const {
     attendanceList,
     managers,
@@ -416,88 +422,95 @@ const EnhancedReportsSection = () => {
             </p>
           </div>
 
-          {/* Summary Section */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h4 className="font-semibold text-sm mb-3">SUMMARY</h4>
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div className="text-center">
-                <div className="text-green-600 font-bold text-lg">
-                  {reportData.filter(record => record.stepIn).length}
+          {/* Summary Section - Only visible for readonly users */}
+          {isReadOnlyAdmin && (
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <h4 className="font-semibold text-sm mb-3">SUMMARY</h4>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="text-center">
+                  <div className="text-green-600 font-bold text-lg">
+                    {reportData.filter(record => record.stepIn).length}
+                  </div>
+                  <div className="text-gray-600">Present</div>
                 </div>
-                <div className="text-gray-600">Present</div>
-              </div>
-              <div className="text-center">
-                <div className="text-red-600 font-bold text-lg">
-                  {reportData.filter(record => !record.stepIn).length}
+                <div className="text-center">
+                  <div className="text-red-600 font-bold text-lg">
+                    {reportData.filter(record => !record.stepIn).length}
+                  </div>
+                  <div className="text-gray-600">Absent</div>
                 </div>
-                <div className="text-gray-600">Absent</div>
-              </div>
-              <div className="text-center">
-                <div className="text-blue-600 font-bold text-lg">
-                  {Math.floor(reportData.reduce((sum, record) => sum + (record.totalTime || 0), 0) / 60)}h {reportData.reduce((sum, record) => sum + (record.totalTime || 0), 0) % 60}m
+                <div className="text-center">
+                  <div className="text-blue-600 font-bold text-lg">
+                    {Math.floor(reportData.reduce((sum, record) => sum + (record.totalTime || 0), 0) / 60)}h {reportData.reduce((sum, record) => sum + (record.totalTime || 0), 0) % 60}m
+                  </div>
+                  <div className="text-gray-600">Total Hours</div>
                 </div>
-                <div className="text-gray-600">Total Hours</div>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse border border-gray-400 text-xs">
-              <thead>
-                <tr className="bg-blue-600 text-white">
-                  <th className="border border-gray-400 px-2 py-2 text-center font-bold">Date</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center font-bold">Employee Name</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center font-bold">Shift</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center font-bold">Clock In</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center font-bold">Clock Out</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center font-bold">Location</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center font-bold">Remarks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.slice(0, 10).map((record, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="border border-gray-400 px-2 py-2 text-center">
-                      {new Date(record.stepIn).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-2 font-medium">
-                      {record.employeeId?.name || 'N/A'}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-2 text-center capitalize">
-                      {record.shift || 'N/A'}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-2 text-center">
-                      {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-2 text-center">
-                      {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-2 text-sm">
-                      {record.address || 'N/A'}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-2 text-sm">
-                      {record.note || 'N/A'}
-                    </td>
-                  </tr>
-                ))}
-                {reportData.length > 10 && (
-                  <tr>
-                    <td colSpan="7" className="border border-gray-400 px-2 py-2 text-center text-gray-500">
-                      ... and {reportData.length - 10} more records
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {/* Attendance Table - Hidden for readonly users */}
+          {!isReadOnlyAdmin && (
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse border border-gray-400 text-xs">
+                  <thead>
+                    <tr className="bg-blue-600 text-white">
+                      <th className="border border-gray-400 px-2 py-2 text-center font-bold">Date</th>
+                      <th className="border border-gray-400 px-2 py-2 text-center font-bold">Employee Name</th>
+                      <th className="border border-gray-400 px-2 py-2 text-center font-bold">Shift</th>
+                      <th className="border border-gray-400 px-2 py-2 text-center font-bold">Clock In</th>
+                      <th className="border border-gray-400 px-2 py-2 text-center font-bold">Clock Out</th>
+                      <th className="border border-gray-400 px-2 py-2 text-center font-bold">Location</th>
+                      <th className="border border-gray-400 px-2 py-2 text-center font-bold">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.slice(0, 10).map((record, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="border border-gray-400 px-2 py-2 text-center">
+                          {new Date(record.stepIn).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2 font-medium">
+                          {record.employeeId?.name || 'N/A'}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2 text-center capitalize">
+                          {record.shift || 'N/A'}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2 text-center">
+                          {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2 text-center">
+                          {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2 text-sm">
+                          {record.address || 'N/A'}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2 text-sm">
+                          {record.note || 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
+                    {reportData.length > 10 && (
+                      <tr>
+                        <td colSpan="7" className="border border-gray-400 px-2 py-2 text-center text-gray-500">
+                          ... and {reportData.length - 10} more records
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-          {/* Footer */}
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-500 text-center">
-              This report was generated automatically by Nilkanth Landscape System. 
-              For any queries, please contact the system administrator.
-            </p>
-          </div>
+              {/* Footer */}
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 text-center">
+                  This report was generated automatically by Nilkanth Landscape System. 
+                  For any queries, please contact the system administrator.
+                </p>
+              </div>
+            </>
+          )}
         </div>
       )}
 

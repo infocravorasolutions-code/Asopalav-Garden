@@ -28,7 +28,9 @@ const EmployeeModal = ({
     ifscCode: '',
     photo: null,
     active: true,
-    assignedManager: ''
+    assignedManager: '',
+    assignedSite: '',
+    assignedPoints: []
   });
 
   const [loading, setLoading] = useState(false);
@@ -44,6 +46,12 @@ const EmployeeModal = ({
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  
+  // Site and point assignment state
+  const [sites, setSites] = useState([]);
+  const [loadingSites, setLoadingSites] = useState(false);
+  const [selectedSitePoints, setSelectedSitePoints] = useState([]);
+  const [loadingPoints, setLoadingPoints] = useState(false);
 
   // Fetch managers when modal opens
   const fetchManagers = async () => {
@@ -69,11 +77,85 @@ const EmployeeModal = ({
     }
   };
 
+  // Fetch sites when modal opens
+  const fetchSites = async () => {
+    setLoadingSites(true);
+    try {
+      console.log('Fetching sites...');
+      const response = await api.get('/sites');
+      
+      console.log('Full response:', response);
+      console.log('Response data:', response.data);
+      
+      // Check if response.data is an array directly (from fetchInterceptor)
+      if (Array.isArray(response.data)) {
+        console.log('Sites fetched successfully (direct array):', response.data);
+        console.log('Sites array length:', response.data.length);
+        setSites(response.data);
+      } else if (response.data && response.data.success && response.data.data) {
+        console.log('Sites fetched successfully (wrapped):', response.data.data);
+        console.log('Sites array length:', response.data.data?.length || 0);
+        setSites(response.data.data || []);
+      } else {
+        console.error('Failed to fetch sites - response structure:', response.data);
+        console.log('Response success:', response.data?.success);
+        console.log('Response data exists:', !!response.data?.data);
+        console.log('Is array:', Array.isArray(response.data));
+        setSites([]);
+      }
+    } catch (error) {
+      console.error('Error fetching sites:', error);
+      handleApiError(error, 'Failed to fetch sites');
+      setSites([]);
+    } finally {
+      setLoadingSites(false);
+    }
+  };
+
+  // Fetch points for selected site
+  const fetchSitePoints = async (siteId) => {
+    if (!siteId) {
+      setSelectedSitePoints([]);
+      return;
+    }
+
+    setLoadingPoints(true);
+    try {
+      console.log('Fetching points for site:', siteId);
+      const response = await api.get(`/sites/${siteId}`);
+      
+      console.log('Site response:', response);
+      console.log('Site data:', response.data);
+      
+      // Check if response.data is a site object directly (from fetchInterceptor)
+      if (response.data && response.data.points) {
+        console.log('Site points fetched (direct object):', response.data.points);
+        setSelectedSitePoints(response.data.points || []);
+      } else if (response.data && response.data.success && response.data.data && response.data.data.points) {
+        console.log('Site points fetched (wrapped):', response.data.data.points);
+        setSelectedSitePoints(response.data.data.points || []);
+      } else {
+        console.error('Failed to fetch site points - response structure:', response.data);
+        console.log('Response success:', response.data?.success);
+        console.log('Response data exists:', !!response.data?.data);
+        console.log('Has points property:', !!response.data?.points);
+        setSelectedSitePoints([]);
+      }
+    } catch (error) {
+      console.error('Error fetching site points:', error);
+      handleApiError(error, 'Failed to fetch site points');
+      setSelectedSitePoints([]);
+    } finally {
+      setLoadingPoints(false);
+    }
+  };
+
   // Initialize form data when modal opens
   useEffect(() => {
     if (isOpen) {
-      // Fetch managers when modal opens
+      // Fetch managers and sites when modal opens
       fetchManagers();
+      fetchSites();
 
       if (mode === 'edit' && employee) {
         setFormData({
@@ -93,10 +175,17 @@ const EmployeeModal = ({
           ifscCode: employee.ifscCode || '',
           photo: employee.photo || null,
           active: employee.active !== undefined ? employee.active : true,
-          assignedManager: employee.managerId?._id || employee.managerId || ''
+          assignedManager: employee.managerId?._id || employee.managerId || '',
+          assignedSite: employee.assignedSiteId || '',
+          assignedPoints: employee.assignedPoints || []
         });
         setPhotoPreview(employee.photo || null);
         setImagePreview(employee.photo || null);
+        
+        // Fetch points for assigned site if exists
+        if (employee.assignedSiteId) {
+          fetchSitePoints(employee.assignedSiteId);
+        }
       } else {
         setFormData({
           name: '',
@@ -141,10 +230,21 @@ const EmployeeModal = ({
       console.log('Manager selection changed:', { name, value, type });
     }
 
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    // Handle site selection change
+    if (name === 'assignedSite') {
+      console.log('Site selection changed:', { name, value, type });
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        assignedPoints: [] // Clear selected points when site changes
+      }));
+      fetchSitePoints(value);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
 
     // Clear error when user starts typing
     if (errors[name]) {
@@ -223,6 +323,36 @@ const EmployeeModal = ({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  // Handle point selection
+  const handlePointToggle = (point) => {
+    setFormData(prev => {
+      const currentPoints = prev.assignedPoints || [];
+      const isSelected = currentPoints.some(p => p.pointId === point._id);
+      
+      if (isSelected) {
+        // Remove point
+        return {
+          ...prev,
+          assignedPoints: currentPoints.filter(p => p.pointId !== point._id)
+        };
+      } else {
+        // Add point
+        return {
+          ...prev,
+          assignedPoints: [
+            ...currentPoints,
+            {
+              pointId: point._id,
+              pointName: point.name,
+              pointCode: point.pointCode,
+              isRequired: point.isRequired || false
+            }
+          ]
+        };
+      }
+    });
   };
 
   // Start camera
@@ -466,19 +596,30 @@ const EmployeeModal = ({
 
     if (!validateForm()) return;
 
+    // Transform form data for backend compatibility
+    const transformedData = {
+      ...formData,
+      // Map assignedSite to assignedSiteId
+      assignedSiteId: formData.assignedSite || null,
+      // Remove the frontend-specific field
+      assignedSite: undefined
+    };
+
     // Debug logging for form submission
     console.log('EmployeeModal - Form submission data:', {
-      name: formData.name,
-      email: formData.email,
-      assignedManager: formData.assignedManager,
-      managerId: formData.managerId,
-      hasAssignedManager: !!formData.assignedManager,
-      formDataKeys: Object.keys(formData)
+      name: transformedData.name,
+      email: transformedData.email,
+      assignedManager: transformedData.assignedManager,
+      managerId: transformedData.managerId,
+      hasAssignedManager: !!transformedData.assignedManager,
+      assignedSiteId: transformedData.assignedSiteId,
+      assignedPointsCount: transformedData.assignedPoints?.length || 0,
+      formDataKeys: Object.keys(transformedData)
     });
 
     setLoading(true);
     try {
-      await onSave(formData);
+      await onSave(transformedData);
       onClose(); // Close modal on successful save
     } catch {
       // Error is already handled by the parent component (EmployeesPage)
@@ -822,6 +963,206 @@ const EmployeeModal = ({
                     <p className="text-sm text-gray-500 mt-1">Loading managers...</p>
                   )}
                 </div>
+
+                {/* Site Assignment */}
+                <div className="mb-4">
+                  <label htmlFor="assignedSite" className="block text-sm font-medium text-gray-700 mb-2">
+                    Work Site Assignment
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="assignedSite"
+                      name="assignedSite"
+                      value={formData.assignedSite}
+                      onChange={handleInputChange}
+                      disabled={loadingSites}
+                      className={`w-full px-3 py-2.5 sm:py-2 border ${errors.assignedSite ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 text-base sm:text-sm`}
+                    >
+                      <option value="">Choose a work site</option>
+                      {sites.length > 0 ? (
+                        sites.map((site) => {
+                          console.log('Rendering site option:', site);
+                          return (
+                            <option key={site._id} value={site._id}>
+                              {site.name} ({site.siteCode})
+                            </option>
+                          );
+                        })
+                      ) : (
+                        <option value="" disabled>No sites available</option>
+                      )}
+                    </select>
+                    {loadingSites && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      </div>
+                    )}
+                  </div>
+                  {errors.assignedSite && <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.assignedSite}</p>}
+                  {loadingSites && (
+                    <p className="text-sm text-gray-500 mt-1">Loading available sites...</p>
+                  )}
+                  {formData.assignedSite && (
+                    <p className="text-xs text-green-600 mt-1">
+                      ✓ Site selected - Work points will be loaded below
+                    </p>
+                  )}
+                </div>
+
+                {/* Point Assignment - Mobile Optimized */}
+                {formData.assignedSite && (
+                  <div className="mb-6">
+                    {/* Header with Selection Counter */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+                      <div className="flex items-center space-x-2 mb-2 sm:mb-0">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-gray-900">Work Points Assignment</h3>
+                          <p className="text-xs text-gray-500">Select work locations for this employee</p>
+                        </div>
+                      </div>
+                      {formData.assignedPoints?.length > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            {formData.assignedPoints.length} Selected
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Points Container */}
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-4 sm:p-6">
+                      {loadingPoints ? (
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <div className="relative">
+                            <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-200"></div>
+                            <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"></div>
+                          </div>
+                          <span className="mt-3 text-sm font-medium text-gray-600">Loading work points...</span>
+                        </div>
+                      ) : selectedSitePoints.length > 0 ? (
+                        <div className="space-y-4">
+                          {/* Instruction */}
+                          <div className="bg-white rounded-lg p-3 border border-blue-200">
+                            <div className="flex items-start space-x-2">
+                              <div className="flex-shrink-0">
+                                <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">Select Work Points</p>
+                                <p className="text-xs text-gray-600 mt-1">Choose the specific work locations this employee will be responsible for</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Points Grid - Mobile First */}
+                          <div className="grid gap-3">
+                            {selectedSitePoints.map((point, index) => {
+                              const isSelected = formData.assignedPoints?.some(p => p.pointId === point._id);
+                              return (
+                                <div 
+                                  key={point._id} 
+                                  className={`relative group transition-all duration-200 ${
+                                    isSelected 
+                                      ? 'bg-blue-50 border-blue-300 shadow-md' 
+                                      : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                                  } border-2 rounded-xl p-4 cursor-pointer`}
+                                  onClick={() => handlePointToggle(point)}
+                                >
+                                  {/* Selection Indicator */}
+                                  <div className="absolute top-3 right-3">
+                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                                      isSelected 
+                                        ? 'bg-blue-600 border-blue-600' 
+                                        : 'border-gray-300 group-hover:border-blue-400'
+                                    }`}>
+                                      {isSelected && (
+                                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Point Content */}
+                                  <div className="pr-8">
+                                    {/* Point Name & Code */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+                                      <div className="flex-1">
+                                        <h4 className="text-sm font-semibold text-gray-900 leading-tight">
+                                          {point.name}
+                                        </h4>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          Code: {point.pointCode}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+                                        {point.isRequired && (
+                                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                            Required
+                                          </span>
+                                        )}
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                                          {point.pointType || 'checkpoint'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Description */}
+                                    {point.description && (
+                                      <p className="text-xs text-gray-600 leading-relaxed">
+                                        {point.description}
+                                      </p>
+                                    )}
+                                    
+                                    {/* Coordinates (for reference) */}
+                                    <div className="mt-2 text-xs text-gray-400">
+                                      <span className="inline-flex items-center">
+                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        {point.coordinates?.latitude?.toFixed(6)}, {point.coordinates?.longitude?.toFixed(6)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.29-1.009-5.824-2.591" />
+                            </svg>
+                          </div>
+                          <h3 className="text-sm font-medium text-gray-900 mb-2">No Work Points Available</h3>
+                          <p className="text-xs text-gray-500 mb-3">This site doesn't have any work points configured yet</p>
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <p className="text-xs text-yellow-800">
+                              💡 Contact your admin to add work points to this site
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label htmlFor="uanNumber" className="block text-sm font-medium text-gray-700 mb-2">

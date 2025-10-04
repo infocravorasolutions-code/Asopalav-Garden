@@ -27,7 +27,9 @@ export const createEmployee = async (req, res) => {
       hasMobile: !!req.body.mobile,
       hasAddress: !!req.body.address,
       assignedManager: req.body.assignedManager,
-      managerId: req.body.managerId
+      managerId: req.body.managerId,
+      assignedSiteId: req.body.assignedSiteId,
+      assignedPointsCount: req.body.assignedPoints?.length || 0
     });
 
     const {
@@ -45,6 +47,8 @@ export const createEmployee = async (req, res) => {
       accountNumber,
       ifscCode,
       photo,
+      assignedSiteId,
+      assignedPoints
     } = req.body;
 
     // Validate required fields
@@ -155,7 +159,9 @@ export const createEmployee = async (req, res) => {
       createdByRole: createdByRole,
       createdById: createdBy,
       role: "employee",
-      active: true
+      active: true,
+      assignedSiteId: assignedSiteId || null,
+      assignedPoints: assignedPoints || []
     });
 
     console.log("💾 [createEmployee] Saving employee to database...");
@@ -325,6 +331,8 @@ export const updateEmployee = async (req, res) => {
       updateData: updateData,
       assignedManager: updateData.assignedManager,
       managerId: updateData.managerId,
+      assignedSiteId: updateData.assignedSiteId,
+      assignedPointsCount: updateData.assignedPoints?.length || 0,
       userRole: currentUserRole,
       userId: currentUserId,
       companyId: companyId
@@ -399,6 +407,37 @@ export const updateEmployee = async (req, res) => {
 
     // Remove assignedManager field as it's not part of the schema
     delete updateData.assignedManager;
+
+    // Handle site assignment if provided
+    if (updateData.assignedSiteId !== undefined) {
+      if (updateData.assignedSiteId) {
+        console.log("🏗️ [updateEmployee] Site assigned:", updateData.assignedSiteId);
+      } else {
+        // If site is being cleared, clear all site-related fields
+        updateData.assignedSiteId = null;
+        updateData.assignedPoints = []; // Clear points when site is cleared
+        console.log("🔄 [updateEmployee] Clearing site assignment");
+      }
+    }
+
+    // Handle point assignments if provided
+    if (updateData.assignedPoints !== undefined) {
+      if (Array.isArray(updateData.assignedPoints)) {
+        // Process points to ensure proper structure
+        updateData.assignedPoints = updateData.assignedPoints.map(point => ({
+          pointId: point.pointId,
+          pointName: point.pointName,
+          pointCode: point.pointCode,
+          isRequired: point.isRequired || false,
+          assignedDate: point.assignedDate || new Date(),
+          assignedBy: point.assignedBy || currentUserId
+        }));
+        console.log("📍 [updateEmployee] Processing point assignments:", updateData.assignedPoints.length);
+      } else {
+        updateData.assignedPoints = [];
+        console.log("🔄 [updateEmployee] Clearing point assignments");
+      }
+    }
 
     console.log("💾 [updateEmployee] Final update data:", updateData);
 
@@ -1017,5 +1056,173 @@ export const exportMusterRollPDF = async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({ message: "Error exporting muster roll to PDF", error: error.message });
     }
+  }
+};
+
+// Assign site to employee
+export const assignSiteToEmployee = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const { siteId, siteName, siteCode } = req.body;
+    const companyId = req.user.companyId;
+
+    console.log('🏗️ [assignSiteToEmployee] Request:', {
+      employeeId, siteId, siteName, siteCode, companyId
+    });
+
+    // Validate required fields
+    if (!siteId || !siteName || !siteCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Site ID, name, and code are required"
+      });
+    }
+
+    // Update employee with site assignment
+    const employee = await Employee.findOneAndUpdate(
+      { _id: employeeId, companyId },
+      {
+        assignedSiteId: siteId,
+        assignedSiteName: siteName,
+        assignedSiteCode: siteCode,
+        assignedPoints: [] // Clear existing points when site changes
+      },
+      { new: true }
+    );
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found"
+      });
+    }
+
+    console.log('✅ [assignSiteToEmployee] Site assigned successfully');
+
+    res.status(200).json({
+      success: true,
+      message: "Site assigned successfully",
+      data: {
+        _id: employee._id,
+        name: employee.name,
+        assignedSiteId: employee.assignedSiteId,
+        assignedSiteName: employee.assignedSiteName,
+        assignedSiteCode: employee.assignedSiteCode
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [assignSiteToEmployee] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Error assigning site to employee",
+      error: error.message
+    });
+  }
+};
+
+// Assign points to employee
+export const assignPointsToEmployee = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const { points } = req.body;
+    const companyId = req.user.companyId;
+    const assignedBy = req.user.id || req.user._id;
+
+    console.log('📍 [assignPointsToEmployee] Request:', {
+      employeeId, pointsCount: points?.length || 0, companyId
+    });
+
+    // Validate required fields
+    if (!points || !Array.isArray(points)) {
+      return res.status(400).json({
+        success: false,
+        message: "Points array is required"
+      });
+    }
+
+    // Process points to ensure proper structure
+    const processedPoints = points.map(point => ({
+      pointId: point.pointId,
+      pointName: point.pointName,
+      pointCode: point.pointCode,
+      isRequired: point.isRequired || false,
+      assignedDate: new Date(),
+      assignedBy: assignedBy
+    }));
+
+    // Update employee with point assignments
+    const employee = await Employee.findOneAndUpdate(
+      { _id: employeeId, companyId },
+      { assignedPoints: processedPoints },
+      { new: true }
+    );
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found"
+      });
+    }
+
+    console.log('✅ [assignPointsToEmployee] Points assigned successfully');
+
+    res.status(200).json({
+      success: true,
+      message: "Points assigned successfully",
+      data: {
+        _id: employee._id,
+        name: employee.name,
+        assignedPoints: employee.assignedPoints
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [assignPointsToEmployee] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Error assigning points to employee",
+      error: error.message
+    });
+  }
+};
+
+// Get employee's assigned site and points
+export const getEmployeeSiteAssignment = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const companyId = req.user.companyId;
+
+    console.log('📋 [getEmployeeSiteAssignment] Request:', { employeeId, companyId });
+
+    const employee = await Employee.findOne(
+      { _id: employeeId, companyId },
+      'assignedSiteId assignedSiteName assignedSiteCode assignedPoints'
+    );
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        assignedSiteId: employee.assignedSiteId,
+        assignedSiteName: employee.assignedSiteName,
+        assignedSiteCode: employee.assignedSiteCode,
+        assignedPoints: employee.assignedPoints || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [getEmployeeSiteAssignment] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Error fetching employee site assignment",
+      error: error.message
+    });
   }
 };

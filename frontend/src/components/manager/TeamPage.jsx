@@ -149,10 +149,28 @@ const TeamPage = () => {
       field: 'photo',
       width: 70,
       cellRenderer: (params) => {
+        const photo = params.data.photo;
         const initials = params.data.name ? params.data.name.charAt(0).toUpperCase() : 'E';
+        
         return (
-          <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold text-sm shadow-md">
-            {initials}
+          <div className="flex items-center justify-center h-10 w-10 rounded-full overflow-hidden">
+            {photo ? (
+              <img
+                src={photo}
+                alt={params.data.name || 'Employee'}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to initials if image fails to load
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div 
+              className={`w-full h-full rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold text-sm shadow-md flex items-center justify-center ${photo ? 'hidden' : 'flex'}`}
+            >
+              {initials}
+            </div>
           </div>
         );
       },
