@@ -211,7 +211,7 @@ const sampleAdmins = [
     companyCode: 'GARDEN001'
   },
   {
-    name: 'Landscape Manager',
+    name: 'Asopalav Manager',
     email: 'manager@greenvalleygardens.com',
     password: 'admin123',
     role: 'manager',

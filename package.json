@@ -1,7 +1,7 @@
 {
-  "name": "nilkanth-landscape",
+  "name": "asopalav-garden",
   "version": "1.0.0",
-  "description": "Nilkanth Landscape Management System",
+  "description": "Asopalav Garden Management System",
   "scripts": {
     "build": "cd frontend && npm install && npm run build",
     "install": "cd frontend && npm install"

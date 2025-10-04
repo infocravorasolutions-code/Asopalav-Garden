@@ -537,7 +537,6 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
             className="text-gray-400 hover:text-gray-600 p-1"
           >
             <X className="w-5 h-5 sm:w-6 sm:h-6" />
-            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
@@ -545,7 +544,6 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
-            <h3 className="text-base sm:text-lg font-medium text-gray-900">Basic Information</h3>
             <h3 className="text-base sm:text-lg font-medium text-gray-900">Basic Information</h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -629,7 +627,6 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                 Site Type
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {siteTypes.map((type) => (
                   <label
                     key={type.value}
@@ -664,7 +661,6 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                 variant="outline"
                 size="sm"
                 onClick={handleGetCurrentLocation}
-                className="flex items-center gap-2 w-full sm:w-auto"
                 className="flex items-center gap-2 w-full sm:w-auto"
               >
                 <MapPin className="w-4 h-4" />
@@ -753,7 +749,6 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                 size="sm"
                 onClick={handleAddPoint}
                 className="flex items-center gap-2 w-full sm:w-auto"
-                className="flex items-center gap-2 w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 Add Point
@@ -797,7 +792,6 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                         size="sm"
                         onClick={() => handleEditPoint(point)}
                         className="text-blue-600 hover:text-blue-700 p-2"
-                        className="text-blue-600 hover:text-blue-700 p-2"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -806,7 +800,6 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeletePoint(point._id)}
-                        className="text-red-600 hover:text-red-700 p-2"
                         className="text-red-600 hover:text-red-700 p-2"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -846,10 +839,9 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
             </Button>
           </div>
         </form>
-      </div>
 
-      {/* Point Modal */}
-      {showPointModal && (
+        {/* Point Modal */}
+        {showPointModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-60">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-3 sm:p-4 border-b">

@@ -928,7 +928,7 @@ export const exportMusterRollPDF = async (req, res) => {
     // Add header section
     doc.setFontSize(16).text('Form XVI 1 [See Rule 78(1) (a) (1)]', 105, 30, { align: 'center' });
     doc.setFontSize(14).text('MUSTER ROLL', 105, 40, { align: 'center' });
-    doc.setFontSize(12).text(company?.name || 'NeelKanth Landscape', 105, 50, { align: 'center' });
+    doc.setFontSize(12).text(company?.name || 'Asopalav Garden', 105, 50, { align: 'center' });
 
     const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
     doc.setFontSize(10).text(`DEPLOYMENT OF SECURITY PERSON AT ${company?.address || 'RIVERFRONT AHMEDABAD UNIT'} ON ${currentMonth}`, 105, 60, { align: 'center' });

@@ -1,6 +1,6 @@
-# React + Vite
+# Asopalav Garden Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend application for the Asopalav Garden Management System, built with React and Vite.
 
 Currently, two official plugins are available:
 

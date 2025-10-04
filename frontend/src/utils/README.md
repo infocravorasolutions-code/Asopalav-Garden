@@ -150,7 +150,7 @@ const uploadFile = async (file) => {
 The interceptor automatically detects the environment and uses appropriate API URLs:
 
 - **Development**: `http://localhost:5678/api`
-- **Production**: `https://api.neelkanthlandscape.info/api`
+- **Production**: `https://api.asopalavgarden.info/api`
 
 ### Authentication
 The interceptor automatically:

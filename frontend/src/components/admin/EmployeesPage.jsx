@@ -28,7 +28,7 @@ const EmployeesPage = () => {
         // Map API data to grid format
         const allEmployees = response.data.map(employee => ({
           ...employee,
-          companyId: employee.companyId || { name: 'NEELKANTH LANDSCAPE' },
+          companyId: employee.companyId || { name: 'ASOPALAV GARDEN' },
           status: employee.active ? 'Active' : 'Inactive'
         }));
 
