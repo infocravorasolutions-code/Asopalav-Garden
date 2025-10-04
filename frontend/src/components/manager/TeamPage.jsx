@@ -37,7 +37,7 @@ const TeamPage = () => {
         // Map API data to grid format
         const teamMembers = result.data.map(employee => ({
           ...employee,
-          companyId: employee.companyId || { name: 'NEELKANTH LANDSCAPE' },
+          companyId: employee.companyId || { name: 'ASOPALAV' },
           status: employee.active ? 'Active' : 'Inactive'
         }));
 

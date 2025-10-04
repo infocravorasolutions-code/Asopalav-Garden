@@ -69,7 +69,7 @@ locationRadius: {
 ```javascript
 {
   name: "Vikram Singh",
-  email: "vikram@neelkanthlandscape.com",
+  email: "vikram@asopalavgarden.com",
   // ... other fields
   locationName: "Mumbai Office",
   locationAddress: "123 Garden Street, Mumbai, Maharashtra",
@@ -99,7 +99,7 @@ locationRadius: {
 ### **Manager Locations Now Manual**
 ```javascript
 const managerLocations = {
-  'vikram@neelkanthlandscape.com': {
+  'vikram@asopalavgarden.com': {
     locationName: 'Mumbai Office',
     locationAddress: '123 Garden Street, Mumbai, Maharashtra',
     locationLatitude: 19.0760,

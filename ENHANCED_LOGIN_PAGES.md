@@ -24,16 +24,16 @@ I've created three beautiful, modern login pages with attractive designs and enh
 ### **Demo Credentials:**
 ```
 Admin:
-- Company: NEELKANTH
-- Email: rajesh@neelkanthlandscape.com
+- Company: ASOPALAV
+- Email: rajesh@asopalavgarden.com
 - Password: admin123
 
 Manager:
-- Email: vikram@neelkanthlandscape.com
+- Email: vikram@asopalavgarden.com
 - Password: manager123
 
 Employee:
-- Email: arjun@neelkanthlandscape.com
+- Email: arjun@asopalavgarden.com
 - Password: employee123
 ```
 

@@ -356,8 +356,8 @@ const EnhancedLogin = () => {
                   Demo Credentials
                 </h4>
                 <div className="space-y-1 text-xs text-blue-700">
-                  <p><strong>Company:</strong> NEELKANTH</p>
-                  <p><strong>Email:</strong> rajesh@neelkanthlandscape.com</p>
+                  <p><strong>Company:</strong> ASOPALAV</p>
+                  <p><strong>Email:</strong> rajesh@asopalav.com</p>
                   <p><strong>Password:</strong> admin123</p>
                 </div>
               </div>

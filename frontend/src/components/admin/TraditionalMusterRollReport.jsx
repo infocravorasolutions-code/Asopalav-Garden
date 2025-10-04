@@ -267,10 +267,10 @@ const TraditionalMusterRollReport = () => {
 
       // Create filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `nilkanth_muster_roll_${timestamp}.pdf`;
+      const filename = `asopalav_garden_muster_roll_${timestamp}.pdf`;
 
       // Get company code from company info
-      const companyCode = companyinfo?.code || companyinfo?.companyCode || 'NEELKANTH';
+      const companyCode = companyinfo?.code || companyinfo?.companyCode || 'ASOPALAV';
       const fallbackLogoUrl = companyinfo?.logoUrl || null;
 
       // Use the enhanced PDF export function with company branding

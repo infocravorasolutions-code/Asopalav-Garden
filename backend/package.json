@@ -1,7 +1,7 @@
 {
-  "name": "backend",
+  "name": "asopalav-garden-backend",
   "version": "1.0.0",
-  "description": "Backend service",
+  "description": "Asopalav Garden Backend service",
   "type": "module",
   "main": "server.js",
   "scripts": {
