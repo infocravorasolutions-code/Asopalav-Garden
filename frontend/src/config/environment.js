@@ -1,5 +1,5 @@
 
-const IS_DEVELOPMENT = true; // Change to true for development, false for production
+const IS_DEVELOPMENT = false; // Change to true for development, false for production
 
 const getApiUrl = () => {
   

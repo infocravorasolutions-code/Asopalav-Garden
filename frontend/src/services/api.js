@@ -300,6 +300,26 @@ export const adminAPI = {
     } catch (error) {
       throw error.response?.data || error.message;
     }
+  },
+
+  // Get all sites
+  getSites: async (params = {}) => {
+    try {
+      const response = await api.get('/sites', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get site by ID
+  getSiteById: async (siteId) => {
+    try {
+      const response = await api.get(`/sites/${siteId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
   }
 };
 
@@ -427,6 +447,19 @@ export const attendanceAPI = {
     const queryString = queryParams.toString();
     const url = `/attendence/employee/${employeeId}${queryString ? `?${queryString}` : ''}`;
     return api.get(url);
+  },
+}
+
+// Site Point Management API
+export const sitePointAPI = {
+  createSitePoint: (siteId, pointData) => {
+    return api.post(`/sites/${siteId}/points`, pointData);
+  },
+  updateSitePoint: (siteId, pointId, pointData) => {
+    return api.put(`/sites/${siteId}/points/${pointId}`, pointData);
+  },
+  deleteSitePoint: (siteId, pointId) => {
+    return api.delete(`/sites/${siteId}/points/${pointId}`);
   },
 }
 

@@ -1304,44 +1304,36 @@ const AttendanceManagement = () => {
     // Check if user is readonly admin
     const isReadOnlyAdmin = user?.role === 'readonly';
     
-    // Predefined locations with full addresses that managers can select from dropdown
-    const predefinedLocations = [
-        { 
-            name: 'Riverfront west side સી plan', 
-            address: 'unnamed road, Ranna Park, - 380007, Gujarat, India'
-        },
-        { 
-            name: 'Flower park Point 2 Gate 2', 
-            address: 'Sabarmati Riverfront road, Kochrab, - 380043, Gujarat, India'
-        },
-        { 
-            name: 'Flower park point 1 Gate 1', 
-            address: 'Sabarmati Riverfront Road, Paldi, Navrangpura - 380006, Gujarat, India'
-        },
-        { 
-            name: 'Flower park point 3 Gate 3', 
-            address: 'Sabarmati Riverfront road, Kochrab, - 380043, Gujarat, India'
-        },
-        { 
-            name: 'Shbhas Garden Park point 1 gate 2', 
-            address: 'Sabarmati Riverfront Promenade, Dudheshwar, - 380014, Gujarat, India'
-        },
-        { 
-            name: 'Shbhas Garden Point 2 Gate 1', 
-            address: 'Riverfront Road, Dudheshwar, - 380027, Gujarat, India'
-        }
-    ];
+    // Dynamic sites and points from backend
+    const [sites, setSites] = useState([]);
+    const [loadingSites, setLoadingSites] = useState(false);
 
-    // Function to check if address matches a predefined location
+    // Function to check if address matches a site or point
     const getSelectedLocation = (address) => {
         if (!address) return 'Not Assigned';
         
-        // Check if the address exactly matches any predefined location address
-        const matchedLocation = predefinedLocations.find(location => 
-            address === location.address || address.includes(location.address)
+        // Check if the address matches any site address
+        const matchedSite = sites.find(site => 
+            address === site.address || address.includes(site.address)
         );
         
-        return matchedLocation ? matchedLocation.name : 'Not Assigned';
+        if (matchedSite) {
+            return matchedSite.name;
+        }
+        
+        // Check if the address matches any point address within sites
+        for (const site of sites) {
+            if (site.points && site.points.length > 0) {
+                const matchedPoint = site.points.find(point => 
+                    address === point.address || address.includes(point.address)
+                );
+                if (matchedPoint) {
+                    return `${site.name} - ${matchedPoint.name}`;
+                }
+            }
+        }
+        
+        return 'Not Assigned';
     };
 
     const [attendanceData, setAttendanceData] = useState([]);
@@ -1387,6 +1379,24 @@ const AttendanceManagement = () => {
         note: ''
     });
 
+
+    // Fetch sites from backend
+    const fetchSites = async () => {
+        try {
+            setLoadingSites(true);
+            const response = await adminAPI.getSites();
+            if (response.success && response.data) {
+                setSites(response.data);
+            } else {
+                setSites([]);
+            }
+        } catch (error) {
+            console.error('Error fetching sites:', error);
+            setSites([]);
+        } finally {
+            setLoadingSites(false);
+        }
+    };
 
     // Fetch managers and employees for filter dropdowns
     const fetchFilterData = async () => {
@@ -1515,18 +1525,58 @@ const AttendanceManagement = () => {
         // Apply date range filter
         if (filters.startDate) {
             const startDate = new Date(filters.startDate);
+            startDate.setHours(0, 0, 0, 0); // Start of day
+            console.log('🔍 Date Filter Debug - Start Date:', {
+                filterStartDate: filters.startDate,
+                parsedStartDate: startDate,
+                recordCount: filtered.length
+            });
+            
             filtered = filtered.filter(record => {
                 const recordDate = new Date(record.stepIn);
-                return recordDate >= startDate;
+                recordDate.setHours(0, 0, 0, 0); // Start of day for comparison
+                const isAfterStart = recordDate >= startDate;
+                
+                console.log('🔍 Date Filter Debug - Record:', {
+                    recordDate: record.stepIn,
+                    parsedRecordDate: recordDate,
+                    isAfterStart,
+                    employee: record.employeeId?.name
+                });
+                
+                return isAfterStart;
+            });
+            
+            console.log('🔍 Date Filter Debug - After Start Date Filter:', {
+                remainingRecords: filtered.length
             });
         }
 
         if (filters.endDate) {
             const endDate = new Date(filters.endDate);
-            endDate.setHours(23, 59, 59, 999); // Include the entire end date
+            endDate.setHours(23, 59, 59, 999); // End of day
+            console.log('🔍 Date Filter Debug - End Date:', {
+                filterEndDate: filters.endDate,
+                parsedEndDate: endDate,
+                recordCount: filtered.length
+            });
+            
             filtered = filtered.filter(record => {
                 const recordDate = new Date(record.stepIn);
-                return recordDate <= endDate;
+                const isBeforeEnd = recordDate <= endDate;
+                
+                console.log('🔍 Date Filter Debug - Record:', {
+                    recordDate: record.stepIn,
+                    parsedRecordDate: recordDate,
+                    isBeforeEnd,
+                    employee: record.employeeId?.name
+                });
+                
+                return isBeforeEnd;
+            });
+            
+            console.log('🔍 Date Filter Debug - After End Date Filter:', {
+                remainingRecords: filtered.length
             });
         }
 
@@ -1536,10 +1586,16 @@ const AttendanceManagement = () => {
     // Export to Excel
     const exportToExcel = async () => {
         try {
+            setLoading(true);
+            toast.success('Preparing Excel export with all records...');
+            
             const params = new URLSearchParams();
             Object.entries(filters).forEach(([key, value]) => {
                 if (value) params.append(key, value);
             });
+            
+            // Set limit to 0 to get ALL records for Excel export
+            params.append('limit', '0');
 
             const response = await api.get(`/attendence/export/excel?${params.toString()}`, {
                 responseType: 'blob'
@@ -1555,22 +1611,41 @@ const AttendanceManagement = () => {
                 link.click();
                 link.remove();
                 window.URL.revokeObjectURL(url);
-                toast.success('Attendance data exported to Excel successfully!');
+                toast.success('Attendance data exported to Excel successfully with all records!');
             }
         } catch (error) {
             console.error('Error exporting to Excel:', error);
             toast.error('Failed to export attendance data to Excel');
+        } finally {
+            setLoading(false);
         }
     };
 
     // Export to PDF using enhanced professional export
     const exportToPDF = async () => {
         try {
+            // Fetch ALL attendance data for PDF export (not just current page)
+            setLoading(true);
+            toast.success('Fetching all attendance data for PDF export...');
+            
+            const params = new URLSearchParams();
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value) params.append(key, value);
+            });
+            
+            // Set limit to 0 to get ALL records, not just paginated ones
+            params.append('limit', '0');
 
-            if (!attendanceData || attendanceData.length === 0) {
+            const response = await adminAPI.getAttendance(params);
+            const allAttendanceData = response.attendance || [];
+
+            if (!allAttendanceData || allAttendanceData.length === 0) {
                 toast.error('No attendance data to export');
+                setLoading(false);
                 return;
             }
+
+            console.log(`📊 Exporting PDF with ${allAttendanceData.length} total records`);
 
             // Import the enhanced PDF export utility
             let exportAttendanceToPDF;
@@ -1584,6 +1659,7 @@ const AttendanceManagement = () => {
             } catch (error) {
                 console.error('Error importing PDF utils:', error);
                 toast.error('Failed to load PDF export utility. Please try again.');
+                setLoading(false);
                 return;
             }
 
@@ -1591,20 +1667,22 @@ const AttendanceManagement = () => {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const filename = `attendance_${timestamp}.pdf`;
 
-            // Use the enhanced PDF export function
-            await exportAttendanceToPDF(attendanceData, filename);
+            // Use the enhanced PDF export function with ALL data
+            await exportAttendanceToPDF(allAttendanceData, filename);
 
             // Show success message
             const isWebView = window.ReactNativeWebView !== undefined;
             if (isWebView) {
-                toast.success('Professional PDF export initiated in mobile app');
+                toast.success(`Professional PDF exported successfully with ${allAttendanceData.length} records`);
             } else {
-                toast.success('Professional PDF exported successfully');
+                toast.success(`Professional PDF exported successfully with ${allAttendanceData.length} records`);
             }
 
         } catch (error) {
             console.error('Error exporting to PDF:', error);
             toast.error('Failed to export PDF: ' + error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -1688,6 +1766,7 @@ const AttendanceManagement = () => {
     // Load data on component mount
     useEffect(() => {
         fetchFilterData();
+        fetchSites();
         fetchAttendanceData();
     }, [fetchAttendanceData]);
 
@@ -1930,20 +2009,31 @@ const AttendanceManagement = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Site</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Site/Point</label>
                                 <select
                                     value={filters.assignedSite}
                                     onChange={(e) => handleFilterChange('assignedSite', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    disabled={loadingSites}
                                 >
-                                    <option value="">All Sites</option>
-                                    {predefinedLocations.map((location, index) => (
-                                        <option key={index} value={location.name}>
-                                            {location.name}
-                                        </option>
+                                    <option value="">All Sites & Points</option>
+                                    {sites.map((site) => (
+                                        <React.Fragment key={site._id}>
+                                            <option value={site.name} className="font-semibold">
+                                                📍 {site.name} ({site.siteCode})
+                                            </option>
+                                            {site.points && site.points.length > 0 && site.points.map((point) => (
+                                                <option key={point._id} value={`${site.name} - ${point.name}`}>
+                                                    &nbsp;&nbsp;• {point.name} ({point.pointCode})
+                                                </option>
+                                            ))}
+                                        </React.Fragment>
                                     ))}
                                     <option value="Not Assigned">Not Assigned</option>
                                 </select>
+                                {loadingSites && (
+                                    <p className="text-xs text-gray-500 mt-1">Loading sites and points...</p>
+                                )}
                             </div>
 
                             <div>
@@ -2143,8 +2233,10 @@ const AttendanceManagement = () => {
                                                                     {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'N/A'}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" title={record.address || 'N/A'}>
-                                                                {record.address || 'N/A'}
+                                                            <td className="px-6 py-4 text-sm text-gray-900 max-w-xs" title={record.address || 'N/A'}>
+                                                                <div className="whitespace-pre-line">
+                                                                    {record.address || 'N/A'}
+                                                                </div>
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                                 <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
@@ -2292,9 +2384,9 @@ const AttendanceManagement = () => {
                                                 {/* Location */}
                                                 <div className="flex items-start space-x-2 mb-3">
                                                     <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                                                    <span className="text-sm text-gray-600 flex-1">
+                                                    <div className="text-sm text-gray-600 flex-1 whitespace-pre-line">
                                                         {record.address || 'N/A'}
-                                                    </span>
+                                                    </div>
                                                 </div>
 
                                                 {/* Assigned Site */}

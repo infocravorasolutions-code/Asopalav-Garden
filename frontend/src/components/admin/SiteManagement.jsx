@@ -396,6 +396,7 @@ const SiteManagement = () => {
         <SiteModal
           site={editingSite}
           onClose={handleSiteModalClose}
+          onRefresh={handleRefresh}
         />
       )}
 

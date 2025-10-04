@@ -70,45 +70,7 @@ const StepInStepOut = () => {
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
 
-    // Predefined locations with full addresses
-    const predefinedLocations = [
-        { 
-            name: 'Riverfront west side સી plan', 
-            lat: 23.0008397, 
-            lng: 72.5658486,
-            address: 'unnamed road, Ranna Park, - 380007, Gujarat, India'
-        },
-        { 
-            name: 'Flower park Point 2 Gate 2', 
-            lat: 23.020939, 
-            lng: 72.573550,
-            address: 'Sabarmati Riverfront road, Kochrab, - 380043, Gujarat, India'
-        },
-        { 
-            name: 'Flower park point 1 Gate 1', 
-            lat: 23.021981, 
-            lng: 72.573805,
-            address: 'Sabarmati Riverfront Road, Paldi, Navrangpura - 380006, Gujarat, India'
-        },
-        { 
-            name: 'Flower park point 3 Gate 3', 
-            lat: 23.016429, 
-            lng: 72.573197,
-            address: 'Sabarmati Riverfront road, Kochrab, - 380043, Gujarat, India'
-        },
-        { 
-            name: 'Shbhas Garden Park point 1 gate 2', 
-            lat: 23.056495, 
-            lng: 72.581995,
-            address: 'Sabarmati Riverfront Promenade, Dudheshwar, - 380014, Gujarat, India'
-        },
-        { 
-            name: 'Shbhas Garden Point 2 Gate 1', 
-            lat: 23.058519, 
-            lng: 72.584500,
-            address: 'Riverfront Road, Dudheshwar, - 380027, Gujarat, India'
-        }
-    ];
+    // Sites are now fetched dynamically from backend
 
     // Search and filter
     const [searchTerm, setSearchTerm] = useState('');
@@ -175,25 +137,21 @@ const StepInStepOut = () => {
     const fetchSites = useCallback(async () => {
         setLoadingSites(true);
         try {
-            console.log('Fetching sites...');
             const response = await api.get('/sites');
-            
-            console.log('Sites response:', response);
-            console.log('Sites data:', response.data);
             
             // Check if response.data is an array directly (from fetchInterceptor)
             if (Array.isArray(response.data)) {
-                console.log('Sites fetched successfully (direct array):', response.data);
                 setSites(response.data);
+                toast.success('Sites loaded successfully');
             } else if (response.data && response.data.success && response.data.data) {
-                console.log('Sites fetched successfully (wrapped):', response.data.data);
                 setSites(response.data.data || []);
+                toast.success('Sites loaded successfully');
             } else {
-                console.error('Failed to fetch sites - response structure:', response.data);
                 setSites([]);
+                toast.error('No sites found');
             }
         } catch (error) {
-            console.error('Error fetching sites:', error);
+            toast.error('Failed to load sites. Please try again.');
             setSites([]);
         } finally {
             setLoadingSites(false);
@@ -209,25 +167,21 @@ const StepInStepOut = () => {
         
         setLoadingPoints(true);
         try {
-            console.log('Fetching points for site:', siteId);
             const response = await api.get(`/sites/${siteId}`);
-            
-            console.log('Site response:', response);
-            console.log('Site data:', response.data);
             
             // Check if response.data is a site object directly (from fetchInterceptor)
             if (response.data && response.data.points) {
-                console.log('Site points fetched (direct object):', response.data.points);
                 setSelectedSitePoints(response.data.points || []);
+                toast.success('Site points loaded successfully');
             } else if (response.data && response.data.success && response.data.data && response.data.data.points) {
-                console.log('Site points fetched (wrapped):', response.data.data.points);
                 setSelectedSitePoints(response.data.data.points || []);
+                toast.success('Site points loaded successfully');
             } else {
-                console.error('Failed to fetch site points - response structure:', response.data);
                 setSelectedSitePoints([]);
+                toast.error('No points found for this site');
             }
         } catch (error) {
-            console.error('Error fetching site points:', error);
+            toast.error('Failed to load site points. Please try again.');
             setSelectedSitePoints([]);
         } finally {
             setLoadingPoints(false);
@@ -248,12 +202,12 @@ const StepInStepOut = () => {
 
             if (locationData.isFallback) {
                 toast.success('Using default location (Ahmedabad, Gujarat)');
-                console.log('Using fallback location:', locationData.address);
+                // Using fallback location
             } else {
                 toast.success('Location captured successfully!');
             }
         } catch {
-            console.error('Error getting location');
+            // Error getting location
             // Even if there's an error, use the fallback
             setLatitude("23.0341367");
             setLongitude("72.5723255");
@@ -270,11 +224,17 @@ const StepInStepOut = () => {
             setSelectedLocationName(selectedLocation.name);
             setLatitude(selectedLocation.lat.toString());
             setLongitude(selectedLocation.lng.toString());
-            setLocation(selectedLocation.address); // Use full address instead of name
+            
+            // Display only the actual address from the point
+            setLocation(selectedLocation.address);
+            
             toast.success(`Location selected: ${selectedLocation.name}`);
         } else {
             setSelectedLocationName('');
             setLocation('');
+            setLatitude('');
+            setLongitude('');
+            toast.success('Location cleared');
         }
     };
 
@@ -321,14 +281,14 @@ const StepInStepOut = () => {
      useEffect(() => {
          const initializeData = async () => {
              try {
-                 console.log('Initializing StepInStepOut data...');
+                // Initializing StepInStepOut data
                  await Promise.all([
                      fetchEmployees(),
                      fetchSites()
                  ]);
                  console.log('StepInStepOut data initialized successfully');
              } catch (error) {
-                 console.error('Error initializing data:', error);
+                // Error initializing data
                  toast.error('Failed to load initial data');
              }
          };
@@ -352,7 +312,7 @@ const StepInStepOut = () => {
                 console.log('Auto-refreshing team member data...');
                 await fetchEmployees();
             } catch (error) {
-                console.error('Auto-refresh failed:', error);
+                // Auto-refresh failed
             }
         }, 30000); // 30 seconds
 
@@ -372,7 +332,7 @@ const StepInStepOut = () => {
             console.log('✅ Team member data force refreshed');
             toast.success('Data refreshed successfully');
         } catch (error) {
-            console.error('❌ Force refresh failed:', error);
+            // Force refresh failed
             toast.error('Failed to refresh data');
         }
     }, [fetchEmployees]);
@@ -539,7 +499,12 @@ const StepInStepOut = () => {
         }
 
         let finalLocation = location.trim();
-        if (!finalLocation && latitude && longitude) {
+        
+        // If location is already set (from dropdown selection), use it
+        if (finalLocation) {
+            // Using selected location from dropdown
+        } else if (latitude && longitude) {
+            // Only try to get address from coordinates if no location is set
             try {
                 const autoLocation = await getAddressFromCoordinates(latitude, longitude);
 
@@ -552,11 +517,10 @@ const StepInStepOut = () => {
                     toast.error('Could not detect location from GPS coordinates');
                 }
             } catch {
-                console.error('Error in auto-location');
                 finalLocation = 'Location not available';
                 toast.error('Error detecting location from GPS');
             }
-        } else if (!finalLocation) {
+        } else {
             finalLocation = 'Location not provided';
         }
 
@@ -596,7 +560,6 @@ const StepInStepOut = () => {
                 console.log('Manager step in response:', response);
             } else {
                 response = await attendanceAPI.stepOut(formData);
-                console.log('Step out response:', response);
             }
             
             if (response.success === true) {
@@ -610,24 +573,19 @@ const StepInStepOut = () => {
                 setNote('');
 
                 // Refresh data to get the latest status
-                console.log('Refreshing data after successful attendance operation...');
 
                 // Refresh team members to get updated status
                 try {
                     await fetchEmployees();
                     console.log('Team member data refreshed successfully');
                 } catch (error) {
-                    console.error('Error refreshing data:', error);
                     toast.error('Data refresh failed, but operation was successful');
                 }
-
-                console.log('Data refreshed after attendance operation');
             } else {
                 toast.error(response.message || `Failed to ${stepType} employee`);
                 return;
             }
         } catch (error) {
-            console.error('Failed to submit attendance:', error);
             toast.error('Failed to submit attendance. Please try again.');
             
             // Close modal even on error to prevent user from being stuck
@@ -1270,23 +1228,68 @@ const StepInStepOut = () => {
                                         <div className="grid grid-cols-1 gap-3 sm:gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Select Site <span className="text-blue-600 text-xs">(Optional)</span>
+                                                    Select Site/Point <span className="text-blue-600 text-xs">(Optional)</span>
                                                 </label>
                                                 <select
                                                     value={selectedLocationName}
                                                     onChange={(e) => {
-                                                        const selectedLocation = predefinedLocations.find(loc => loc.name === e.target.value);
-                                                        handleLocationSelect(selectedLocation);
+                                                        const selectedValue = e.target.value;
+                                                        if (!selectedValue) {
+                                                            handleLocationSelect(null);
+                                                            return;
+                                                        }
+
+                                                        // Check if it's a site or point selection
+                                                        const [type, id] = selectedValue.split('_');
+                                                        
+                                                        if (type === 'site') {
+                                                            const selectedSite = sites.find(site => site._id === id);
+                                                            if (selectedSite) {
+                                                                handleLocationSelect({
+                                                                    name: selectedSite.name,
+                                                                    lat: selectedSite.coordinates?.latitude || 0,
+                                                                    lng: selectedSite.coordinates?.longitude || 0,
+                                                                    address: selectedSite.address
+                                                                });
+                                                            }
+                                                        } else if (type === 'point') {
+                                                            // Find the point across all sites
+                                                            for (const site of sites) {
+                                                                if (site.points && site.points.length > 0) {
+                                                                    const point = site.points.find(p => p._id === id);
+                                                                    if (point) {
+                                                                        handleLocationSelect({
+                                                                            name: `${site.name} - ${point.name}`,
+                                                                            lat: point.coordinates?.latitude || site.coordinates?.latitude || 0,
+                                                                            lng: point.coordinates?.longitude || site.coordinates?.longitude || 0,
+                                                                            address: point.address || site.address
+                                                                        });
+                                                                        break;
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
                                                     }}
                                                     className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm sm:text-base"
+                                                    disabled={loadingSites}
                                                 >
-                                                    <option value="">Choose a site...</option>
-                                                    {predefinedLocations.map((loc, index) => (
-                                                        <option key={index} value={loc.name}>
-                                                            {loc.name}
-                                                        </option>
+                                                    <option value="">Choose a site or point...</option>
+                                                    {sites.map((site) => (
+                                                        <React.Fragment key={site._id}>
+                                                            <option value={`site_${site._id}`} className="font-semibold">
+                                                                📍 {site.name} ({site.siteCode})
+                                                            </option>
+                                                            {site.points && site.points.length > 0 && site.points.map((point) => (
+                                                                <option key={point._id} value={`point_${point._id}`} className="ml-4">
+                                                                    &nbsp;&nbsp;• {point.name} ({point.pointCode})
+                                                                </option>
+                                                            ))}
+                                                        </React.Fragment>
                                                     ))}
                                                 </select>
+                                                {loadingSites && (
+                                                    <p className="text-xs text-gray-500 mt-1">Loading sites and points...</p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -1300,12 +1303,12 @@ const StepInStepOut = () => {
                                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                             <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
                                                         </div>
-                                                        <input
-                                                            type="text"
+                                                        <textarea
                                                             value={location}
                                                             onChange={(e) => setLocation(e.target.value)}
                                                             placeholder="Enter your current location or use auto-detect..."
-                                                            className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm sm:text-base"
+                                                            className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm sm:text-base resize-none"
+                                                            rows="2"
                                                         />
                                                     </div>
                                                     {/* <button
@@ -1351,8 +1354,8 @@ const StepInStepOut = () => {
                                                                 Clear
                                                             </button>
                                                         </div>
-                                                        <div className="mt-1 text-xs text-green-600">
-                                                            {location.length > 50 ? `${location.substring(0, 50)}...` : location}
+                                                        <div className="mt-1 text-xs text-green-600 whitespace-pre-line">
+                                                            {location.length > 100 ? `${location.substring(0, 100)}...` : location}
                                                         </div>
                                                     </div>
                                                 )}

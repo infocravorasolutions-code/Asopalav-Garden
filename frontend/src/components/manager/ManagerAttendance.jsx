@@ -32,44 +32,38 @@ import toast from 'react-hot-toast';
 import { SHIFT_ENUM } from '../../constants/shifts';
 
 const ManagerAttendance = () => {
-    // Predefined locations with full addresses that managers can select from dropdown
-    const predefinedLocations = [
-        { 
-            name: 'Riverfront west side સી plan', 
-            address: 'unnamed road, Ranna Park, - 380007, Gujarat, India'
-        },
-        { 
-            name: 'Flower park Point 2 Gate 2', 
-            address: 'Sabarmati Riverfront road, Kochrab, - 380043, Gujarat, India'
-        },
-        { 
-            name: 'Flower park point 1 Gate 1', 
-            address: 'Sabarmati Riverfront Road, Paldi, Navrangpura - 380006, Gujarat, India'
-        },
-        { 
-            name: 'Flower park point 3 Gate 3', 
-            address: 'Sabarmati Riverfront road, Kochrab, - 380043, Gujarat, India'
-        },
-        { 
-            name: 'Shbhas Garden Park point 1 gate 2', 
-            address: 'Sabarmati Riverfront Promenade, Dudheshwar, - 380014, Gujarat, India'
-        },
-        { 
-            name: 'Shbhas Garden Point 2 Gate 1', 
-            address: 'Riverfront Road, Dudheshwar, - 380027, Gujarat, India'
-        }
-    ];
+    // Dynamic sites from backend
+    const [sites, setSites] = useState([]);
+    const [loadingSites, setLoadingSites] = useState(false);
 
-    // Function to check if address matches a predefined location
+    // Function to check if address matches a site or point
     const getLocationName = (address) => {
         if (!address) return 'N/A';
         
-        const location = predefinedLocations.find(loc => 
-            address.toLowerCase().includes(loc.address.toLowerCase()) ||
-            address.toLowerCase().includes(loc.name.toLowerCase())
+        // Check if the address matches any site address
+        const matchedSite = sites.find(site => 
+            address.toLowerCase().includes(site.address.toLowerCase()) ||
+            address.toLowerCase().includes(site.name.toLowerCase())
         );
         
-        return location ? location.name : address;
+        if (matchedSite) {
+            return matchedSite.name;
+        }
+        
+        // Check if the address matches any point address within sites
+        for (const site of sites) {
+            if (site.points && site.points.length > 0) {
+                const matchedPoint = site.points.find(point => 
+                    address.toLowerCase().includes(point.address?.toLowerCase() || '') ||
+                    address.toLowerCase().includes(point.name.toLowerCase())
+                );
+                if (matchedPoint) {
+                    return `${site.name} - ${matchedPoint.name}`;
+                }
+            }
+        }
+        
+        return address;
     };
 
     // State management
@@ -100,6 +94,24 @@ const ManagerAttendance = () => {
         sites: [],
         points: []
     });
+
+    // Fetch sites from backend
+    const fetchSites = useCallback(async () => {
+        try {
+            setLoadingSites(true);
+            const response = await api.get('/sites');
+            if (response.data && response.data.success && response.data.data) {
+                setSites(response.data.data);
+            } else {
+                setSites([]);
+            }
+        } catch (error) {
+            console.error('Error fetching sites:', error);
+            setSites([]);
+        } finally {
+            setLoadingSites(false);
+        }
+    }, []);
 
     // Get current manager ID from localStorage
     const getCurrentManagerId = () => {
@@ -330,13 +342,25 @@ const ManagerAttendance = () => {
     }, []);
 
     // Handle site filter change
-    const handleSiteChange = (siteId) => {
-        setFilters(prev => ({
-            ...prev,
-            assignedSite: siteId,
-            assignedPoint: '' // Clear point filter when site changes
-        }));
-        fetchSitePoints(siteId);
+    const handleSiteChange = (value) => {
+        if (value.includes('_')) {
+            // It's a point selection (siteId_pointId)
+            const [siteId, pointId] = value.split('_');
+            setFilters(prev => ({
+                ...prev,
+                assignedSite: siteId,
+                assignedPoint: pointId
+            }));
+            fetchSitePoints(siteId);
+        } else {
+            // It's a site selection
+            setFilters(prev => ({
+                ...prev,
+                assignedSite: value,
+                assignedPoint: '' // Clear point filter when site changes
+            }));
+            fetchSitePoints(value);
+        }
     };
 
     // Clear all filters
@@ -748,8 +772,9 @@ const ManagerAttendance = () => {
     // Load data on component mount
     useEffect(() => {
         fetchFilterData();
+        fetchSites();
         fetchAttendanceData();
-    }, [fetchAttendanceData, fetchFilterData]);
+    }, [fetchAttendanceData, fetchFilterData, fetchSites]);
 
     return (
         <div className="space-y-4 sm:space-y-6">
@@ -890,17 +915,24 @@ const ManagerAttendance = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {/* Assigned Site Filter */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Site</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Site/Point</label>
                                 <select
                                     value={filters.assignedSite}
                                     onChange={(e) => handleSiteChange(e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
-                                    <option value="">All Sites</option>
+                                    <option value="">All Sites & Points</option>
                                     {filterOptions.sites.map(site => (
-                                        <option key={site._id} value={site._id}>
-                                            {site.name} ({site.code})
-                                        </option>
+                                        <React.Fragment key={site._id}>
+                                            <option value={site._id} className="font-semibold">
+                                                📍 {site.name} ({site.siteCode})
+                                            </option>
+                                            {site.points && site.points.length > 0 && site.points.map((point) => (
+                                                <option key={point._id} value={`${site._id}_${point._id}`}>
+                                                    &nbsp;&nbsp;• {point.name} ({point.pointCode})
+                                                </option>
+                                            ))}
+                                        </React.Fragment>
                                     ))}
                                 </select>
                             </div>
