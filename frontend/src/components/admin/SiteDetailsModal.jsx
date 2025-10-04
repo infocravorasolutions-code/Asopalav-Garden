@@ -149,22 +149,22 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
   }, [site._id]);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center p-0 sm:p-2 z-50 overflow-y-hidden">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl min-h-full sm:min-h-0 sm:max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">{getSiteTypeIcon(siteDetails.siteType)}</span>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{siteDetails.name}</h2>
-              <p className="text-sm text-gray-600 font-mono">{siteDetails.siteCode}</p>
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <span className="text-2xl sm:text-3xl flex-shrink-0">{getSiteTypeIcon(siteDetails.siteType)}</span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">{siteDetails.name}</h2>
+              <p className="text-xs sm:text-sm text-gray-600 font-mono truncate">{siteDetails.siteCode}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
@@ -174,21 +174,21 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
             <span className="ml-2 text-gray-600">Loading site details...</span>
           </div>
         ) : (
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 sm:pb-6">
             {/* Site Information */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Basic Info */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Site Information</h3>
+                <h3 className="text-base sm:text-lg font-medium text-gray-900">Site Information</h3>
                 
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-600">{siteDetails.address}</span>
+                  <div className="flex items-center gap-2 text-xs sm:text-sm">
+                    <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-600 truncate">{siteDetails.address}</span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSiteTypeColor(siteDetails.siteType)}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSiteTypeColor(siteDetails.siteType)} w-fit`}>
                       {siteDetails.siteType.charAt(0).toUpperCase() + siteDetails.siteType.slice(1)}
                     </span>
                     <span className="text-xs text-gray-500">
@@ -196,20 +196,20 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 text-gray-400" />
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                    <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <span>{siteDetails.points?.length || 0} points configured</span>
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Map className="w-4 h-4" />
-                    <span>
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                    <Map className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">
                       {siteDetails.coordinates.latitude.toFixed(6)}, {siteDetails.coordinates.longitude.toFixed(6)}
                     </span>
                   </div>
 
                   {siteDetails.description && (
-                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+                    <p className="text-xs sm:text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
                       {siteDetails.description}
                     </p>
                   )}
@@ -218,16 +218,17 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
 
               {/* Assigned Employees */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium text-gray-900">Assigned Employees</h3>
+                <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                  <h3 className="text-base sm:text-lg font-medium text-gray-900">Assigned Employees</h3>
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
                       onClick={handleAssignModalOpen}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 w-full sm:w-auto"
                     >
                       <UserPlus className="w-4 h-4" />
-                      Assign Employee
+                      <span className="hidden sm:inline">Assign Employee</span>
+                      <span className="sm:hidden">Assign</span>
                     </Button>
                   </div>
                 </div>
@@ -239,13 +240,13 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
                         key={assignment._id}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                             <Users className="w-4 h-4 text-blue-600" />
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{assignment.employeeName}</p>
-                            <p className="text-sm text-gray-600">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-gray-900 truncate">{assignment.employeeName}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 truncate">
                               {assignment.employeeCode} • {assignment.designation}
                             </p>
                             <p className="text-xs text-gray-500">
@@ -257,7 +258,7 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleUnassignEmployee(assignment.employeeId)}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-600 hover:text-red-700 flex-shrink-0 ml-2 p-2"
                         >
                           <UserMinus className="w-4 h-4" />
                         </Button>
@@ -267,12 +268,12 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                    <p>No employees assigned to this site</p>
+                    <p className="text-sm">No employees assigned to this site</p>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleAssignModalOpen}
-                      className="mt-2"
+                      className="mt-2 w-full sm:w-auto"
                     >
                       Assign First Employee
                     </Button>
@@ -282,33 +283,33 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
             </div>
 
             {/* Site Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-900">Assigned Employees</span>
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                  <span className="text-sm sm:text-base font-medium text-blue-900">Assigned Employees</span>
                 </div>
-                <p className="text-2xl font-bold text-blue-900 mt-1">
+                <p className="text-xl sm:text-2xl font-bold text-blue-900 mt-1">
                   {siteDetails.assignedEmployees?.length || 0}
                 </p>
               </div>
 
-              <div className="bg-green-50 p-4 rounded-lg">
+              <div className="bg-green-50 p-3 sm:p-4 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-green-600" />
-                  <span className="font-medium text-green-900">Site Radius</span>
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                  <span className="text-sm sm:text-base font-medium text-green-900">Site Radius</span>
                 </div>
-                <p className="text-2xl font-bold text-green-900 mt-1">
+                <p className="text-xl sm:text-2xl font-bold text-green-900 mt-1">
                   {siteDetails.radius}m
                 </p>
               </div>
 
-              <div className="bg-purple-50 p-4 rounded-lg">
+              <div className="bg-purple-50 p-3 sm:p-4 rounded-lg sm:col-span-2 lg:col-span-1">
                 <div className="flex items-center gap-2">
-                  <Building className="w-5 h-5 text-purple-600" />
-                  <span className="font-medium text-purple-900">Site Type</span>
+                  <Building className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+                  <span className="text-sm sm:text-base font-medium text-purple-900">Site Type</span>
                 </div>
-                <p className="text-lg font-bold text-purple-900 mt-1 capitalize">
+                <p className="text-base sm:text-lg font-bold text-purple-900 mt-1 capitalize">
                   {siteDetails.siteType}
                 </p>
               </div>
@@ -318,19 +319,19 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
 
         {/* Assign Employee Modal */}
         {showAssignModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-60">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center p-0 sm:p-2 z-60 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md min-h-full sm:min-h-0 sm:max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold">Assign Employee</h3>
+                <h3 className="text-base sm:text-lg font-semibold truncate">Assign Employee</h3>
                 <button
                   onClick={() => setShowAssignModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
-              <div className="p-4 space-y-4">
+              <div className="p-4 space-y-4 pb-20 sm:pb-4">
                 <div>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -357,15 +358,15 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
                         onClick={() => setSelectedEmployee(employee)}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                             <Users className="w-4 h-4 text-gray-600" />
                           </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">{employee.name}</p>
-                            <p className="text-sm text-gray-600">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{employee.name}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 truncate">
                               {employee.empCode} • {employee.designation}
                             </p>
-                            <p className="text-xs text-gray-500">{employee.email}</p>
+                            <p className="text-xs text-gray-500 truncate">{employee.email}</p>
                           </div>
                         </div>
                       </div>
@@ -373,27 +374,31 @@ const SiteDetailsModal = ({ site, onClose, onRefresh }) => {
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       <AlertCircle className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                      <p>No employees found</p>
+                      <p className="text-sm">No employees found</p>
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAssignModal(false)}
-                    disabled={assigning}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleAssignEmployee}
-                    disabled={!selectedEmployee || assigning}
-                    className="flex items-center gap-2"
-                  >
-                    {assigning && <Loader2 className="w-4 h-4 animate-spin" />}
-                    Assign Employee
-                  </Button>
+                <div className="sticky bottom-0 bg-white border-t pt-4 -mx-4 px-4">
+                  <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-end sm:space-y-0 sm:gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAssignModal(false)}
+                      disabled={assigning}
+                      className="w-full sm:w-auto"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAssignEmployee}
+                      disabled={!selectedEmployee || assigning}
+                      className="flex items-center gap-2 w-full sm:w-auto"
+                    >
+                      {assigning && <Loader2 className="w-4 h-4 animate-spin" />}
+                      <span className="hidden sm:inline">Assign Employee</span>
+                      <span className="sm:hidden">Assign</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

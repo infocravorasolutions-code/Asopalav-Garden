@@ -238,8 +238,8 @@ const PointForm = ({ point, onSave, onCancel, pointTypes }) => {
         </select>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div>
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-end sm:space-y-0 sm:gap-4">
+        <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Radius (meters)
           </label>
@@ -537,6 +537,7 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
             className="text-gray-400 hover:text-gray-600 p-1"
           >
             <X className="w-5 h-5 sm:w-6 sm:h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
@@ -544,6 +545,7 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
+            <h3 className="text-base sm:text-lg font-medium text-gray-900">Basic Information</h3>
             <h3 className="text-base sm:text-lg font-medium text-gray-900">Basic Information</h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -627,10 +629,11 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                 Site Type
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {siteTypes.map((type) => (
                   <label
                     key={type.value}
-                    className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${
+                    className={`flex items-center gap-2 p-2 sm:p-3 border rounded-lg cursor-pointer transition-colors ${
                       formData.siteType === type.value
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-300 hover:border-gray-400'
@@ -644,8 +647,8 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                       onChange={handleChange}
                       className="sr-only"
                     />
-                    <span className="text-lg">{type.icon}</span>
-                    <span className="text-sm font-medium">{type.label}</span>
+                    <span className="text-base sm:text-lg">{type.icon}</span>
+                    <span className="text-xs sm:text-sm font-medium truncate">{type.label}</span>
                   </label>
                 ))}
               </div>
@@ -662,9 +665,11 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                 size="sm"
                 onClick={handleGetCurrentLocation}
                 className="flex items-center gap-2 w-full sm:w-auto"
+                className="flex items-center gap-2 w-full sm:w-auto"
               >
                 <MapPin className="w-4 h-4" />
-                Get Current Location
+                <span className="hidden sm:inline">Get Current Location</span>
+                <span className="sm:hidden">Get Location</span>
               </Button>
             </div>
 
@@ -748,6 +753,7 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                 size="sm"
                 onClick={handleAddPoint}
                 className="flex items-center gap-2 w-full sm:w-auto"
+                className="flex items-center gap-2 w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 Add Point
@@ -791,6 +797,7 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                         size="sm"
                         onClick={() => handleEditPoint(point)}
                         className="text-blue-600 hover:text-blue-700 p-2"
+                        className="text-blue-600 hover:text-blue-700 p-2"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -799,6 +806,7 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeletePoint(point._id)}
+                        className="text-red-600 hover:text-red-700 p-2"
                         className="text-red-600 hover:text-red-700 p-2"
                       >
                         <Trash2 className="w-4 h-4" />

@@ -188,26 +188,27 @@ const SiteManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Site Management</h1>
-          <p className="text-gray-600">Manage and assign sites to employees</p>
+      <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">Site Management</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and assign sites to employees</p>
         </div>
         <Button
           onClick={handleCreateSite}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
         >
           <Plus className="w-4 h-4" />
-          Create Site
+          <span className="hidden sm:inline">Create Site</span>
+          <span className="sm:hidden">Create</span>
         </Button>
       </div>
 
       {/* Search and Filter */}
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -216,32 +217,35 @@ const SiteManagement = () => {
                   placeholder="Search sites by name, code, or address..."
                   value={searchTerm}
                   onChange={handleSearch}
-                  className="pl-10"
+                  className="pl-10 w-full"
                 />
               </div>
             </div>
-            <div className="sm:w-48">
-              <select
-                value={filterType}
-                onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:gap-3">
+              <div className="sm:w-48">
+                <select
+                  value={filterType}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  {siteTypeOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-2 w-full sm:w-auto"
               >
-                {siteTypeOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+                <span className="sm:hidden">Refresh</span>
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -254,14 +258,14 @@ const SiteManagement = () => {
         </div>
       ) : sites.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center">
+          <CardContent className="p-6 sm:p-12 text-center">
             <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No sites found</h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-sm sm:text-base text-gray-600 mb-4">
               {searchTerm || filterType ? 'Try adjusting your search criteria' : 'Get started by creating your first site'}
             </p>
             {!searchTerm && !filterType && (
-              <Button onClick={handleCreateSite}>
+              <Button onClick={handleCreateSite} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Site
               </Button>
@@ -269,24 +273,25 @@ const SiteManagement = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {sites.map((site) => (
             <Card key={site._id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{getSiteTypeIcon(site.siteType)}</span>
-                    <div>
-                      <CardTitle className="text-lg">{site.name}</CardTitle>
-                      <p className="text-sm text-gray-600 font-mono">{site.siteCode}</p>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-xl sm:text-2xl flex-shrink-0">{getSiteTypeIcon(site.siteType)}</span>
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-base sm:text-lg truncate">{site.name}</CardTitle>
+                      <p className="text-xs sm:text-sm text-gray-600 font-mono truncate">{site.siteCode}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleViewDetails(site)}
                       title="View Details"
+                      className="p-2"
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
@@ -295,6 +300,7 @@ const SiteManagement = () => {
                       size="sm"
                       onClick={() => handleEditSite(site)}
                       title="Edit Site (includes Points Management)"
+                      className="p-2"
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -302,7 +308,7 @@ const SiteManagement = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteSite(site._id)}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-red-600 hover:text-red-700 p-2"
                       title="Delete Site"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -312,13 +318,13 @@ const SiteManagement = () => {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin className="w-4 h-4" />
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                    <MapPin className="w-4 h-4 flex-shrink-0" />
                     <span className="truncate">{site.address}</span>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSiteTypeColor(site.siteType)}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSiteTypeColor(site.siteType)} w-fit`}>
                       {site.siteType.charAt(0).toUpperCase() + site.siteType.slice(1)}
                     </span>
                     <span className="text-xs text-gray-500">
@@ -326,8 +332,8 @@ const SiteManagement = () => {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4" />
                         <span>{site.assignedEmployeesCount} assigned</span>
@@ -339,14 +345,14 @@ const SiteManagement = () => {
                     </div>
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Map className="w-3 h-3" />
-                      <span>
+                      <span className="truncate">
                         {site.coordinates.latitude.toFixed(4)}, {site.coordinates.longitude.toFixed(4)}
                       </span>
                     </div>
                   </div>
 
                   {site.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2">
+                    <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
                       {site.description}
                     </p>
                   )}
@@ -361,20 +367,21 @@ const SiteManagement = () => {
       {pagination.totalPages > 1 && (
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
+            <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+              <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
                 Showing {sites.length} of {pagination.totalSites} sites
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={!pagination.hasPrev}
+                  className="text-xs sm:text-sm"
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-gray-600">
+                <span className="text-xs sm:text-sm text-gray-600 px-2">
                   Page {pagination.currentPage} of {pagination.totalPages}
                 </span>
                 <Button
@@ -382,6 +389,7 @@ const SiteManagement = () => {
                   size="sm"
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={!pagination.hasNext}
+                  className="text-xs sm:text-sm"
                 >
                   Next
                 </Button>
