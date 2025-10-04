@@ -18,9 +18,9 @@ export const initializeSocket = (server) => {
     cors: {
       origin: [
         process.env.FRONTEND_URL || "http://localhost:5173",
-        "https://asopalav.info",
-        "https://asopalav.info",
-        "https://asopalav.info",
+        "https://neelkanthlandscape.info",
+        "https://neelkanthlandscape.info",
+        "https://neelkanthlandscape.info",
         "http://localhost:5173"
       ],
       methods: ["GET", "POST"],

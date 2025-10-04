@@ -121,7 +121,7 @@ const GardenLogin = () => {
             {/* Company Logo Display */}
             <div className="flex justify-center mb-4">
               <CompanyLogo
-                companyCode="ASOPALAV" // Default for garden theme
+                companyCode="NEELKANTH" // Default for garden theme
                 size="lg"
                 className="shadow-lg"
                 style={{

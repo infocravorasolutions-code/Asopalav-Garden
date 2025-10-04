@@ -67,8 +67,8 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
       const normalizedCode = companyCode.toUpperCase();
       const logoMap = {
         'HARIKRISHNA': 'HARIKRISHNA.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg', // Alternative spelling
+        'NEELKANTH': 'NEELKANTH.jpg',
+        'NILKANTH': 'NEELKANTH.jpg', // Alternative spelling
       };
 
       const logoFileName = logoMap[normalizedCode];
@@ -77,7 +77,7 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
       }
       return null;
     };
-    const companyCode = options.companyCode || 'ASOPALAV';
+    const companyCode = options.companyCode || 'NEELKANTH';
     const fallbackLogoUrl = options.fallbackLogoUrl || null;
 
     console.log("companyCode ==> ", companyCode);
@@ -110,12 +110,12 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     } catch (error) {
       // Fallback: Draw a simple logo placeholder
       drawRect(margin, y, 25, 25, primaryBlue);
-      addText('ASOPALAV', margin + 12.5, y + 17, 14, 'bold', [255, 255, 255], 'center');
+      addText('NEELKANTH', margin + 12.5, y + 17, 14, 'bold', [255, 255, 255], 'center');
     }
 
     // Company branding section - Using current project details
     const brandingX = margin + 35;
-    addText('ASOPALAV GARDEN', brandingX, y + 8, 16, 'bold', primaryBlue);
+    addText('NILKANTH LANDSCAPE', brandingX, y + 8, 16, 'bold', primaryBlue);
     addText('Professional Landscape Solutions', brandingX, y + 16, 9, 'normal', darkGray);
     addText('ATTENDANCE REPORT', brandingX, y + 24, 12, 'bold', darkGray);
 
@@ -253,7 +253,7 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     doc.line(margin, finalY, pageWidth - margin, finalY);
 
     // Footer text
-    addText('This report was generated automatically by Asopalav Garden System.', margin, finalY + 8, 8, 'normal', [128, 128, 128]);
+    addText('This report was generated automatically by Nilkanth Landscape System.', margin, finalY + 8, 8, 'normal', [128, 128, 128]);
     addText('For any queries, please contact the system administrator.', margin, finalY + 12, 8, 'normal', [128, 128, 128]);
 
     // Generate PDF blob
@@ -325,7 +325,7 @@ export const createTraditionalMusterRollPDF = async (reportData, dateRange, opti
     const darkGray = [55, 65, 81];
 
     // Get company code from options or use default
-    const companyCode = options.companyCode || 'ASOPALAV';
+    const companyCode = options.companyCode || 'NEELKANTH';
     const fallbackLogoUrl = options.fallbackLogoUrl || null;
 
     // Helper functions
@@ -358,8 +358,8 @@ export const createTraditionalMusterRollPDF = async (reportData, dateRange, opti
       const normalizedCode = companyCode.toUpperCase();
       const logoMap = {
         'HARIKRISHNA': 'HARIKRISHNA.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg', // Alternative spelling
+        'NEELKANTH': 'NEELKANTH.jpg',
+        'NILKANTH': 'NEELKANTH.jpg', // Alternative spelling
       };
 
       const logoFileName = logoMap[normalizedCode];
@@ -439,14 +439,14 @@ export const createTraditionalMusterRollPDF = async (reportData, dateRange, opti
 
     // Company name - inline with logo
     doc.setFontSize(14);
-    doc.text('ASOPALAV GARDEN', textStartX, companyNameY);
+    doc.text('NILKANTH LANDSCAPE', textStartX, companyNameY);
 
     // Deployment text - inline with logo
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     const currentDate = new Date();
     const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
-    const deploymentText = `DEPLOYMENT OF ASOPALAV PERSONNEL AT ASOPALAV GARDEN UNIT ON ${monthYear}`;
+    const deploymentText = `DEPLOYMENT OF LANDSCAPE PERSONNEL AT NILKANTH LANDSCAPE UNIT ON ${monthYear}`;
     doc.text(deploymentText, textStartX, deploymentY);
 
     // Set currentY to start table below the header

@@ -414,7 +414,7 @@ const EnhancedReportsSection = () => {
               <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center mr-3">
                 <Shield className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-lg font-bold">ASOPALAV GARDEN</h2>
+              <h2 className="text-lg font-bold">NILKANTH LANDSCAPE</h2>
             </div>
             <h3 className="text-base font-semibold text-gray-600">Professional Landscape Solutions</h3>
             <p className="text-sm mt-1 text-gray-500">
@@ -505,7 +505,7 @@ const EnhancedReportsSection = () => {
               {/* Footer */}
               <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 text-center">
-                  This report was generated automatically by Asopalav Garden System. 
+                  This report was generated automatically by Nilkanth Landscape System. 
                   For any queries, please contact the system administrator.
                 </p>
               </div>

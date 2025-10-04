@@ -334,7 +334,7 @@ const EnhancedEmployeeLogin = () => {
                   Demo Credentials
                 </h4>
                 <div className="space-y-1 text-xs text-green-700">
-                  <p><strong>Email:</strong> arjun@asopalavgarden.com</p>
+                  <p><strong>Email:</strong> arjun@neelkanthlandscape.com</p>
                   <p><strong>Password:</strong> employee123</p>
                 </div>
               </div>

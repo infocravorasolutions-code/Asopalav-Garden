@@ -18,8 +18,8 @@ export const getCompanyLogoPath = (companyCode) => {
     // Map company codes to their logo filenames
     const logoMap = {
         'HARIKRISHNA': 'HARIKRISHNA.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg', // Alternative spelling
+        'NEELKANTH': 'NEELKANTH.jpg',
+        'NILKANTH': 'NEELKANTH.jpg', // Alternative spelling
         // Add more company codes as needed
     };
 
@@ -64,5 +64,5 @@ export const companyLogoExists = (companyCode) => {
  * @returns {Array} - Array of available company codes
  */
 export const getAvailableCompanyLogos = () => {
-    return ['HARIKRISHNA', 'ASOPALAV'];
+    return ['HARIKRISHNA', 'NEELKANTH'];
 };
