@@ -602,22 +602,28 @@ export const getEmployeeAttendance = async (req, res) => {
       return res.status(400).json({ message: "employeeId is required in params" });
     }
 
-    // Pagination parameters
+    // Pagination parameters - Remove default limit to show all records
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10; // Default 10 records per page
-    const skip = (page - 1) * limit;
+    const limit = parseInt(req.query.limit) || 0; // 0 means no limit - show all records
+    const skip = limit > 0 ? (page - 1) * limit : 0;
 
     // Get total count for pagination
     const totalRecords = await Attendance.countDocuments({ employeeId });
 
     // Get all attendance records for this employee with pagination
-    const allAttendance = await Attendance.find({ employeeId })
+    let query = Attendance.find({ employeeId })
       .populate("employeeId", "name empCode email photo")
       .populate("managerId", "name email")
       .select("stepIn stepOut status shift address totalTime stepInImage stepOutImage")
       .sort({ stepIn: -1 }) // Sort by stepIn date (newest first)
-      .skip(skip)
-      .limit(limit);
+      .skip(skip);
+    
+    // Only apply limit if it's greater than 0
+    if (limit > 0) {
+      query = query.limit(limit);
+    }
+    
+    const allAttendance = await query;
 
     // Group by date, keeping only the latest entry per day
     const attendanceMap = new Map();
@@ -636,8 +642,8 @@ export const getEmployeeAttendance = async (req, res) => {
       .sort((a, b) => new Date(b.stepIn) - new Date(a.stepIn));
 
     // Calculate pagination metadata
-    const totalPages = Math.ceil(totalRecords / limit);
-    const hasNextPage = page < totalPages;
+    const totalPages = limit > 0 ? Math.ceil(totalRecords / limit) : 1;
+    const hasNextPage = limit > 0 ? page < totalPages : false;
     const hasPrevPage = page > 1;
 
     res.status(200).json({
@@ -706,22 +712,28 @@ export const getAllAttendance = async (req, res) => {
       }
     }
 
-    // Pagination parameters
+    // Pagination parameters - Remove default limit to show all records
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50; // Default 50 records per page
-    const skip = (page - 1) * limit;
+    const limit = parseInt(req.query.limit) || 0; // 0 means no limit - show all records
+    const skip = limit > 0 ? (page - 1) * limit : 0;
 
     // Get total count for pagination
     const totalRecords = await Attendance.countDocuments(filterQuery);
 
     // Optimized query with pagination and selective fields
-    const allAttendance = await Attendance.find(filterQuery)
+    let query = Attendance.find(filterQuery)
       .populate("employeeId", "name empCode email photo") // Include photo field
       .populate("managerId", "name email") // Only select needed fields
       .select("stepIn stepOut status shift address employeeId managerId createdAt stepInImage stepOutImage totalTime") // Only select needed fields
       .sort({ stepIn: -1 }) // Sort by stepIn instead of createdAt for better performance
-      .skip(skip)
-      .limit(limit);
+      .skip(skip);
+    
+    // Only apply limit if it's greater than 0
+    if (limit > 0) {
+      query = query.limit(limit);
+    }
+    
+    const allAttendance = await query;
 
     // Group by employee and date, keeping only the latest entry per day
     const attendanceMap = new Map();
@@ -744,8 +756,8 @@ export const getAllAttendance = async (req, res) => {
       .sort((a, b) => new Date(b.stepIn) - new Date(a.stepIn));
 
     // Calculate pagination metadata
-    const totalPages = Math.ceil(totalRecords / limit);
-    const hasNextPage = page < totalPages;
+    const totalPages = limit > 0 ? Math.ceil(totalRecords / limit) : 1;
+    const hasNextPage = limit > 0 ? page < totalPages : false;
     const hasPrevPage = page > 1;
 
     res.status(200).json({

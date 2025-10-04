@@ -19,9 +19,13 @@ const addAuthHeaders = (url, options = {}) => {
     const authToken = url.includes('/superadmin/') ? superAdminToken : token;
 
     const headers = {
-        'Content-Type': 'application/json',
         ...options.headers,
     };
+
+    // Only set Content-Type to application/json if it's not FormData
+    if (!(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+    }
 
     if (authToken) {
         headers.Authorization = `Bearer ${authToken}`;
@@ -128,7 +132,7 @@ export const api = {
         fetchInterceptor(endpoint, {
             ...options,
             method: 'POST',
-            body: JSON.stringify(data),
+            body: data instanceof FormData ? data : JSON.stringify(data),
         }),
 
     // PUT request

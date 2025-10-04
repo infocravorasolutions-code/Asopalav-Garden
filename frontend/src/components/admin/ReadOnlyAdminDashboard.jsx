@@ -38,8 +38,8 @@ const ReadOnlyAdminDashboard = () => {
     try {
       setLoading(true);
 
-      // Fetch attendance data
-      const attendanceResponse = await api.get('/attendence');
+      // Fetch attendance data - request all records
+      const attendanceResponse = await api.get('/attendence?limit=0');
       const attendance = attendanceResponse.data.attendance || [];
       setAttendanceData(attendance);
 

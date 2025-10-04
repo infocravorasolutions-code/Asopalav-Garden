@@ -775,6 +775,7 @@ export const createSitePoint = async (req, res) => {
       description,
       latitude,
       longitude,
+      address,
       radius,
       pointCode,
       pointType,
@@ -828,6 +829,7 @@ export const createSitePoint = async (req, res) => {
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude)
       },
+      address: address || '',
       radius: radius || 50,
       pointCode: pointCode.toUpperCase(),
       pointType: pointType || 'checkpoint',

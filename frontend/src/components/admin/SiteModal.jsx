@@ -10,7 +10,7 @@ import {
   Trash2,
   Navigation
 } from 'lucide-react';
-import { api } from '../../services/api';
+import { api, sitePointAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -23,6 +23,7 @@ const PointForm = ({ point, onSave, onCancel, pointTypes }) => {
     pointCode: '',
     latitude: '',
     longitude: '',
+    address: '',
     radius: 50,
     pointType: 'checkpoint',
     isRequired: false,
@@ -38,6 +39,7 @@ const PointForm = ({ point, onSave, onCancel, pointTypes }) => {
         pointCode: point.pointCode || '',
         latitude: point.coordinates?.latitude?.toString() || '',
         longitude: point.coordinates?.longitude?.toString() || '',
+        address: point.address || '',
         radius: point.radius || 50,
         pointType: point.pointType || 'checkpoint',
         isRequired: point.isRequired || false,
@@ -84,6 +86,10 @@ const PointForm = ({ point, onSave, onCancel, pointTypes }) => {
       newErrors.longitude = 'Invalid longitude (must be between -180 and 180)';
     }
 
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    }
+
     if (formData.radius < 5 || formData.radius > 500) {
       newErrors.radius = 'Radius must be between 5 and 500 meters';
     }
@@ -112,7 +118,7 @@ const PointForm = ({ point, onSave, onCancel, pointTypes }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Point Name *
@@ -159,7 +165,7 @@ const PointForm = ({ point, onSave, onCancel, pointTypes }) => {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Latitude *
@@ -199,6 +205,23 @@ const PointForm = ({ point, onSave, onCancel, pointTypes }) => {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
+          Address *
+        </label>
+        <textarea
+          name="address"
+          value={formData.address}
+          onChange={handleChange}
+          placeholder="Enter full address of the point"
+          rows="3"
+          className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${errors.address ? 'border-red-500' : ''}`}
+        />
+        {errors.address && (
+          <p className="text-red-500 text-xs mt-1">{errors.address}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Point Type
         </label>
         <select
@@ -215,8 +238,8 @@ const PointForm = ({ point, onSave, onCancel, pointTypes }) => {
         </select>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div>
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-end sm:space-y-0 sm:gap-4">
+        <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Radius (meters)
           </label>
@@ -249,17 +272,18 @@ const PointForm = ({ point, onSave, onCancel, pointTypes }) => {
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-3 pt-4 border-t">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t">
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
+          className="w-full sm:w-auto"
         >
           Cancel
         </Button>
         <Button
           type="submit"
-          className="flex items-center gap-2"
+          className="flex items-center justify-center gap-2 w-full sm:w-auto"
         >
           <Save className="w-4 h-4" />
           {point ? 'Update Point' : 'Add Point'}
@@ -269,7 +293,7 @@ const PointForm = ({ point, onSave, onCancel, pointTypes }) => {
   );
 };
 
-const SiteModal = ({ site, onClose }) => {
+const SiteModal = ({ site, onClose, onRefresh }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -463,25 +487,36 @@ const SiteModal = ({ site, onClose }) => {
     }
   };
 
-  const handleSavePoint = (pointData) => {
-    if (editingPoint) {
-      // Update existing point
-      setPoints(prev => prev.map(p => 
-        p._id === editingPoint._id ? { ...p, ...pointData } : p
-      ));
-      toast.success('Point updated successfully');
-    } else {
-      // Add new point
-      const newPoint = {
-        _id: Date.now().toString(), // Temporary ID
-        ...pointData,
-        order: points.length + 1
-      };
-      setPoints(prev => [...prev, newPoint]);
-      toast.success('Point added successfully');
+  const handleSavePoint = async (pointData) => {
+    try {
+      if (editingPoint) {
+        // Update existing point
+        await sitePointAPI.updateSitePoint(site._id, editingPoint._id, pointData);
+        setPoints(prev => prev.map(p => 
+          p._id === editingPoint._id ? { ...p, ...pointData } : p
+        ));
+        toast.success('Point updated successfully');
+      } else {
+        // Add new point
+        const response = await sitePointAPI.createSitePoint(site._id, pointData);
+        const newPoint = {
+          _id: response.data.point._id,
+          ...pointData,
+          order: points.length + 1
+        };
+        setPoints(prev => [...prev, newPoint]);
+        toast.success('Point added successfully');
+      }
+      setShowPointModal(false);
+      setEditingPoint(null);
+      // Refresh site data to get updated points
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error saving point:', error);
+      toast.error(error.response?.data?.message || 'Failed to save point');
     }
-    setShowPointModal(false);
-    setEditingPoint(null);
   };
 
   const handlePointModalClose = () => {
@@ -490,28 +525,30 @@ const SiteModal = ({ site, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
             {site ? 'Edit Site' : 'Create New Site'}
           </h2>
           <button
             onClick={() => onClose()}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 p-1"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
+            <h3 className="text-base sm:text-lg font-medium text-gray-900">Basic Information</h3>
+            <h3 className="text-base sm:text-lg font-medium text-gray-900">Basic Information</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Site Name *
@@ -591,11 +628,12 @@ const SiteModal = ({ site, onClose }) => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Site Type
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {siteTypes.map((type) => (
                   <label
                     key={type.value}
-                    className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${
+                    className={`flex items-center gap-2 p-2 sm:p-3 border rounded-lg cursor-pointer transition-colors ${
                       formData.siteType === type.value
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-300 hover:border-gray-400'
@@ -609,8 +647,8 @@ const SiteModal = ({ site, onClose }) => {
                       onChange={handleChange}
                       className="sr-only"
                     />
-                    <span className="text-lg">{type.icon}</span>
-                    <span className="text-sm font-medium">{type.label}</span>
+                    <span className="text-base sm:text-lg">{type.icon}</span>
+                    <span className="text-xs sm:text-sm font-medium truncate">{type.label}</span>
                   </label>
                 ))}
               </div>
@@ -619,21 +657,23 @@ const SiteModal = ({ site, onClose }) => {
 
           {/* Location Information */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Location Information</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900">Location Information</h3>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleGetCurrentLocation}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 w-full sm:w-auto"
+                className="flex items-center gap-2 w-full sm:w-auto"
               >
                 <MapPin className="w-4 h-4" />
-                Get Current Location
+                <span className="hidden sm:inline">Get Current Location</span>
+                <span className="sm:hidden">Get Location</span>
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Latitude *
@@ -705,14 +745,15 @@ const SiteModal = ({ site, onClose }) => {
 
           {/* Points Management */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Site Points</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900">Site Points</h3>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleAddPoint}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 w-full sm:w-auto"
+                className="flex items-center gap-2 w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 Add Point
@@ -722,17 +763,17 @@ const SiteModal = ({ site, onClose }) => {
             {points.length > 0 ? (
               <div className="space-y-2">
                 {points.map((point, index) => (
-                  <div key={point._id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                  <div key={point._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg bg-gray-50 gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <Navigation className="w-4 h-4 text-blue-600" />
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{point.name}</p>
-                        <p className="text-sm text-gray-600">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 truncate">{point.name}</p>
+                        <p className="text-xs sm:text-sm text-gray-600 break-all">
                           {point.pointCode} • {point.coordinates?.latitude?.toFixed(6)}, {point.coordinates?.longitude?.toFixed(6)}
                         </p>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             point.pointType === 'entrance' ? 'bg-green-100 text-green-800' :
                             point.pointType === 'work_area' ? 'bg-blue-100 text-blue-800' :
@@ -749,13 +790,14 @@ const SiteModal = ({ site, onClose }) => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 self-end sm:self-auto">
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEditPoint(point)}
-                        className="text-blue-600 hover:text-blue-700"
+                        className="text-blue-600 hover:text-blue-700 p-2"
+                        className="text-blue-600 hover:text-blue-700 p-2"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -764,7 +806,8 @@ const SiteModal = ({ site, onClose }) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeletePoint(point._id)}
-                        className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 p-2"
+                        className="text-red-600 hover:text-red-700 p-2"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -782,19 +825,20 @@ const SiteModal = ({ site, onClose }) => {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-6 border-t">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 sm:pt-6 border-t">
             <Button
               type="button"
               variant="outline"
               onClick={() => onClose()}
               disabled={loading}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               <Save className="w-4 h-4" />
@@ -806,21 +850,22 @@ const SiteModal = ({ site, onClose }) => {
 
       {/* Point Modal */}
       {showPointModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-60">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-60">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                 {editingPoint ? 'Edit Point' : 'Add Point'}
               </h3>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handlePointModalClose}
+                className="p-1"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
             </div>
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <PointForm
                 point={editingPoint}
                 onSave={handleSavePoint}

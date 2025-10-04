@@ -106,6 +106,10 @@ const SiteSchema = new mongoose.Schema({
                 max: 180
             }
         },
+        address: { 
+            type: String,
+            trim: true
+        },
         radius: { 
             type: Number, 
             default: 50, // in meters

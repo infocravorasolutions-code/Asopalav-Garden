@@ -17,6 +17,7 @@ const SitePointModal = ({ siteId, point, onClose }) => {
     description: '',
     latitude: '',
     longitude: '',
+    address: '',
     radius: 50,
     pointCode: '',
     pointType: 'checkpoint',
@@ -44,6 +45,7 @@ const SitePointModal = ({ siteId, point, onClose }) => {
         description: point.description || '',
         latitude: point.coordinates?.latitude?.toString() || '',
         longitude: point.coordinates?.longitude?.toString() || '',
+        address: point.address || '',
         radius: point.radius || 50,
         pointCode: point.pointCode || '',
         pointType: point.pointType || 'checkpoint',
@@ -92,6 +94,10 @@ const SitePointModal = ({ siteId, point, onClose }) => {
       newErrors.longitude = 'Longitude is required';
     } else if (isNaN(formData.longitude) || formData.longitude < -180 || formData.longitude > 180) {
       newErrors.longitude = 'Invalid longitude (must be between -180 and 180)';
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
     }
 
     if (formData.radius < 5 || formData.radius > 500) {
@@ -337,6 +343,26 @@ const SitePointModal = ({ siteId, point, onClose }) => {
                   </p>
                 )}
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Address *
+              </label>
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                placeholder="Enter full address of the point"
+                rows="3"
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${errors.address ? 'border-red-500' : ''}`}
+              />
+              {errors.address && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.address}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
