@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Users,
   Clock,
@@ -21,13 +21,28 @@ const ManagerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate()
-  // Update time every second
+  // Update time every second with performance optimization
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Memoize expensive calculations
+  const memoizedStats = useMemo(() => {
+    const totalEmployees = employees.length;
+    const presentToday = employees.filter(emp => emp.status === 'clocked-in').length;
+    const absentToday = employees.filter(emp => emp.status === 'not-clocked').length;
+    const checkedOut = employees.filter(emp => emp.status === 'clocked-out').length;
+
+    return {
+      totalEmployees,
+      presentToday,
+      absentToday,
+      checkedOut
+    };
+  }, [employees]);
 
   // Fetch employees under this manager
   useEffect(() => {
@@ -62,7 +77,7 @@ const ManagerDashboard = () => {
             position: emp.position,
             companyId: emp.companyId?._id || emp.companyId,
             companyName: emp.companyId?.name || company?.name || 'Unknown Company',
-            status: 'not_checked_in', // Default status, will be updated by fetchAttendanceStatus
+            status: 'not-clocked', // Default status, will be updated by fetchAttendanceStatus
             stepInTime: null,
             stepOutTime: null,
             location: null,
@@ -115,71 +130,89 @@ const ManagerDashboard = () => {
     loadEmployees();
   }, [user?.companyId, company?.name]);
 
-  // Fetch attendance status for employees
+  // Optimized fetch attendance status for employees using batch processing
   const fetchAttendanceStatus = async (employeesList) => {
     try {
       console.log('Fetching attendance status for employees...');
+      setLoading(true);
 
-      // Check attendance status for each employee
-      for (const employee of employeesList) {
-        try {
-          const statusResponse = await api.get(`/attendence/status/${employee.id}`);
-          console.log(`Attendance status for ${employee.name}:`, statusResponse.data);
+      // Process employees in batches of 5 to avoid overwhelming the server
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < employeesList.length; i += batchSize) {
+        batches.push(employeesList.slice(i, i + batchSize));
+      }
 
-          if (statusResponse.data.success) {
-            const { isSteppedIn, isCompleted, attendance } = statusResponse.data;
+      // Process each batch
+      for (const batch of batches) {
+        const promises = batch.map(async (employee) => {
+          try {
+            const statusResponse = await api.get(`/attendence/status/${employee.id}`);
+            console.log(`Attendance status for ${employee.name}:`, statusResponse.data);
 
-            if (isSteppedIn && attendance) {
-              // Employee is currently stepped in today
-              employee.status = 'checked_in';
-              employee.stepInTime = new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-              employee.stepOutTime = null;
-              employee.isOnline = true;
-              employee.lastSeen = new Date(attendance.stepIn);
-              console.log(`✅ ${employee.name} is currently stepped in`);
-            } else if (isCompleted && attendance) {
-              // Employee has completed attendance for today
-              employee.status = 'checked_out';
-              employee.stepInTime = new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-              employee.stepOutTime = new Date(attendance.stepOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-              employee.isOnline = false;
-              employee.lastSeen = new Date(attendance.stepOut);
-              console.log(`✅ ${employee.name} has completed attendance today`);
+            if (statusResponse.data.success) {
+              const { isSteppedIn, isCompleted, attendance } = statusResponse.data;
+
+              if (isSteppedIn && attendance) {
+                // Employee is currently stepped in today
+                employee.status = 'clocked-in';
+                employee.stepInTime = new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                employee.stepOutTime = null;
+                employee.isOnline = true;
+                employee.lastSeen = new Date(attendance.stepIn);
+                console.log(`✅ ${employee.name} is currently stepped in`);
+              } else if (isCompleted && attendance) {
+                // Employee has completed attendance for today
+                employee.status = 'clocked-out';
+                employee.stepInTime = new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                employee.stepOutTime = new Date(attendance.stepOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                employee.isOnline = false;
+                employee.lastSeen = new Date(attendance.stepOut);
+                console.log(`✅ ${employee.name} has completed attendance today`);
+              } else {
+                // No attendance record for today
+                employee.status = 'not-clocked';
+                employee.stepInTime = null;
+                employee.stepOutTime = null;
+                employee.isOnline = false;
+                employee.lastSeen = null;
+                console.log(`❌ ${employee.name} has no attendance record for today`);
+              }
             } else {
-              // No attendance record for today
-              employee.status = 'not_checked_in';
+              // API call failed, mark as not checked in
+              employee.status = 'not-clocked';
               employee.stepInTime = null;
               employee.stepOutTime = null;
               employee.isOnline = false;
               employee.lastSeen = null;
-              console.log(`❌ ${employee.name} has no attendance record for today`);
+              console.log(`❌ API call failed for ${employee.name}`);
             }
-          } else {
-            // API call failed, mark as not checked in
-            employee.status = 'not_checked_in';
+          } catch (statusError) {
+            console.log(`No attendance record found for ${employee.name}:`, statusError.message);
+            // Keep default status as not-clocked
+            employee.status = 'not-clocked';
             employee.stepInTime = null;
             employee.stepOutTime = null;
             employee.isOnline = false;
             employee.lastSeen = null;
-            console.log(`❌ API call failed for ${employee.name}`);
           }
-        } catch (statusError) {
-          console.log(`No attendance record found for ${employee.name}:`, statusError.message);
-          // Keep default status as not_checked_in
-          employee.status = 'not_checked_in';
-          employee.stepInTime = null;
-          employee.stepOutTime = null;
-          employee.isOnline = false;
-          employee.lastSeen = null;
-        }
+          return employee;
+        });
+
+        // Wait for batch to complete
+        await Promise.all(promises);
+        
+        // Update state after each batch for better UX
+        setEmployees([...employeesList]);
       }
 
-      setEmployees(employeesList);
       console.log('Updated employees with attendance status:', employeesList);
     } catch (error) {
       console.error('Error fetching attendance status:', error);
       // Continue with default status
       setEmployees(employeesList);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -215,7 +248,7 @@ const ManagerDashboard = () => {
           position: emp.position,
           companyId: emp.companyId?._id || emp.companyId,
           companyName: emp.companyId?.name || company?.name || 'Unknown Company',
-          status: 'not_checked_in', // Default status, will be updated by fetchAttendanceStatus
+            status: 'not-clocked', // Default status, will be updated by fetchAttendanceStatus
           stepInTime: null,
           stepOutTime: null,
           location: null,
@@ -283,11 +316,8 @@ const ManagerDashboard = () => {
     });
   };
 
-  // Calculate stats
-  const totalEmployees = employees.length;
-  const presentToday = employees.filter(emp => emp.status === 'checked_in').length;
-  const absentToday = employees.filter(emp => emp.status === 'not_checked_in').length;
-  const checkedOut = employees.filter(emp => emp.status === 'checked_out').length;
+  // Use memoized stats for better performance
+  const { totalEmployees, presentToday, absentToday, checkedOut } = memoizedStats;
 
   // Debug logging
   console.log('📊 Dashboard Stats Calculation:');
@@ -295,7 +325,18 @@ const ManagerDashboard = () => {
   console.log(`Present Today: ${presentToday}`);
   console.log(`Absent Today: ${absentToday}`);
   console.log(`Checked Out: ${checkedOut}`);
-  console.log('Employee Statuses:', employees.map(emp => ({ name: emp.name, status: emp.status })));
+  console.log('Employee Statuses:', employees.map(emp => ({ 
+    name: emp.name, 
+    status: emp.status,
+    stepInTime: emp.stepInTime,
+    stepOutTime: emp.stepOutTime,
+    isOnline: emp.isOnline
+  })));
+  
+  // Force re-render when employees change
+  useEffect(() => {
+    console.log('🔄 Employees data changed, statistics recalculated');
+  }, [employees]);
 
   const stats = [
     {

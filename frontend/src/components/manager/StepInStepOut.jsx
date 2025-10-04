@@ -38,6 +38,12 @@ const StepInStepOut = () => {
     const [attendanceList, setAttendanceList] = useState([]);
     const [loading, setLoading] = useState(false);
     const [, setError] = useState(null);
+    
+    // Lazy loading states
+    const [displayedEmployees, setDisplayedEmployees] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const itemsPerPage = 12; // Show 12 employees at a time
 
     // State for step in/out functionality
     const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -48,6 +54,11 @@ const StepInStepOut = () => {
     const [cameraReady, setCameraReady] = useState(false);
     const [imageLoading, setImageLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Enhanced loading states
+    const [operationLoading, setOperationLoading] = useState(false);
+    const [operationType, setOperationType] = useState('');
+    const [batchProcessing, setBatchProcessing] = useState(false);
     const [locationLoading, setLocationLoading] = useState(false);
 
     // Form data
@@ -131,20 +142,30 @@ const StepInStepOut = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Fetch employees under this manager
+    // Fetch employees under this manager with attendance status
     const fetchEmployees = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await api.get('/employee/team');
+            const response = await api.get('/manager/team');
+            console.log('👥 Manager Team API response:', response.data);
+            
             if (response.data) {
-                setEmployees(response.data);
+                const employeesData = response.data.data || response.data;
+                console.log('👥 Processed team members:', employeesData);
+                console.log('👥 Team member IDs:', employeesData.map(emp => ({ 
+                    name: emp.name, 
+                    id: emp._id, 
+                    idType: typeof emp._id,
+                    status: emp.attendanceStatus?.status
+                })));
+                setEmployees(employeesData);
             } else {
                 setEmployees([]);
             }
-        } catch {
-            console.error('Error fetching employees');
-            setError('Failed to fetch employees');
-            toast.error('Failed to fetch employees');
+        } catch (error) {
+            console.error('Error fetching team members:', error);
+            setError('Failed to fetch team members');
+            toast.error('Failed to fetch team members');
         } finally {
             setLoading(false);
         }
@@ -213,25 +234,7 @@ const StepInStepOut = () => {
         }
     }, []);
 
-    // Fetch attendance data
-    const fetchAttendance = useCallback(async () => {
-        try {
-            console.log('Fetching attendance data...');
-            const response = await api.get('/attendence/');
-            console.log('Attendance API response:', response);
-
-            if (response.attendance) {
-                setAttendanceList(response.attendance);
-                console.log('Attendance data loaded:', response.attendance.length, 'records');
-            } else {
-                setAttendanceList([]);
-                console.log('No attendance data found');
-            }
-        } catch (error) {
-            console.error('Error fetching attendance:', error);
-            toast.error('Failed to fetch attendance data');
-        }
-    }, []);
+    // Note: Attendance data is now fetched as part of team members with status
 
     // Get current location with fallback
     const getCurrentLocation = useCallback(async () => {
@@ -321,17 +324,9 @@ const StepInStepOut = () => {
                  console.log('Initializing StepInStepOut data...');
                  await Promise.all([
                      fetchEmployees(),
-                     fetchAttendance(),
                      fetchSites()
                  ]);
                  console.log('StepInStepOut data initialized successfully');
-
-                 // Force refresh attendance data after initial load to ensure we have the latest records
-                 setTimeout(async () => {
-                     console.log('🔄 Secondary attendance refresh after initialization...');
-                     await fetchAttendance();
-                 }, 2000);
-
              } catch (error) {
                  console.error('Error initializing data:', error);
                  toast.error('Failed to load initial data');
@@ -339,7 +334,7 @@ const StepInStepOut = () => {
          };
 
          initializeData();
-     }, [fetchEmployees, fetchAttendance, fetchSites]);
+     }, [fetchEmployees, fetchSites]);
 
     // Fetch points when site filter changes
     useEffect(() => {
@@ -354,28 +349,33 @@ const StepInStepOut = () => {
     useEffect(() => {
         const interval = setInterval(async () => {
             try {
-                console.log('Auto-refreshing attendance data...');
-                await fetchAttendance();
+                console.log('Auto-refreshing team member data...');
+                await fetchEmployees();
             } catch (error) {
                 console.error('Auto-refresh failed:', error);
             }
         }, 30000); // 30 seconds
 
         return () => clearInterval(interval);
-    }, [fetchAttendance]);
+    }, [fetchEmployees]);
+
+    // Force refresh statistics when team member data changes
+    useEffect(() => {
+        console.log('🔄 Team member data changed, statistics will be recalculated');
+    }, [employees]);
 
     // Force refresh function for manual updates
     const forceRefreshAttendance = useCallback(async () => {
         try {
-            console.log('🔄 Force refreshing attendance data...');
-            await fetchAttendance();
-            console.log('✅ Attendance data force refreshed');
+            console.log('🔄 Force refreshing team member data...');
+            await fetchEmployees();
+            console.log('✅ Team member data force refreshed');
             toast.success('Data refreshed successfully');
         } catch (error) {
             console.error('❌ Force refresh failed:', error);
             toast.error('Failed to refresh data');
         }
-    }, [fetchAttendance]);
+    }, [fetchEmployees]);
 
     // Camera functions
     const capture = useCallback(() => {
@@ -414,109 +414,74 @@ const StepInStepOut = () => {
         event.target.value = '';
     };
 
-    // Get employee status
+    // Get employee status - now using backend-provided status
     const getEmployeeStatus = useCallback((employeeId) => {
-        const today = new Date().toDateString();
-
         console.log('🔍 Getting employee status for:', employeeId);
-        console.log('📅 Today:', today);
-        console.log('📊 Total attendance records:', attendanceList.length);
-
-        // Find all attendance records for this employee today
-        const todayAttendanceRecords = attendanceList.filter(a => {
-            const isCurrentEmployee = a.employeeId?._id === employeeId || a.employeeId === employeeId;
-            const isToday = a.stepIn ? new Date(a.stepIn).toDateString() === today : false;
-            return isCurrentEmployee && isToday;
-        });
-
-        console.log('📋 Today\'s attendance records for employee:', todayAttendanceRecords.length);
-
-        if (!todayAttendanceRecords || todayAttendanceRecords.length === 0) {
-            console.log('❌ No attendance records found for today');
+        
+        // Find employee in the employees array (which now includes attendanceStatus from backend)
+        const employee = employees.find(emp => emp._id === employeeId);
+        
+        if (!employee) {
+            console.log('❌ Employee not found in team members');
             return { status: 'not-clocked', text: 'Not Clocked', color: 'gray', image: null };
         }
 
-        // Get the most recent attendance record for today
-        const latestAttendance = todayAttendanceRecords.sort((a, b) =>
-            new Date(b.stepIn) - new Date(a.stepIn)
-        )[0];
-
-        console.log('🎯 Latest attendance record:', {
-            employeeId,
-            today,
-            latestAttendance: {
-                _id: latestAttendance._id,
-                stepIn: latestAttendance.stepIn,
-                stepOut: latestAttendance.stepOut,
-                stepInImage: latestAttendance.stepInImage,
-                stepOutImage: latestAttendance.stepOutImage
-            },
-            hasStepIn: !!latestAttendance.stepIn,
-            hasStepOut: !!latestAttendance.stepOut,
-            stepInTime: latestAttendance.stepIn,
-            stepOutTime: latestAttendance.stepOut
-        });
-
-        // If employee has stepped in but not stepped out (stepOut is null/undefined), they are currently clocked in
-        if (latestAttendance.stepIn && (latestAttendance.stepOut === null || latestAttendance.stepOut === undefined)) {
-            console.log('✅ Employee is currently CLOCKED IN');
+        // Use the attendanceStatus provided by the backend
+        if (employee.attendanceStatus) {
+            console.log('✅ Using backend-provided status:', employee.attendanceStatus);
             return {
-                status: 'clocked-in',
-                text: 'Clocked In',
-                color: 'green',
-                image: latestAttendance.stepInImage
+                status: employee.attendanceStatus.status,
+                text: employee.attendanceStatus.text,
+                color: employee.attendanceStatus.color,
+                image: employee.attendanceStatus.image
             };
         }
 
-        // If employee has both stepped in and stepped out, they are clocked out
-        if (latestAttendance.stepIn && latestAttendance.stepOut) {
-            console.log('✅ Employee is CLOCKED OUT');
-            return {
-                status: 'clocked-out',
-                text: 'Clocked Out',
-                color: 'orange',
-                image: latestAttendance.stepOutImage || latestAttendance.stepInImage
-            };
-        }
-
-        console.log('❌ No valid status found, defaulting to not-clocked');
+        console.log('❌ No attendance status found, defaulting to not-clocked');
         return { status: 'not-clocked', text: 'Not Clocked', color: 'gray', image: null };
-    }, [attendanceList]);
+    }, [employees]);
 
-    // Handle step in/out
+    // Handle step in/out with loading states
     const handleStepInOut = async (employeeId, type) => {
         const employee = employees.find(emp => emp._id === employeeId);
 
         if (!employee) {
-            toast.error('Employee not found');
+            toast.error('Team member not found');
             return;
         }
 
-        const currentStatus = getEmployeeStatus(employeeId);
+        setOperationLoading(true);
+        setOperationType(type);
 
-         if (type === 'step-in') {
-             if (currentStatus.status === 'clocked-in') {
-                 toast.error(`${employee.name} is already clocked in. Please step out first.`);
-                 return;
-             }
-             setSelectedEmployee(employee);
-             setStepType(type);
-             setShowCamera(true);
-             setLocation('');
-             setNote('');
-             setShift('morning');
-        } else if (type === 'step-out') {
-            if (currentStatus.status !== 'clocked-in') {
-                toast.error(`${employee.name} is not currently clocked in.`);
-                return;
+        try {
+            const currentStatus = getEmployeeStatus(employeeId);
+
+            if (type === 'step-in') {
+                if (currentStatus.status === 'clocked-in') {
+                    toast.error(`${employee.name} is already clocked in. Please step out first.`);
+                    return;
+                }
+                setSelectedEmployee(employee);
+                setStepType(type);
+                setShowCamera(true);
+                setLocation('');
+                setNote('');
+                setShift('morning');
+            } else if (type === 'step-out') {
+                if (currentStatus.status !== 'clocked-in') {
+                    toast.error(`${employee.name} is not currently clocked in.`);
+                    return;
+                }
+                if (window.confirm(`Are you sure you want to sign out ${employee.name}?`)) {
+                    await handleStepOut(employee);
+                }
             }
-            if (window.confirm(`Are you sure you want to sign out ${employee.name}?`)) {
-                await handleStepOut(employee);
-            }
+        } finally {
+            setOperationLoading(false);
         }
     };
 
-    // Handle step out without camera
+    // Handle step out without camera using new backend endpoint
     const handleStepOut = async (employee) => {
         try {
             setIsSubmitting(true);
@@ -533,41 +498,28 @@ const StepInStepOut = () => {
                 }
             }
 
-            const today = new Date().toDateString();
-            const todayAttendance = attendanceList.find(a => {
-                const isCurrentEmployee = a.employeeId?._id === employee._id || a.employeeId === employee._id;
-                const isToday = new Date(a.stepIn).toDateString() === today;
-                return isCurrentEmployee && isToday && !a.stepOut;
-            });
-
-            if (!todayAttendance) {
-                toast.error('No active attendance record found for this employee.');
-                return;
-            }
-
+            // Use the new manager step-out endpoint
             const formData = new FormData();
-            formData.append('attendanceId', todayAttendance._id);
+            formData.append('employeeId', employee._id);
             formData.append('longitude', parseFloat(longitude) || 0);
             formData.append('latitude', parseFloat(latitude) || 0);
             formData.append('address', finalLocation);
             formData.append('note', 'Step out via manager');
             formData.append('status', 'present');
 
-            const response = await attendanceAPI.stepOut(formData);
+            // Use the regular post method - fetchInterceptor now handles FormData properly
+            const response = await api.post('/manager/step-out', formData);
 
-            if (response.data.success) {
+            if (response.success) {
                 toast.success(`${employee.name} successfully clocked out!`);
                 console.log('Refreshing data after successful step-out...');
-                await Promise.all([
-                    fetchAttendance(),
-                    fetchEmployees()
-                ]);
+                await fetchEmployees(); // Refresh team members with updated status
                 console.log('Data refreshed after step-out');
             } else {
                 toast.error(response.message || 'Failed to clock out employee');
             }
-        } catch {
-            console.error('Step out error');
+        } catch (error) {
+            console.error('Step out error:', error);
             toast.error('Failed to clock out employee. Please try again.');
         } finally {
             setIsSubmitting(false);
@@ -619,31 +571,35 @@ const StepInStepOut = () => {
 
             const formData = new FormData();
             formData.append('employeeId', selectedEmployee._id);
-            formData.append('managerId', user._id);
-            formData.append('companyId', user.companyId);
             formData.append('shift', shift);
             formData.append('status', status);
             formData.append('longitude', parseFloat(longitude) || 0);
             formData.append('latitude', parseFloat(latitude) || 0);
             formData.append('address', finalLocation);
             formData.append('note', note);
-            formData.append("stepOut", null)
 
-            console.log("formData ==> ", formData);
             if (stepType === 'step-in') {
                 formData.append('stepInImage', file);
             }
 
+            // Debug: Log all FormData entries
+            console.log("=== FormData Contents ===");
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}:`, value);
+            }
+            console.log("=== End FormData ===");
+
             let response;
             if (stepType === 'step-in') {
-                response = await attendanceAPI.stepIn(formData);
-                console.log('Step in response:', response);
+                // Use the regular post method - fetchInterceptor now handles FormData properly
+                response = await api.post('/manager/step-in', formData);
+                console.log('Manager step in response:', response);
             } else {
                 response = await attendanceAPI.stepOut(formData);
                 console.log('Step out response:', response);
             }
             
-            if (response.data.success === true) {
+            if (response.success === true) {
                 toast.success(`${selectedEmployee.name} successfully ${stepType === 'step-in' ? 'clocked in' : 'clocked out'}!`);
 
                 // Close modal first
@@ -656,21 +612,10 @@ const StepInStepOut = () => {
                 // Refresh data to get the latest status
                 console.log('Refreshing data after successful attendance operation...');
 
-                // Force refresh attendance data to get latest records
+                // Refresh team members to get updated status
                 try {
-                    await fetchAttendance();
-                    console.log('Attendance data refreshed successfully');
-
-                    // Also refresh employees to ensure data consistency
                     await fetchEmployees();
-                    console.log('Employee data refreshed successfully');
-
-                    // Additional check: fetch attendance again to ensure we have the latest data
-                    setTimeout(async () => {
-                        console.log('Secondary attendance refresh...');
-                        await fetchAttendance();
-                    }, 1000);
-
+                    console.log('Team member data refreshed successfully');
                 } catch (error) {
                     console.error('Error refreshing data:', error);
                     toast.error('Data refresh failed, but operation was successful');
@@ -678,7 +623,7 @@ const StepInStepOut = () => {
 
                 console.log('Data refreshed after attendance operation');
             } else {
-                toast.error(response.data.message || `Failed to ${stepType} employee`);
+                toast.error(response.message || `Failed to ${stepType} employee`);
                 return;
             }
         } catch (error) {
@@ -722,16 +667,72 @@ const StepInStepOut = () => {
         });
     }, [employees, debouncedSearchTerm, statusFilter, siteFilter, pointFilter, getEmployeeStatus]);
 
-    // Statistics
-    const stats = {
-        total: Array.isArray(employees) ? employees.length : 0,
-        clockedIn: Array.isArray(employees) ? employees.filter(emp => getEmployeeStatus(emp._id).status === 'clocked-in').length : 0,
-        clockedOut: Array.isArray(employees) ? employees.filter(emp => getEmployeeStatus(emp._id).status === 'clocked-out').length : 0,
-        notClocked: Array.isArray(employees) ? employees.filter(emp => getEmployeeStatus(emp._id).status === 'not-clocked').length : 0,
-    };
+    // Lazy loading logic
+    useEffect(() => {
+        const startIndex = 0;
+        const endIndex = currentPage * itemsPerPage;
+        const newDisplayedEmployees = filteredEmployees.slice(startIndex, endIndex);
+        
+        setDisplayedEmployees(newDisplayedEmployees);
+        setHasMore(endIndex < filteredEmployees.length);
+    }, [filteredEmployees, currentPage, itemsPerPage]);
+
+    // Load more employees
+    const loadMoreEmployees = useCallback(() => {
+        if (hasMore && !loading) {
+            setCurrentPage(prev => prev + 1);
+        }
+    }, [hasMore, loading]);
+
+    // Statistics - Updated to use consistent status values with memoization
+    const stats = useMemo(() => {
+        console.log('📊 Recalculating statistics...');
+        console.log('Team members count:', employees.length);
+        
+        const total = Array.isArray(employees) ? employees.length : 0;
+        const clockedIn = Array.isArray(employees) ? employees.filter(emp => {
+            const status = getEmployeeStatus(emp._id);
+            console.log(`Team member ${emp.name} status:`, status.status);
+            return status.status === 'clocked-in';
+        }).length : 0;
+        const clockedOut = Array.isArray(employees) ? employees.filter(emp => {
+            const status = getEmployeeStatus(emp._id);
+            return status.status === 'clocked-out';
+        }).length : 0;
+        const notClocked = Array.isArray(employees) ? employees.filter(emp => {
+            const status = getEmployeeStatus(emp._id);
+            return status.status === 'not-clocked';
+        }).length : 0;
+
+        console.log('📈 Calculated stats:', { total, clockedIn, clockedOut, notClocked });
+        
+        return {
+            total,
+            clockedIn,
+            clockedOut,
+            notClocked
+        };
+    }, [employees, getEmployeeStatus]);
 
     return (
-        <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
+        <div className="space-y-4 sm:space-y-6 h-full flex flex-col relative">
+            {/* Global Loading Overlay */}
+            {operationLoading && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 flex flex-col items-center space-y-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                        <div className="text-center">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                {operationType === 'step-in' ? 'Processing Step In...' : 'Processing Step Out...'}
+                            </h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                                Please wait while we process your request
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1">
@@ -794,7 +795,7 @@ const StepInStepOut = () => {
                 <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 sm:p-4 lg:p-6 rounded-lg">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex-1">
-                            <p className="text-xs sm:text-sm opacity-90">Total Employees</p>
+                            <p className="text-xs sm:text-sm opacity-90">Total Team Members</p>
                             <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.total}</p>
                         </div>
                         <Users className="h-6 w-6 sm:h-8 sm:w-8 lg:h-12 lg:w-12 opacity-80 mt-2 sm:mt-0" />
@@ -839,7 +840,7 @@ const StepInStepOut = () => {
                                 <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="text"
-                                    placeholder="Search employees by name or email..."
+                                    placeholder="Search team members by name or email..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
@@ -950,11 +951,21 @@ const StepInStepOut = () => {
                 </div>
             </div>
 
-            {/* Employee Cards */}
+            {/* Team Member Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                {filteredEmployees.map(employee => {
+                {displayedEmployees.map(employee => {
+                    console.log("🔍 Processing employee:", {
+                        name: employee.name,
+                        id: employee._id,
+                        idType: typeof employee._id
+                    });
                     const status = getEmployeeStatus(employee._id);
-                    console.log("status ==> ", status);
+                    console.log("📊 Employee status result:", {
+                        name: employee.name,
+                        status: status.status,
+                        text: status.text,
+                        color: status.color
+                    });
                     const displayImage = status.image || employee.photo;
 
                     return (
@@ -1014,29 +1025,47 @@ const StepInStepOut = () => {
                                     <button
                                         onClick={() => handleStepInOut(employee._id, 'step-in')}
                                         className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
-                                        disabled={loading}
+                                        disabled={loading || operationLoading}
                                     >
-                                        <LogIn className="h-4 w-4" />
-                                        <span>Step In</span>
+                                        {operationLoading && operationType === 'step-in' ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                <span>Processing...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <LogIn className="h-4 w-4" />
+                                                <span>Step In</span>
+                                            </>
+                                        )}
                                     </button>
                                 )}
                                 {status.status === 'clocked-out' && (
                                     <button
                                         onClick={() => handleStepInOut(employee._id, 'step-in')}
                                         className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
-                                        disabled={loading}
+                                        disabled={loading || operationLoading}
                                     >
-                                        <LogIn className="h-4 w-4" />
-                                        <span>Step In Again</span>
+                                        {operationLoading && operationType === 'step-in' ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                <span>Processing...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <LogIn className="h-4 w-4" />
+                                                <span>Step In Again</span>
+                                            </>
+                                        )}
                                     </button>
                                 )}
                                 {status.status === 'clocked-in' && (
                                     <button
                                         onClick={() => handleStepInOut(employee._id, 'step-out')}
                                         className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
-                                        disabled={loading || isSubmitting}
+                                        disabled={loading || isSubmitting || operationLoading}
                                     >
-                                        {isSubmitting ? (
+                                        {(isSubmitting || (operationLoading && operationType === 'step-out')) ? (
                                             <>
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                                 <span>Signing Out...</span>
@@ -1055,12 +1084,35 @@ const StepInStepOut = () => {
                 })}
             </div>
 
+            {/* Load More Button */}
+            {hasMore && displayedEmployees.length > 0 && (
+                <div className="flex justify-center py-6">
+                    <button
+                        onClick={loadMoreEmployees}
+                        disabled={loading}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+                    >
+                        {loading ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Loading...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Users className="h-4 w-4" />
+                                <span>Load More Team Members</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            )}
+
             {/* Empty State */}
-            {filteredEmployees.length === 0 && (
+            {displayedEmployees.length === 0 && !loading && (
                 <div className="bg-white p-12 rounded-lg border border-gray-200 text-center">
                     <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Employees Found</h3>
-                    <p className="text-gray-600">No employees match your search criteria.</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Team Members Found</h3>
+                    <p className="text-gray-600">No team members match your search criteria.</p>
                 </div>
             )}
 

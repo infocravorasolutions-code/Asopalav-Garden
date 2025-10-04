@@ -34,7 +34,7 @@ export const AttendanceProvider = ({ children }) => {
     try {
       console.log('🔍 [fetchAttendance] Fetching with filters:', filters);
 
-      const response = await api.get('/attendence/all');
+      const response = await api.get('/attendence/all?limit=0');
       const attendanceData = response.attendance || [];
       const paginationData = response.pagination || {};
 
@@ -328,7 +328,7 @@ export const AttendanceProvider = ({ children }) => {
     try {
       console.log('🔍 [fetchPaginatedAttendance] Fetching with filters:', filters);
 
-      const response = await api.get('/attendence/all');
+      const response = await api.get('/attendence/all?limit=0');
       const attendanceData = response.attendance || [];
       const paginationData = response.pagination || {};
 

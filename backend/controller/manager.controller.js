@@ -1,5 +1,7 @@
 import Manager from "../models/manager.models.js";
-import Company from "../models/company.models.js"
+import Company from "../models/company.models.js";
+import Employee from "../models/employee.models.js";
+import Attendance from "../models/attendence.models.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -266,6 +268,379 @@ export const createManager = async (req, res) => {
     console.error("Error creating manager:", error);
     res.status(500).json({
       message: "Error creating manager",
+      error: error.message
+    });
+  }
+};
+
+// Get team members for manager with attendance status
+export const getManagerTeamMembers = async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const companyId = req.user.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "User must be associated with a company" });
+    }
+
+    // Get all employees under this manager
+    const employees = await Employee.find({
+      managerId: managerId,
+      companyId: companyId,
+      role: "employee"
+    })
+      .populate("companyId", "name code")
+      .populate("managerId", "name email")
+      .sort({ createdAt: -1 });
+
+    // Get today's attendance for all employees
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    const todayAttendance = await Attendance.find({
+      employeeId: { $in: employees.map(emp => emp._id) },
+      stepIn: { $gte: startOfDay, $lt: endOfDay }
+    }).sort({ stepIn: -1 });
+
+    // Create attendance map for quick lookup
+    const attendanceMap = new Map();
+    todayAttendance.forEach(attendance => {
+      const employeeId = attendance.employeeId.toString();
+      if (!attendanceMap.has(employeeId)) {
+        attendanceMap.set(employeeId, attendance);
+      }
+    });
+
+    // Add attendance status to each employee
+    const employeesWithStatus = employees.map(employee => {
+      const attendance = attendanceMap.get(employee._id.toString());
+      let status = 'not-clocked';
+      let statusText = 'Not Clocked';
+      let statusColor = 'gray';
+      let image = null;
+
+      if (attendance) {
+        if (attendance.stepIn && !attendance.stepOut) {
+          status = 'clocked-in';
+          statusText = 'Clocked In';
+          statusColor = 'green';
+          image = attendance.stepInImage;
+        } else if (attendance.stepIn && attendance.stepOut) {
+          status = 'clocked-out';
+          statusText = 'Clocked Out';
+          statusColor = 'orange';
+          image = attendance.stepOutImage || attendance.stepInImage;
+        }
+      }
+
+      return {
+        ...employee.toObject(),
+        attendanceStatus: {
+          status,
+          text: statusText,
+          color: statusColor,
+          image,
+          stepIn: attendance?.stepIn,
+          stepOut: attendance?.stepOut,
+          attendanceId: attendance?._id
+        }
+      };
+    });
+
+    console.log(`Found ${employees.length} team members for manager: ${managerId}`);
+    res.status(200).json({ 
+      message: "success", 
+      data: employeesWithStatus,
+      count: employeesWithStatus.length,
+      managerId,
+      companyId
+    });
+  } catch (error) {
+    console.error("Error fetching manager team members:", error);
+    res.status(500).json({ 
+      message: "Error fetching team members", 
+      error: error.message 
+    });
+  }
+};
+
+// Manager step in employee
+export const managerStepInEmployee = async (req, res) => {
+  try {
+    // Extract fields from FormData
+    const { employeeId, longitude, latitude, address, note, shift, status } = req.body;
+    const managerId = req.user.id;
+    const companyId = req.user.companyId;
+    
+    console.log('Manager step-in request body:', req.body);
+    console.log('Manager step-in file:', req.file);
+
+    if (!employeeId) {
+      return res.status(400).json({
+        success: false,
+        message: "Employee ID is required"
+      });
+    }
+
+    // Verify employee belongs to this manager
+    const employee = await Employee.findOne({
+      _id: employeeId,
+      managerId: managerId,
+      companyId: companyId
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found or not under your management"
+      });
+    }
+
+    // Check if employee is already clocked in today
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    const existingAttendance = await Attendance.findOne({
+      employeeId: employeeId,
+      stepIn: { $gte: startOfDay, $lt: endOfDay },
+      stepOut: { $exists: false }
+    });
+
+    if (existingAttendance) {
+      return res.status(400).json({
+        success: false,
+        message: "Employee is already clocked in today"
+      });
+    }
+
+    const stepIn = new Date();
+    const stepInImage = req.file ? req.file.filename : null;
+
+    // Create attendance record
+    const attendance = new Attendance({
+      employeeId: employeeId,
+      managerId: managerId,
+      companyId: companyId,
+      stepIn,
+      stepInImage,
+      longitude: longitude ? parseFloat(longitude) : null,
+      latitude: latitude ? parseFloat(latitude) : null,
+      address: address || 'Location not available',
+      note: note || 'Step in by manager',
+      shift: shift || 'morning',
+      status: status || 'present'
+    });
+
+    await attendance.save();
+    await Employee.findByIdAndUpdate(employeeId, { isWorking: true });
+
+    res.status(201).json({
+      success: true,
+      message: `${employee.name} successfully clocked in by manager`,
+      attendance: {
+        _id: attendance._id,
+        employeeId: attendance.employeeId,
+        managerId: attendance.managerId,
+        stepIn: attendance.stepIn,
+        shift: attendance.shift,
+        status: attendance.status,
+        location: {
+          latitude: attendance.latitude,
+          longitude: attendance.longitude,
+          address: attendance.address
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Error in manager step in:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error clocking in employee",
+      error: error.message
+    });
+  }
+};
+
+// Manager step out employee
+export const managerStepOutEmployee = async (req, res) => {
+  try {
+    const { employeeId, attendanceId, longitude, latitude, address, note, status } = req.body;
+    const managerId = req.user.id;
+    const companyId = req.user.companyId;
+
+    if (!employeeId && !attendanceId) {
+      return res.status(400).json({
+        success: false,
+        message: "Either employeeId or attendanceId is required"
+      });
+    }
+
+    let attendance;
+
+    if (attendanceId) {
+      // Find attendance by ID
+      attendance = await Attendance.findById(attendanceId);
+    } else {
+      // Find open attendance for employee
+      attendance = await Attendance.findOne({
+        employeeId: employeeId,
+        stepOut: { $exists: false }
+      });
+    }
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "No open attendance record found for this employee"
+      });
+    }
+
+    // Verify the attendance belongs to an employee under this manager
+    const employee = await Employee.findOne({
+      _id: attendance.employeeId,
+      managerId: managerId,
+      companyId: companyId
+    });
+
+    if (!employee) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have permission to manage this employee's attendance"
+      });
+    }
+
+    const stepOut = new Date();
+    const stepOutImage = req.file ? req.file.filename : null;
+    const totalTime = Math.round((stepOut - attendance.stepIn) / 60000);
+
+    // Update attendance record
+    attendance.stepOut = stepOut;
+    attendance.stepOutImage = stepOutImage;
+    attendance.totalTime = totalTime;
+    attendance.note = note || attendance.note || 'Step out by manager';
+    attendance.status = status || attendance.status;
+
+    // Update step-out location data if provided
+    if (latitude && longitude) {
+      attendance.stepOutLocation = {
+        longitude: parseFloat(longitude),
+        latitude: parseFloat(latitude),
+        address: address || 'Location not available'
+      };
+    }
+
+    await attendance.save();
+    await Employee.findByIdAndUpdate(attendance.employeeId, { isWorking: false });
+
+    res.status(200).json({
+      success: true,
+      message: `${employee.name} successfully clocked out by manager`,
+      attendance: {
+        _id: attendance._id,
+        employeeId: attendance.employeeId,
+        stepIn: attendance.stepIn,
+        stepOut: attendance.stepOut,
+        totalTime: attendance.totalTime,
+        shift: attendance.shift,
+        status: attendance.status,
+        stepInLocation: {
+          latitude: attendance.latitude,
+          longitude: attendance.longitude,
+          address: attendance.address
+        },
+        ...(attendance.stepOutLocation && {
+          stepOutLocation: attendance.stepOutLocation
+        })
+      }
+    });
+
+  } catch (error) {
+    console.error("Error in manager step out:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error clocking out employee",
+      error: error.message
+    });
+  }
+};
+
+// Get employee attendance status for manager
+export const getEmployeeAttendanceStatus = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const managerId = req.user.id;
+    const companyId = req.user.companyId;
+
+    // Verify employee belongs to this manager
+    const employee = await Employee.findOne({
+      _id: employeeId,
+      managerId: managerId,
+      companyId: companyId
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found or not under your management"
+      });
+    }
+
+    // Get today's attendance
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    const attendance = await Attendance.findOne({
+      employeeId: employeeId,
+      stepIn: { $gte: startOfDay, $lt: endOfDay }
+    }).sort({ stepIn: -1 });
+
+    let status = 'not-clocked';
+    let statusText = 'Not Clocked';
+    let statusColor = 'gray';
+    let image = null;
+
+    if (attendance) {
+      if (attendance.stepIn && !attendance.stepOut) {
+        status = 'clocked-in';
+        statusText = 'Clocked In';
+        statusColor = 'green';
+        image = attendance.stepInImage;
+      } else if (attendance.stepIn && attendance.stepOut) {
+        status = 'clocked-out';
+        statusText = 'Clocked Out';
+        statusColor = 'orange';
+        image = attendance.stepOutImage || attendance.stepInImage;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      employee: {
+        _id: employee._id,
+        name: employee.name,
+        email: employee.email,
+        empCode: employee.empCode
+      },
+      attendanceStatus: {
+        status,
+        text: statusText,
+        color: statusColor,
+        image,
+        stepIn: attendance?.stepIn,
+        stepOut: attendance?.stepOut,
+        attendanceId: attendance?._id
+      }
+    });
+
+  } catch (error) {
+    console.error("Error getting employee attendance status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error getting employee attendance status",
       error: error.message
     });
   }
