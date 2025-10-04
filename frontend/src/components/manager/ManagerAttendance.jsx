@@ -81,50 +81,70 @@ const ManagerAttendance = () => {
 
     // Filter states - Default to today's date
     const [filters, setFilters] = useState({
-        employee: '',
         shift: '',
         status: '',
+        assignedSite: '',
+        assignedPoint: '',
         startDate: new Date().toISOString().split('T')[0], // Today's date
         endDate: new Date().toISOString().split('T')[0]    // Today's date
     });
 
     // Filter options
     const [filterOptions, setFilterOptions] = useState({
-        employees: [],
         shifts: Object.values(SHIFT_ENUM),
-        statuses: ['present', 'absent', 'late']
+        statuses: ['present', 'absent', 'late'],
+        sites: [],
+        points: []
     });
 
-    // Fetch attendance data for all employees
+    // Get current manager ID from localStorage
+    const getCurrentManagerId = () => {
+        const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log('UserInfo from localStorage:', userInfo);
+        const managerId = userInfo._id || userInfo.id;
+        console.log('Manager ID found:', managerId);
+        
+        if (!managerId) {
+            console.error('Manager ID not found in userInfo:', userInfo);
+            toast.error('Manager ID not found. Please login again.');
+            return null;
+        }
+        
+        return managerId;
+    };
+
+    // Fetch attendance data for manager's employees
     const fetchAttendanceData = useCallback(async () => {
         try {
             setLoading(true);
-            console.log('Fetching all attendance data...');
+            console.log('Fetching attendance data for manager...');
             
-            const response = await api.get('/attendence');
+            const currentManagerId = getCurrentManagerId();
+            console.log('Current manager ID:', currentManagerId);
+            
+            if (!currentManagerId) {
+                console.error('Manager ID is null, cannot fetch attendance data');
+                setAttendanceData([]);
+                return;
+            }
+            
+            // Build query parameters
+            const queryParams = new URLSearchParams();
+            queryParams.append('manager', currentManagerId);
+            
+            if (filters.startDate) {
+                queryParams.append('startDate', filters.startDate);
+            }
+            if (filters.endDate) {
+                queryParams.append('endDate', filters.endDate);
+            }
+            
+            const response = await api.get(`/attendence?${queryParams.toString()}`);
             console.log('Attendance response:', response);
             
             if (response.data && response.data.attendance) {
-                // Filter by date range if specified
-                let filteredData = response.data.attendance;
-                
-                if (filters.startDate || filters.endDate) {
-                    filteredData = response.data.attendance.filter(record => {
-                        const recordDate = new Date(record.stepIn);
-                        const startDate = filters.startDate ? new Date(filters.startDate) : null;
-                        const endDate = filters.endDate ? new Date(filters.endDate) : null;
-                        
-                        if (startDate && recordDate < startDate) return false;
-                        if (endDate) {
-                            endDate.setHours(23, 59, 59, 999); // End of day
-                            if (recordDate > endDate) return false;
-                        }
-                        return true;
-                    });
-                }
-                
-                setAttendanceData(filteredData);
-                console.log('Attendance data set:', filteredData);
+                setAttendanceData(response.data.attendance);
+                console.log('Manager attendance data set:', response.data.attendance);
             } else {
                 setAttendanceData([]);
                 console.log('No attendance data found');
@@ -141,16 +161,36 @@ const ManagerAttendance = () => {
     // Fetch filter data
     const fetchFilterData = useCallback(async () => {
         try {
-            // Fetch employees for filter dropdown
-            const employeesResponse = await api.get('/employee');
-            if (employeesResponse.data && employeesResponse.data.employees) {
+            // Fetch sites for filter dropdown
+            console.log('Fetching sites...');
+            const sitesResponse = await api.get('/sites');
+            
+            console.log('Sites response:', sitesResponse);
+            console.log('Sites data:', sitesResponse.data);
+            
+            // Check if response.data is an array directly (from fetchInterceptor)
+            if (Array.isArray(sitesResponse.data)) {
+                console.log('Sites fetched successfully (direct array):', sitesResponse.data);
                 setFilterOptions(prev => ({
                     ...prev,
-                    employees: employeesResponse.data.employees
+                    sites: sitesResponse.data
+                }));
+            } else if (sitesResponse.data && sitesResponse.data.success && sitesResponse.data.data) {
+                console.log('Sites fetched successfully (wrapped):', sitesResponse.data.data);
+                setFilterOptions(prev => ({
+                    ...prev,
+                    sites: sitesResponse.data.data || []
+                }));
+            } else {
+                console.error('Failed to fetch sites - response structure:', sitesResponse.data);
+                setFilterOptions(prev => ({
+                    ...prev,
+                    sites: []
                 }));
             }
         } catch (error) {
             console.error('Error fetching filter data:', error);
+            toast.error('Failed to fetch sites data');
         }
     }, []);
 
@@ -173,18 +213,31 @@ const ManagerAttendance = () => {
         }
 
         // Apply filters
-        if (filters.employee) {
-            filtered = filtered.filter(record => 
-                record.employeeId?._id === filters.employee
-            );
-        }
-
         if (filters.shift) {
             filtered = filtered.filter(record => record.shift === filters.shift);
         }
 
         if (filters.status) {
             filtered = filtered.filter(record => record.status === filters.status);
+        }
+
+        // Filter by assigned site
+        if (filters.assignedSite) {
+            filtered = filtered.filter(record => {
+                const employee = record.employeeId;
+                return employee?.assignedSiteId === filters.assignedSite;
+            });
+        }
+
+        // Filter by assigned point
+        if (filters.assignedPoint) {
+            filtered = filtered.filter(record => {
+                const employee = record.employeeId;
+                if (!employee?.assignedPoints || !Array.isArray(employee.assignedPoints)) {
+                    return false;
+                }
+                return employee.assignedPoints.some(point => point.pointId === filters.assignedPoint);
+            });
         }
 
         if (filters.startDate) {
@@ -229,14 +282,68 @@ const ManagerAttendance = () => {
         setCurrentPage(1); // Reset to first page when filtering
     };
 
+    // Fetch points for selected site
+    const fetchSitePoints = useCallback(async (siteId) => {
+        if (!siteId) {
+            setFilterOptions(prev => ({
+                ...prev,
+                points: []
+            }));
+            return;
+        }
+
+        try {
+            console.log('Fetching points for site:', siteId);
+            const response = await api.get(`/sites/${siteId}`);
+            
+            console.log('Site response:', response);
+            console.log('Site data:', response.data);
+            
+            // Check if response.data is a site object directly (from fetchInterceptor)
+            if (response.data && response.data.points) {
+                console.log('Site points fetched (direct object):', response.data.points);
+                setFilterOptions(prev => ({
+                    ...prev,
+                    points: response.data.points || []
+                }));
+            } else if (response.data && response.data.success && response.data.data && response.data.data.points) {
+                console.log('Site points fetched (wrapped):', response.data.data.points);
+                setFilterOptions(prev => ({
+                    ...prev,
+                    points: response.data.data.points || []
+                }));
+            } else {
+                console.error('Failed to fetch site points - response structure:', response.data);
+                setFilterOptions(prev => ({
+                    ...prev,
+                    points: []
+                }));
+            }
+        } catch (error) {
+            console.error('Error fetching site points:', error);
+            toast.error('Failed to fetch site points');
+        }
+    }, []);
+
+    // Handle site filter change
+    const handleSiteChange = (siteId) => {
+        setFilters(prev => ({
+            ...prev,
+            assignedSite: siteId,
+            assignedPoint: '' // Clear point filter when site changes
+        }));
+        fetchSitePoints(siteId);
+    };
+
     // Clear all filters
     const clearFilters = () => {
         setFilters({
-            employee: '',
             shift: '',
             status: '',
-            startDate: '',
-            endDate: ''
+            assignedSite: '',
+            assignedPoint: '',
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: new Date().toISOString().split('T')[0]
         });
         setSearchTerm('');
         setCurrentPage(1);
@@ -248,30 +355,101 @@ const ManagerAttendance = () => {
         setShowFilters(false);
     };
 
-    // Download attendance data
-    const handleDownload = async (format = 'excel') => {
+    // Export to Excel using direct API call
+    const exportToExcel = async () => {
         try {
             setDownloading(true);
             
-            const downloadData = {
-                attendance: filteredData,
-                filters: filters,
-                dateRange: {
-                    startDate: filters.startDate,
-                    endDate: filters.endDate
-                }
-            };
+            const currentManagerId = getCurrentManagerId();
+            if (!currentManagerId) {
+                toast.error('Manager ID not found. Please login again.');
+                return;
+            }
 
-            if (format === 'excel') {
-                await exportAPI.exportAttendanceToExcel(downloadData);
-                toast.success('Excel file downloaded successfully');
-            } else if (format === 'pdf') {
-                await exportAPI.exportAttendanceToPDF(downloadData);
-                toast.success('PDF file downloaded successfully');
+            // Build query parameters
+            const params = new URLSearchParams();
+            params.append('manager', currentManagerId);
+            
+            if (filters.startDate) {
+                params.append('startDate', filters.startDate);
+            }
+            if (filters.endDate) {
+                params.append('endDate', filters.endDate);
+            }
+            if (filters.shift) {
+                params.append('shift', filters.shift);
+            }
+            if (filters.status) {
+                params.append('status', filters.status);
+            }
+
+            const response = await api.get(`/attendence/export/excel?${params.toString()}`, {
+                responseType: 'blob'
+            });
+
+            if (response.status === 200) {
+                const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `team_attendance_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+                toast.success('Team attendance data exported to Excel successfully!');
             }
         } catch (error) {
-            console.error('Error downloading file:', error);
-            toast.error('Failed to download file');
+            console.error('Error exporting to Excel:', error);
+            toast.error('Failed to export attendance data to Excel');
+        } finally {
+            setDownloading(false);
+        }
+    };
+
+    // Export to PDF using enhanced professional export
+    const exportToPDF = async () => {
+        try {
+            setDownloading(true);
+
+            if (!filteredData || filteredData.length === 0) {
+                toast.error('No attendance data to export');
+                return;
+            }
+
+            // Import the enhanced PDF export utility
+            let exportAttendanceToPDF;
+            try {
+                const pdfUtils = await import('../../utils/pdfExportUtils');
+                exportAttendanceToPDF = pdfUtils.exportAttendanceToPDF || pdfUtils.default?.exportAttendanceToPDF;
+
+                if (!exportAttendanceToPDF) {
+                    throw new Error('PDF export function not found');
+                }
+            } catch (error) {
+                console.error('Error importing PDF utils:', error);
+                toast.error('Failed to load PDF export utility. Please try again.');
+                return;
+            }
+
+            // Create filename with timestamp
+            const timestamp = new Date().toISOString().split('T')[0];
+            const filename = `team_attendance_${timestamp}.pdf`;
+
+            // Export with team-specific data
+            await exportAttendanceToPDF(filteredData, filename, {
+                title: 'Team Attendance Report',
+                subtitle: `Manager: ${JSON.parse(localStorage.getItem('user') || '{}').name || 'Unknown'}`,
+                dateRange: filters.startDate === filters.endDate 
+                    ? `Date: ${filters.startDate}` 
+                    : `Date Range: ${filters.startDate} to ${filters.endDate}`,
+                totalRecords: filteredData.length
+            });
+
+            toast.success('Team attendance data exported to PDF successfully!');
+        } catch (error) {
+            console.error('Error exporting to PDF:', error);
+            toast.error('Failed to export attendance data to PDF');
         } finally {
             setDownloading(false);
         }
@@ -288,9 +466,9 @@ const ManagerAttendance = () => {
             {/* Page Header */}
             <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                 <div className="min-w-0 flex-1">
-                    <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">Daily Attendance Report</h1>
+                    <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">Team Attendance Report</h1>
                     <p className="text-sm sm:text-base text-gray-600 mt-1">
-                        View and download all employees' attendance for {filters.startDate === filters.endDate ? `today (${filters.startDate})` : `${filters.startDate} to ${filters.endDate}`}
+                        View and download your team's attendance for {filters.startDate === filters.endDate ? `today (${filters.startDate})` : `${filters.startDate} to ${filters.endDate}`}
                     </p>
                 </div>
 
@@ -308,7 +486,7 @@ const ManagerAttendance = () => {
                     {/* Download Buttons */}
                     <div className="flex space-x-2">
                         <Button
-                            onClick={() => handleDownload('excel')}
+                            onClick={exportToExcel}
                             disabled={downloading || filteredData.length === 0}
                             variant="outline"
                             className="flex items-center space-x-2 w-full sm:w-auto"
@@ -316,18 +494,18 @@ const ManagerAttendance = () => {
                             {downloading ? (
                                 <>
                                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                                    <span>Downloading...</span>
+                                    <span>Exporting...</span>
                                 </>
                             ) : (
                                 <>
                                     <Download className="h-4 w-4" />
-                                    <span>Excel</span>
+                                    <span>Export Excel</span>
                                 </>
                             )}
                         </Button>
 
                         <Button
-                            onClick={() => handleDownload('pdf')}
+                            onClick={exportToPDF}
                             disabled={downloading || filteredData.length === 0}
                             variant="outline"
                             className="flex items-center space-x-2 w-full sm:w-auto"
@@ -335,12 +513,12 @@ const ManagerAttendance = () => {
                             {downloading ? (
                                 <>
                                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                                    <span>Downloading...</span>
+                                    <span>Exporting...</span>
                                 </>
                             ) : (
                                 <>
                                     <FileText className="h-4 w-4" />
-                                    <span>PDF</span>
+                                    <span>Export PDF</span>
                                 </>
                             )}
                         </Button>
@@ -383,18 +561,36 @@ const ManagerAttendance = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {/* Employee Filter */}
+                            {/* Assigned Site Filter */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Employee</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Site</label>
                                 <select
-                                    value={filters.employee}
-                                    onChange={(e) => handleFilterChange('employee', e.target.value)}
+                                    value={filters.assignedSite}
+                                    onChange={(e) => handleSiteChange(e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
-                                    <option value="">All Employees</option>
-                                    {filterOptions.employees.map(emp => (
-                                        <option key={emp._id} value={emp._id}>
-                                            {emp.name} ({emp.email})
+                                    <option value="">All Sites</option>
+                                    {filterOptions.sites.map(site => (
+                                        <option key={site._id} value={site._id}>
+                                            {site.name} ({site.code})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Assigned Point Filter */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Point</label>
+                                <select
+                                    value={filters.assignedPoint}
+                                    onChange={(e) => handleFilterChange('assignedPoint', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    disabled={!filters.assignedSite}
+                                >
+                                    <option value="">All Points</option>
+                                    {filterOptions.points.map(point => (
+                                        <option key={point._id} value={point._id}>
+                                            {point.name} ({point.code})
                                         </option>
                                     ))}
                                 </select>
@@ -563,7 +759,7 @@ const ManagerAttendance = () => {
                             <h3 className="text-lg font-medium text-gray-900 mb-2">No Attendance Records</h3>
                             <p className="text-sm text-gray-600 mb-4">
                                 {attendanceData.length === 0
-                                    ? `No attendance records found for ${filters.startDate === filters.endDate ? 'today' : 'the selected date range'}. Try refreshing the data.`
+                                    ? `No attendance records found for your team for ${filters.startDate === filters.endDate ? 'today' : 'the selected date range'}. Try refreshing the data.`
                                     : 'No records match your current search criteria.'
                                 }
                             </p>
