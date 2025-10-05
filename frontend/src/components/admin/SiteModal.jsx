@@ -842,32 +842,33 @@ const SiteModal = ({ site, onClose, onRefresh }) => {
 
         {/* Point Modal */}
         {showPointModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-60">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-3 sm:p-4 border-b">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
-                {editingPoint ? 'Edit Point' : 'Add Point'}
-              </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePointModalClose}
-                className="p-1"
-              >
-                <X className="w-4 h-4 sm:w-5 sm:h-5" />
-              </Button>
-            </div>
-            <div className="p-3 sm:p-4">
-              <PointForm
-                point={editingPoint}
-                onSave={handleSavePoint}
-                onCancel={handlePointModalClose}
-                pointTypes={pointTypes}
-              />
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-60">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                  {editingPoint ? 'Edit Point' : 'Add Point'}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePointModalClose}
+                  className="p-1"
+                >
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                </Button>
+              </div>
+              <div className="p-3 sm:p-4">
+                <PointForm
+                  point={editingPoint}
+                  onSave={handleSavePoint}
+                  onCancel={handlePointModalClose}
+                  pointTypes={pointTypes}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
