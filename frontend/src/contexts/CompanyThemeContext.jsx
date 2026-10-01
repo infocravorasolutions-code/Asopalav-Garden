@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { getCompanyLogo } from '../utils/companyLogoUtils';
+import { getDisplayCompanyName } from '../utils/brandingUtils';
 
 const CompanyThemeContext = createContext();
 
@@ -34,9 +35,9 @@ export const CompanyThemeProvider = ({ children }) => {
     textColor: '#1F2937',
     fontFamily: 'Inter',
     logo: null,
-    logoUrl: null,
-    companyName: 'Company',
-    companyCode: '',
+    logoUrl: '/assets/mahakali-logo.png',
+    companyName: 'Mahakali Farm & Nursery',
+    companyCode: 'ASOPALAV',
     mode: 'light',
     borderRadius: '8px',
     shadow: 'sm',
@@ -56,7 +57,7 @@ export const CompanyThemeProvider = ({ children }) => {
           fontFamily: company.fontFamily || 'Inter',
           logo: company.logo || null,
           logoUrl: getCompanyLogo(company.code, company.logoUrl) || null,
-          companyName: company.name || 'Company',
+          companyName: getDisplayCompanyName(company.name, company.code),
           companyCode: company.code || '',
           mode: company.theme?.mode || 'light',
           borderRadius: company.theme?.borderRadius || '8px',

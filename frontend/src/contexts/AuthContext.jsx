@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { authAPI, adminAPI, companyAPI } from '../services/api';
 import { showSuccess, showError } from '../utils/toast';
+import { applyBrandingToCompany, applyBrandingToUser } from '../utils/brandingUtils';
 
 // Initial state
 const initialState = {
@@ -110,8 +111,13 @@ export const AuthProvider = ({ children }) => {
       if (token && user) {
         try {
           // Verify token with backend
-          const userData = JSON.parse(user);
-          const companyData = company ? JSON.parse(company) : null;
+          const userData = applyBrandingToUser(JSON.parse(user));
+          const companyData = company ? applyBrandingToCompany(JSON.parse(company)) : null;
+
+          localStorage.setItem('user', JSON.stringify(userData));
+          if (companyData) {
+            localStorage.setItem('company', JSON.stringify(companyData));
+          }
 
           dispatch({
             type: AUTH_ACTIONS.LOGIN_SUCCESS,
@@ -176,6 +182,9 @@ export const AuthProvider = ({ children }) => {
           }
         }
 
+        userData = applyBrandingToUser(userData);
+        companyData = applyBrandingToCompany(companyData);
+
         // Store in localStorage with company data
         localStorage.setItem('authToken', response.token);
         localStorage.setItem('user', JSON.stringify(userData));
@@ -223,7 +232,7 @@ export const AuthProvider = ({ children }) => {
       const response = await companyAPI.getCompanyDetails();
       dispatch({
         type: AUTH_ACTIONS.SET_COMPANY,
-        payload: response.data
+        payload: applyBrandingToCompany(response.data)
       });
       return response.data;
     } catch (error) {

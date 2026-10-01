@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
+import { getDisplayCompanyName, getDisplayPersonName } from '../../utils/brandingUtils';
 import { 
   Users, 
   Clock, 
@@ -158,10 +159,10 @@ const EnhancedAdminDashboard = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back, {user?.name}!
+              Welcome back, {getDisplayPersonName(user?.name)}!
             </h1>
             <p className="text-gray-600 mt-1">
-              {company?.name} - Admin Dashboard
+              {getDisplayCompanyName(company?.name, company?.code)} - Admin Dashboard
               {isReadOnlyAdmin && (
                 <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                   <EyeOff className="w-3 h-3 mr-1" />

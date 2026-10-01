@@ -12,7 +12,6 @@ import {
   Users,
   Clock,
   MapPin,
-  Shield,
   ArrowRight,
   Sparkles
 } from 'lucide-react';
@@ -20,6 +19,7 @@ import Input from '../ui/Input';
 import Button from '../ui/Button';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Loading from '../ui/Loading';
+import CompanyLogo from '../ui/CompanyLogo';
 
 const EnhancedLogin = () => {
   const { login, isAuthenticated, loading, error, clearError } = useAuth();
@@ -145,13 +145,12 @@ const EnhancedLogin = () => {
             <div className="hidden lg:block space-y-8">
               <div className="space-y-6">
                 <div className="flex items-center space-x-3">
-                  <div className="p-3 bg-gradient-to-r from-blue-600 to-green-600 rounded-xl">
-                    <Shield className="h-8 w-8 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Attendance Pro</h1>
-                    <p className="text-gray-600">Multi-Company Management System</p>
-                  </div>
+                  <CompanyLogo
+                    companyCode="ASOPALAV"
+                    noContainer={true}
+                    className="h-auto"
+                    style={{ width: '220px', maxHeight: '90px', objectFit: 'contain' }}
+                  />
                 </div>
 
                 <h2 className="text-4xl font-bold text-gray-900 leading-tight">
@@ -215,8 +214,13 @@ const EnhancedLogin = () => {
             <div className="w-full max-w-md mx-auto">
               <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
                 <CardHeader className="text-center pb-2">
-                  <div className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-                    <Shield className="h-8 w-8 text-white" />
+                  <div className="flex justify-center mb-4">
+                    <CompanyLogo
+                      companyCode="ASOPALAV"
+                      noContainer={true}
+                      className="h-auto"
+                      style={{ width: '200px', maxHeight: '80px', objectFit: 'contain' }}
+                    />
                   </div>
                   <CardTitle className="text-2xl font-bold text-gray-900">
                     Sign In

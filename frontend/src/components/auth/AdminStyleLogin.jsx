@@ -13,17 +13,13 @@ import {
     Shield,
     Users,
     AlertCircle,
-    ArrowRight,
-    Clock,
-    BarChart3,
-    TrendingUp,
-    Crown,
-    Settings
+    ArrowRight
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
+import CompanyLogo from '../ui/CompanyLogo';
 
 const AdminStyleLogin = () => {
     const { login, isAuthenticated, loading, error, clearError } = useAuth();
@@ -193,59 +189,6 @@ const AdminStyleLogin = () => {
         );
     }
 
-    const getIconComponent = () => {
-        switch (userType) {
-            case 'admin':
-                return Shield;
-            case 'manager':
-                return Users;
-            case 'employee':
-                return User;
-            case 'superadmin':
-                return Crown;
-            default:
-                return Shield;
-        }
-    };
-
-    const IconComponent = getIconComponent();
-
-    // Dashboard-style stats for visual appeal
-    const DASHBOARD_STATS = [
-        {
-            title: 'Total Users',
-            value: '1,247',
-            change: '+12%',
-            changeType: 'positive',
-            icon: Users,
-            color: 'blue'
-        },
-        {
-            title: 'Active Sessions',
-            value: '89',
-            change: '+8%',
-            changeType: 'positive',
-            icon: Clock,
-            color: 'green'
-        },
-        {
-            title: 'System Health',
-            value: '99.9%',
-            change: '+0.1%',
-            changeType: 'positive',
-            icon: BarChart3,
-            color: 'purple'
-        },
-        {
-            title: 'Performance',
-            value: 'Excellent',
-            change: '+5%',
-            changeType: 'positive',
-            icon: TrendingUp,
-            color: 'orange'
-        }
-    ];
-
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="flex">
@@ -259,24 +202,18 @@ const AdminStyleLogin = () => {
                         <Card className="shadow-xl">
                             <CardHeader className="text-center pb-6">
                                 <div className="flex justify-center mb-4">
-                                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                                        <IconComponent className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-                                    </div>
-                                </div>
-                                {/* Company Logo Display */}
-                                {/* <div className="flex justify-center mb-4">
                                     <CompanyLogo
-                                        companyCode={formData.company}
-                                        size="lg"
-                                        className="shadow-lg"
+                                        companyCode={formData.company || 'ASOPALAV'}
+                                        noContainer={true}
+                                        className="w-full h-auto"
                                         style={{
-                                            minWidth: '64px',
-                                            minHeight: '64px',
-                                            maxWidth: '64px',
-                                            maxHeight: '64px'
+                                            width: '100%',
+                                            maxWidth: '280px',
+                                            maxHeight: '110px',
+                                            objectFit: 'contain'
                                         }}
                                     />
-                                </div> */}
+                                </div>
                                 <CardTitle className="text-2xl font-bold text-gray-900">
                                     {userType === 'admin' ? 'Admin Access' :
                                         userType === 'manager' ? 'Manager Portal' :

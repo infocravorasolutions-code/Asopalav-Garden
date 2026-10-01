@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { showSuccess, showError } from '../../utils/toast';
 import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
+import CompanyLogo from '../ui/CompanyLogo';
 
 const SuperAdminLogin = () => {
     const [formData, setFormData] = useState({
@@ -52,13 +53,16 @@ const SuperAdminLogin = () => {
             <div className="max-w-md w-full">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <div className="mx-auto w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
+                    <div className="flex justify-center mb-4">
+                        <CompanyLogo
+                            companyCode="ASOPALAV"
+                            noContainer={true}
+                            className="h-auto"
+                            style={{ width: '220px', maxHeight: '90px', objectFit: 'contain' }}
+                        />
                     </div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">SuperAdmin Portal</h1>
-                    <p className="text-gray-600">Access all companies and manage the system</p>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Mahakali Farm & Nursery</h1>
+                    <p className="text-gray-600">SuperAdmin Portal</p>
                 </div>
 
                 {/* Login Form */}

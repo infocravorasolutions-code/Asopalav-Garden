@@ -111,32 +111,23 @@ const GardenLogin = () => {
         <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4"
-              style={{
-                backgroundColor: `${primaryColor}20`,
-                border: `2px solid ${primaryColor}40`
-              }}>
-              <Leaf className="w-8 h-8" style={{ color: primaryColor }} />
-            </div>
-            {/* Company Logo Display */}
             <div className="flex justify-center mb-4">
               <CompanyLogo
-                companyCode="ASOPALAV" // Default for garden theme
-                size="lg"
-                className="shadow-lg"
+                companyCode="ASOPALAV"
+                noContainer={true}
+                className="h-auto"
                 style={{
-                  minWidth: '64px',
-                  minHeight: '64px',
-                  maxWidth: '64px',
-                  maxHeight: '64px'
+                  width: '220px',
+                  maxHeight: '90px',
+                  objectFit: 'contain'
                 }}
               />
             </div>
             <h1 className="text-3xl font-bold mb-2" style={{ color: primaryColor }}>
-              {companyName || 'Garden Attendance'}
+              {companyName || 'Mahakali Farm & Nursery'}
             </h1>
             <p className="text-gray-600">
-              Welcome to your garden management system
+              Welcome to your farm & nursery management system
             </p>
           </div>
 
@@ -236,10 +227,10 @@ const GardenLogin = () => {
           {/* Footer */}
           <div className="text-center mt-8">
             <p className="text-sm text-gray-500">
-              Garden Attendance Management System
+              Mahakali Farm & Nursery Management System
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              Professional landscaping & garden maintenance
+              Professional farm & nursery management
             </p>
           </div>
         </div>

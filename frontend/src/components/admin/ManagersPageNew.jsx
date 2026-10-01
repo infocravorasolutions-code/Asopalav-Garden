@@ -30,7 +30,7 @@ const ManagersPageNew = () => {
         // Map API data to grid format
         const allManagers = response.data.map(manager => ({
           ...manager,
-          companyId: manager.companyId || { name: 'ASOPALAV GARDEN' },
+          companyId: manager.companyId || { name: 'Mahakali Farm & Nursery' },
           status: manager.isActive ? 'Active' : 'Inactive'
         }));
 
@@ -202,7 +202,7 @@ const ManagersPageNew = () => {
         <div className="text-gray-600 text-sm font-medium text-left">
           {params.data.companyId ?
             (typeof params.data.companyId === 'object' ? params.data.companyId.name : params.data.companyId)
-            : 'ASOPALAV GARDEN'}
+            : 'Mahakali Farm & Nursery'}
         </div>
       )
     },

@@ -7,15 +7,13 @@ import {
     EyeOff,
     ArrowLeft,
     CheckCircle,
-    AlertCircle,
-    Building,
-    User,
-    Shield
+    AlertCircle
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Loading from '../ui/Loading';
+import CompanyLogo from '../ui/CompanyLogo';
 import { authAPI } from '../../services/api';
 import { showSuccess, showError } from '../../utils/toast';
 
@@ -127,19 +125,6 @@ const ForgotPassword = () => {
         }
     };
 
-    const getUserTypeIcon = () => {
-        switch (userType) {
-            case 'admin':
-                return Shield;
-            case 'manager':
-                return Building;
-            case 'employee':
-                return User;
-            default:
-                return Shield;
-        }
-    };
-
     const getUserTypeLabel = () => {
         switch (userType) {
             case 'admin':
@@ -153,8 +138,6 @@ const ForgotPassword = () => {
         }
     };
 
-    const IconComponent = getUserTypeIcon();
-
     if (loading && step === 'reset') {
         return <Loading />;
     }
@@ -165,9 +148,12 @@ const ForgotPassword = () => {
                 <Card className="shadow-xl">
                     <CardHeader className="text-center pb-6">
                         <div className="flex justify-center mb-4">
-                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                                <IconComponent className="h-6 w-6 text-blue-600" />
-                            </div>
+                            <CompanyLogo
+                                companyCode="ASOPALAV"
+                                noContainer={true}
+                                className="h-auto"
+                                style={{ width: '220px', maxHeight: '90px', objectFit: 'contain' }}
+                            />
                         </div>
                         <CardTitle className="text-2xl font-bold text-gray-900">
                             {step === 'email' ? 'Forgot Password' :

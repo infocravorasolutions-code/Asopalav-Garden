@@ -6,14 +6,11 @@ import {
   EyeOff,
   Mail,
   Lock,
-  User,
   AlertCircle,
   CheckCircle,
   Clock,
   MapPin,
-  Smartphone,
   ArrowRight,
-  Shield,
   Calendar,
   TrendingUp
 } from 'lucide-react';
@@ -21,6 +18,7 @@ import Input from '../ui/Input';
 import Button from '../ui/Button';
 import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Loading from '../ui/Loading';
+import CompanyLogo from '../ui/CompanyLogo';
 
 const EnhancedEmployeeLogin = () => {
   const { login, isAuthenticated, loading, error, clearError } = useAuth();
@@ -140,13 +138,12 @@ const EnhancedEmployeeLogin = () => {
             <div className="hidden lg:block space-y-8">
               <div className="space-y-6">
                 <div className="flex items-center space-x-3">
-                  <div className="p-3 bg-gradient-to-r from-green-600 to-blue-600 rounded-xl">
-                    <User className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Employee Portal</h1>
-                    <p className="text-gray-600">Your Personal Attendance Hub</p>
-                  </div>
+                  <CompanyLogo
+                    companyCode="ASOPALAV"
+                    noContainer={true}
+                    className="h-auto"
+                    style={{ width: '220px', maxHeight: '90px', objectFit: 'contain' }}
+                  />
                 </div>
 
                 <h2 className="text-4xl font-bold text-gray-900 leading-tight">
@@ -210,8 +207,13 @@ const EnhancedEmployeeLogin = () => {
             <div className="w-full max-w-md mx-auto">
               <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
                 <CardHeader className="text-center pb-2">
-                  <div className="mx-auto h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-                    <User className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+                  <div className="flex justify-center mb-4">
+                    <CompanyLogo
+                      companyCode="ASOPALAV"
+                      noContainer={true}
+                      className="h-auto"
+                      style={{ width: '200px', maxHeight: '80px', objectFit: 'contain' }}
+                    />
                   </div>
                   <CardTitle className="text-2xl font-bold text-gray-900">
                     Employee Login

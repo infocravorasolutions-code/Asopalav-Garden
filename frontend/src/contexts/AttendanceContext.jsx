@@ -176,7 +176,7 @@ export const AttendanceProvider = ({ children }) => {
       const totalHours = data.reduce((sum, record) => sum + (record.totalTime || 0), 0);
 
       const headerInfo = [
-        ['ASOPALAV - ATTENDANCE REPORT'],
+        ['MAHAKALI FARM & NURSERY - ATTENDANCE REPORT'],
         [''],
         [`Report Generated: ${reportDate}`],
         [`Total Records: ${data.length}`],

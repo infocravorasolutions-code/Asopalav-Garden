@@ -1,9 +1,11 @@
 import React from 'react';
 import { Menu, Bell, User, Building } from 'lucide-react';
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
+import { getDisplayCompanyName } from '../../utils/brandingUtils';
 
 const MobileHeader = ({ onMenuToggle, userType, userName }) => {
-  const { companyName, logoUrl, primaryColor } = useCompanyTheme();
+  const { companyName, companyCode, logoUrl, primaryColor } = useCompanyTheme();
+  const displayCompanyName = getDisplayCompanyName(companyName, companyCode);
   return (
     <div className="lg:hidden bg-white shadow-sm border-b border-gray-200 px-3 sm:px-4 py-3 h-16 flex items-center">
       <div className="flex items-center justify-between w-full min-w-0">
@@ -20,7 +22,7 @@ const MobileHeader = ({ onMenuToggle, userType, userName }) => {
           {logoUrl ? (
             <img
               src={logoUrl}
-              alt={companyName}
+              alt={displayCompanyName}
               className="w-5 h-5 sm:w-6 sm:h-6 rounded object-cover flex-shrink-0"
             />
           ) : (
@@ -37,7 +39,7 @@ const MobileHeader = ({ onMenuToggle, userType, userName }) => {
           
           <div className="min-w-0 flex-1">
             <h1 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
-              {companyName || (userType === 'admin' ? 'Admin Portal' : 'Manager Portal')}
+              {displayCompanyName || (userType === 'admin' ? 'Admin Portal' : 'Manager Portal')}
             </h1>
             <p className="text-xs text-gray-500 truncate">Welcome back, {userName}</p>
           </div>

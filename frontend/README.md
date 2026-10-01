@@ -1,6 +1,6 @@
-# Asopalav Garden Frontend
+# Mahakali Farm & Nursery Frontend
 
-This is the frontend application for the Asopalav Garden Management System, built with React and Vite.
+This is the frontend application for the Mahakali Farm & Nursery Management System, built with React and Vite.
 
 Currently, two official plugins are available:
 

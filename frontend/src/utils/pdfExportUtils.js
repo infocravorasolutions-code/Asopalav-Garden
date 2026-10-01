@@ -67,15 +67,12 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
       const normalizedCode = companyCode.toUpperCase();
       const logoMap = {
         'HARIKRISHNA': 'HARIKRISHNA.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg', // Alternative spelling
+        'ASOPALAV': 'mahakali-logo.png',
+        'MAHAKALI': 'mahakali-logo.png',
       };
 
-      const logoFileName = logoMap[normalizedCode];
-      if (logoFileName) {
-        return `/assets/${logoFileName}`;
-      }
-      return null;
+      const logoFileName = logoMap[normalizedCode] || 'mahakali-logo.png';
+      return `/assets/${logoFileName}`;
     };
     const companyCode = options.companyCode || 'ASOPALAV';
     const fallbackLogoUrl = options.fallbackLogoUrl || null;
@@ -110,13 +107,13 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     } catch (error) {
       // Fallback: Draw a simple logo placeholder
       drawRect(margin, y, 25, 25, primaryBlue);
-      addText('ASOPALAV', margin + 12.5, y + 17, 14, 'bold', [255, 255, 255], 'center');
+      addText('MAHAKALI', margin + 12.5, y + 17, 10, 'bold', [255, 255, 255], 'center');
     }
 
     // Company branding section - Using current project details
     const brandingX = margin + 35;
-    addText('ASOPALAV GARDEN', brandingX, y + 8, 16, 'bold', primaryBlue);
-    addText('Professional Landscape Solutions', brandingX, y + 16, 9, 'normal', darkGray);
+    addText('MAHAKALI FARM & NURSERY', brandingX, y + 8, 14, 'bold', primaryBlue);
+    addText('Farm & Nursery', brandingX, y + 16, 9, 'normal', darkGray);
     addText('ATTENDANCE REPORT', brandingX, y + 24, 12, 'bold', darkGray);
 
     // Add version identifier to confirm new PDF format
@@ -253,7 +250,7 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     doc.line(margin, finalY, pageWidth - margin, finalY);
 
     // Footer text
-    addText('This report was generated automatically by Asopalav Garden System.', margin, finalY + 8, 8, 'normal', [128, 128, 128]);
+    addText('This report was generated automatically by Mahakali Farm & Nursery System.', margin, finalY + 8, 8, 'normal', [128, 128, 128]);
     addText('For any queries, please contact the system administrator.', margin, finalY + 12, 8, 'normal', [128, 128, 128]);
 
     // Generate PDF blob
@@ -358,15 +355,12 @@ export const createTraditionalMusterRollPDF = async (reportData, dateRange, opti
       const normalizedCode = companyCode.toUpperCase();
       const logoMap = {
         'HARIKRISHNA': 'HARIKRISHNA.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg', // Alternative spelling
+        'ASOPALAV': 'mahakali-logo.png',
+        'MAHAKALI': 'mahakali-logo.png',
       };
 
-      const logoFileName = logoMap[normalizedCode];
-      if (logoFileName) {
-        return `/assets/${logoFileName}`;
-      }
-      return null;
+      const logoFileName = logoMap[normalizedCode] || 'mahakali-logo.png';
+      return `/assets/${logoFileName}`;
     };
 
     // Get company logo with fallback (same logic as CompanyLogo component)
@@ -439,14 +433,14 @@ export const createTraditionalMusterRollPDF = async (reportData, dateRange, opti
 
     // Company name - inline with logo
     doc.setFontSize(14);
-    doc.text('ASOPALAV GARDEN', textStartX, companyNameY);
+    doc.text('MAHAKALI FARM & NURSERY', textStartX, companyNameY);
 
     // Deployment text - inline with logo
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     const currentDate = new Date();
     const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
-    const deploymentText = `DEPLOYMENT OF ASOPALAV PERSONNEL AT ASOPALAV GARDEN UNIT ON ${monthYear}`;
+    const deploymentText = `DEPLOYMENT OF MAHAKALI PERSONNEL AT MAHAKALI FARM & NURSERY UNIT ON ${monthYear}`;
     doc.text(deploymentText, textStartX, deploymentY);
 
     // Set currentY to start table below the header

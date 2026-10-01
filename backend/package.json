@@ -1,7 +1,7 @@
 {
-  "name": "asopalav-garden-backend",
+  "name": "mahakali-farm-nursery-backend",
   "version": "1.0.0",
-  "description": "Asopalav Garden Backend service",
+  "description": "Mahakali Farm & Nursery Backend service",
   "type": "module",
   "main": "server.js",
   "scripts": {

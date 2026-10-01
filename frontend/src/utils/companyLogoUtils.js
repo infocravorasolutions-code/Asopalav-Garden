@@ -2,35 +2,26 @@
  * Utility functions for handling company logos
  */
 
+const DEFAULT_LOGO = 'mahakali-logo.png';
+
 /**
  * Get company logo path based on company code
  * @param {string} companyCode - The company code
  * @returns {string} - Path to the company logo
  */
 export const getCompanyLogoPath = (companyCode) => {
-    if (!companyCode) {
-        return null;
-    }
-
-    // Convert company code to uppercase for filename matching
-    const normalizedCode = companyCode.toUpperCase();
-
-    // Map company codes to their logo filenames
     const logoMap = {
         'HARIKRISHNA': 'HARIKRISHNA.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg',
-        'ASOPALAV': 'ASOPALAV.jpg', // Alternative spelling
-        // Add more company codes as needed
+        'ASOPALAV': DEFAULT_LOGO,
+        'MAHAKALI': DEFAULT_LOGO,
     };
 
-    const logoFileName = logoMap[normalizedCode];
-
-    if (logoFileName) {
-        // Return the path to the logo in the company-logo folder
-        return `/assets/${logoFileName}`;
+    if (!companyCode) {
+        return `/assets/${DEFAULT_LOGO}`;
     }
 
-    return null;
+    const logoFileName = logoMap[companyCode.toUpperCase()] || DEFAULT_LOGO;
+    return `/assets/${logoFileName}`;
 };
 
 /**
@@ -47,7 +38,7 @@ export const getCompanyLogo = (companyCode, fallbackLogoUrl = null) => {
     }
 
     // Return fallback logo URL if available
-    return fallbackLogoUrl;
+    return fallbackLogoUrl || `/assets/${DEFAULT_LOGO}`;
 };
 
 /**
@@ -64,5 +55,5 @@ export const companyLogoExists = (companyCode) => {
  * @returns {Array} - Array of available company codes
  */
 export const getAvailableCompanyLogos = () => {
-    return ['HARIKRISHNA', 'ASOPALAV'];
+    return ['HARIKRISHNA', 'ASOPALAV', 'MAHAKALI'];
 };

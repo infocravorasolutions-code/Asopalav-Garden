@@ -56,7 +56,7 @@ const CompanyLayout = ({ children }) => {
                     <Leaf className="h-6 w-6" style={{ color: primaryColor }} />
                   </div>
                   <h1 className="text-xl font-semibold" style={{ color: textColor }}>
-                    Garden Attendance System
+                    Mahakali Farm & Nursery
                   </h1>
                 </div>
                 <Button
@@ -114,7 +114,7 @@ const CompanyLayout = ({ children }) => {
                     className="text-sm"
                     style={{ color: textColor + '80' }}
                   >
-                    Garden Management System
+                    Farm & Nursery Management
                   </p>
                 </div>
               </div>

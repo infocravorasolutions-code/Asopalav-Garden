@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
+import { getDisplayCompanyName, getDisplayPersonName } from '../../utils/brandingUtils';
 import Sidebar from './Sidebar';
 import MobileHeader from './MobileHeader';
 import { Bell, Settings, LogOut, User } from 'lucide-react';
 
 const DashboardLayout = ({ children }) => {
   const { user, logout } = useAuth();
-  const { companyName, logoUrl, primaryColor } = useCompanyTheme();
+  const { companyName, companyCode, logoUrl, primaryColor } = useCompanyTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -65,7 +66,8 @@ const DashboardLayout = ({ children }) => {
   };
 
   const userType = getUserType();
-  const userName = user?.name || 'User';
+  const userName = getDisplayPersonName(user?.name) || 'User';
+  const displayCompanyName = getDisplayCompanyName(companyName, companyCode);
 
   return (
     <div className="min-h-screen bg-gray-50 relative">
@@ -99,7 +101,7 @@ const DashboardLayout = ({ children }) => {
                       {userType === 'admin' ? 'Admin Dashboard' : userType === 'manager' ? 'Manager Dashboard' : 'Employee Dashboard'}
                     </h1>
                     <p className="text-xs sm:text-sm text-gray-500 truncate">
-                      {companyName} • Welcome back, {userName}
+                      {displayCompanyName} • Welcome back, {userName}
                     </p>
                   </div>
                 </div>
