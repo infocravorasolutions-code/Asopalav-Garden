@@ -20,6 +20,7 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
 import { getApiUrl } from '../../config/environment';
+import { APP_DISPLAY_NAME } from '../../utils/brandingUtils';
 import CompanyLogo from '../ui/CompanyLogo';
 
 const AdminStyleLogin = () => {
@@ -193,10 +194,14 @@ const AdminStyleLogin = () => {
             }
 
             const blob = await response.blob();
-            const filename = getFilenameFromDisposition(
+            const brandedFilename = `${APP_DISPLAY_NAME.replace(/[/\\?%*:|"<>]/g, '').trim()}.apk`;
+            const headerFilename = getFilenameFromDisposition(
                 response.headers.get('Content-Disposition'),
-                `${companyCode}.apk`
+                ''
             );
+            const filename = headerFilename && !new RegExp(companyCode, 'i').test(headerFilename)
+                ? headerFilename
+                : brandedFilename;
             const objectUrl = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = objectUrl;
