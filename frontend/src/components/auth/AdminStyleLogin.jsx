@@ -19,6 +19,7 @@ import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
+import { getApiUrl } from '../../config/environment';
 import CompanyLogo from '../ui/CompanyLogo';
 
 const AdminStyleLogin = () => {
@@ -35,6 +36,7 @@ const AdminStyleLogin = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [validationErrors, setValidationErrors] = useState({});
     const [isTestingAPI, setIsTestingAPI] = useState(false);
+    const [isDownloadingApp, setIsDownloadingApp] = useState(false);
 
     const handleUserTypeChange = (type) => {
         console.log('User type changed to:', type);
@@ -141,6 +143,74 @@ const AdminStyleLogin = () => {
         }
     };
 
+    const getFilenameFromDisposition = (header, fallback) => {
+        if (!header) {
+            return fallback;
+        }
+
+        const utf8Match = header.match(/filename\*=(?:UTF-8''?)([^;]+)/i);
+        if (utf8Match?.[1]) {
+            try {
+                return decodeURIComponent(utf8Match[1].replace(/['"]/g, '').trim());
+            } catch {
+                return utf8Match[1].replace(/['"]/g, '').trim();
+            }
+        }
+
+        const filenameMatch = header.match(/filename="?([^"]+)"?/i);
+        if (filenameMatch?.[1]) {
+            return filenameMatch[1].trim();
+        }
+
+        return fallback;
+    };
+
+    const handleDownloadApp = async () => {
+        const companyCode = formData.company?.trim();
+
+        if (!companyCode) {
+            showError('Company code is not configured');
+            return;
+        }
+
+        setIsDownloadingApp(true);
+
+        try {
+            const response = await fetch(
+                `${getApiUrl()}/apps/${encodeURIComponent(companyCode)}/download`
+            );
+
+            if (!response.ok) {
+                let message = 'Unable to download the app';
+                try {
+                    const errorData = await response.json();
+                    message = errorData.message || errorData.error || message;
+                } catch {
+                    // Keep the fallback message when the body is not JSON
+                }
+                showError(message);
+                return;
+            }
+
+            const blob = await response.blob();
+            const filename = getFilenameFromDisposition(
+                response.headers.get('Content-Disposition'),
+                `${companyCode}.apk`
+            );
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+        } catch (error) {
+            showError(error?.message || 'Unable to download the app');
+        } finally {
+            setIsDownloadingApp(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -363,6 +433,16 @@ const AdminStyleLogin = () => {
                                         )}
                                     </Button>
                                 </form>
+
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    fullWidth
+                                    disabled={isDownloadingApp}
+                                    onClick={handleDownloadApp}
+                                >
+                                    {isDownloadingApp ? 'Downloading...' : 'Download App'}
+                                </Button>
 
                                 {/* Additional Links */}
                                 <div className="space-y-4 pt-4 border-t border-gray-200">
