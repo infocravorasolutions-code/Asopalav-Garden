@@ -59,7 +59,7 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     };
 
     // Header Section - Company Logo and Branding
-    const headerHeight = 35;
+    const headerHeight = options.subtitle ? 42 : 35;
 
     const getCompanyLogoPath = (companyCode) => {
       if (!companyCode) return null;
@@ -77,14 +77,11 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     const companyCode = options.companyCode || 'ASOPALAV';
     const fallbackLogoUrl = options.fallbackLogoUrl || null;
 
-    console.log("companyCode ==> ", companyCode);
-
     // Get company logo with fallback (same logic as CompanyLogo component)
     const getCompanyLogo = (companyCode, fallbackLogoUrl) => {
       const logoPath = getCompanyLogoPath(companyCode);
       return logoPath || fallbackLogoUrl;
     };
-    debugger
     // Try to load company logo
     try {
       const logoUrl = getCompanyLogo(companyCode, fallbackLogoUrl);
@@ -102,7 +99,6 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
       const imageFormat = logoUrl.toLowerCase().includes('.jpg') || logoUrl.toLowerCase().includes('.jpeg') ? 'JPEG' : 'PNG';
 
       // Add logo to PDF
-      console.log("logoImg ==> ", logoImg);
       doc.addImage(logoImg, imageFormat, margin, y, 30, 30);
     } catch (error) {
       // Fallback: Draw a simple logo placeholder
@@ -112,9 +108,13 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
 
     // Company branding section - Using current project details
     const brandingX = margin + 35;
+    const reportTitle = options.title || 'ATTENDANCE REPORT';
     addText('MAHAKALI FARM & NURSERY', brandingX, y + 8, 14, 'bold', primaryBlue);
     addText('Farm & Nursery', brandingX, y + 16, 9, 'normal', darkGray);
-    addText('ATTENDANCE REPORT', brandingX, y + 24, 12, 'bold', darkGray);
+    addText(reportTitle, brandingX, y + 24, 12, 'bold', darkGray);
+    if (options.subtitle) {
+      addText(options.subtitle, brandingX, y + 32, 9, 'normal', darkGray);
+    }
 
     // Add version identifier to confirm new PDF format
 
@@ -123,7 +123,8 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     const reportDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'Asia/Kolkata'
     });
     addText(`Generated: ${reportDate}`, pageWidth - margin, y + 8, 8, 'normal', darkGray, 'right');
     addText(`Total Records: ${data.length}`, pageWidth - margin, y + 16, 8, 'normal', darkGray, 'right');
@@ -150,7 +151,19 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     y += summaryHeight + 15;
 
     // Prepare table data with proper formatting
-    const tableHeaders = ['Date', 'Employee Name', 'Shift', 'Clock In', 'Clock Out', 'Location', 'Remarks'];
+    const tableHeaders = ['Date', 'Employee Name', 'Site', 'Shift', 'Clock In', 'Clock Out', 'Location', 'Remarks'];
+    const istTimeOptions = {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Kolkata'
+    };
+    const istDateOptions = {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Asia/Kolkata'
+    };
 
     // Sort data by date for better organization
     const sortedData = [...data].sort((a, b) => new Date(a.stepIn) - new Date(b.stepIn));
@@ -177,31 +190,22 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
         return lines.join('\n');
       };
 
+      const siteName = record.reportSiteName || record.employeeId?.assignedSiteName || 'Not Assigned';
+
       return [
-        new Date(record.stepIn).toLocaleDateString('en-US', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }).replace(',', ''),
+        new Date(record.stepIn).toLocaleDateString('en-US', istDateOptions).replace(',', ''),
         wrapText(record.employeeId?.name || 'N/A', 25),
+        wrapText(siteName, 22),
         (record.shift || 'N/A').toUpperCase(),
-        record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        }) : 'N/A',
-        record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        }) : 'N/A',
+        record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', istTimeOptions) : 'N/A',
+        record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', istTimeOptions) : 'N/A',
         wrapText(record.address || 'N/A', 35),
         wrapText(record.note || 'N/A', 30)
       ];
     });
 
-    // Calculate table positioning for better fit
-    const totalColumnWidth = 25 + 50 + 20 + 25 + 25 + 60 + 55; // Sum of all column widths
+    // Landscape A4 column widths (mm)
+    const totalColumnWidth = 22 + 36 + 28 + 18 + 22 + 22 + 42 + 36;
     const tableLeftMargin = (pageWidth - totalColumnWidth) / 2;
 
     // Create the table with professional styling
@@ -228,13 +232,14 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
         fillColor: [248, 250, 252], // Very light gray for alternating rows
       },
       columnStyles: {
-        0: { cellWidth: 25, halign: 'center', overflow: 'linebreak' }, // Date
-        1: { cellWidth: 50, halign: 'left', overflow: 'linebreak' },   // Employee Name
-        2: { cellWidth: 20, halign: 'center', overflow: 'linebreak' }, // Shift
-        3: { cellWidth: 25, halign: 'center', overflow: 'linebreak' }, // Clock In
-        4: { cellWidth: 25, halign: 'center', overflow: 'linebreak' }, // Clock Out
-        5: { cellWidth: 60, halign: 'left', overflow: 'linebreak' },   // Location
-        6: { cellWidth: 55, halign: 'left', overflow: 'linebreak' }    // Remarks
+        0: { cellWidth: 22, halign: 'center', overflow: 'linebreak' }, // Date
+        1: { cellWidth: 36, halign: 'left', overflow: 'linebreak' },   // Employee Name
+        2: { cellWidth: 28, halign: 'left', overflow: 'linebreak' },   // Site
+        3: { cellWidth: 18, halign: 'center', overflow: 'linebreak' }, // Shift
+        4: { cellWidth: 22, halign: 'center', overflow: 'linebreak' }, // Clock In
+        5: { cellWidth: 22, halign: 'center', overflow: 'linebreak' }, // Clock Out
+        6: { cellWidth: 42, halign: 'left', overflow: 'linebreak' },   // Location
+        7: { cellWidth: 36, halign: 'left', overflow: 'linebreak' }    // Remarks
       },
       margin: { left: tableLeftMargin, right: tableLeftMargin },
       tableWidth: 'auto',

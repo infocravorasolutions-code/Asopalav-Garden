@@ -31,6 +31,29 @@ import CopyCellRenderer from '../ui/CopyCellRenderer';
 import toast from 'react-hot-toast';
 import { SHIFT_ENUM } from '../../constants/shifts';
 
+const ATTENDANCE_TIME_ZONE = 'Asia/Kolkata';
+
+function toIstDateString(value) {
+    if (!value) return '';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: ATTENDANCE_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(date);
+    const part = (type) => parts.find((item) => item.type === type)?.value || '';
+    return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+function formatIstDate(value) {
+    if (!value) return '-';
+    return new Date(value).toLocaleDateString('en-US', {
+        timeZone: ATTENDANCE_TIME_ZONE,
+    });
+}
+
 const ManagerAttendance = () => {
     // Dynamic sites from backend
     const [sites, setSites] = useState([]);
@@ -83,8 +106,8 @@ const ManagerAttendance = () => {
         status: '',
         assignedSite: '',
         assignedPoint: '',
-        startDate: new Date().toISOString().split('T')[0], // Today's date
-        endDate: new Date().toISOString().split('T')[0]    // Today's date
+        startDate: toIstDateString(new Date()),
+        endDate: toIstDateString(new Date())
     });
 
     // Filter options
@@ -257,20 +280,11 @@ const ManagerAttendance = () => {
         }
 
         if (filters.startDate) {
-            const startDate = new Date(filters.startDate);
-            filtered = filtered.filter(record => {
-                const recordDate = new Date(record.stepIn);
-                return recordDate >= startDate;
-            });
+            filtered = filtered.filter((record) => toIstDateString(record.stepIn) >= filters.startDate);
         }
 
         if (filters.endDate) {
-            const endDate = new Date(filters.endDate);
-            endDate.setHours(23, 59, 59, 999); // End of day
-            filtered = filtered.filter(record => {
-                const recordDate = new Date(record.stepIn);
-                return recordDate <= endDate;
-            });
+            filtered = filtered.filter((record) => toIstDateString(record.stepIn) <= filters.endDate);
         }
 
         return filtered;
@@ -370,8 +384,8 @@ const ManagerAttendance = () => {
             status: '',
             assignedSite: '',
             assignedPoint: '',
-            startDate: new Date().toISOString().split('T')[0],
-            endDate: new Date().toISOString().split('T')[0]
+            startDate: toIstDateString(new Date()),
+            endDate: toIstDateString(new Date())
         });
         setSearchTerm('');
         setCurrentPage(1);
@@ -410,6 +424,12 @@ const ManagerAttendance = () => {
             if (filters.status) {
                 params.append('status', filters.status);
             }
+            if (filters.assignedSite) {
+                params.append('assignedSite', filters.assignedSite);
+            }
+            if (filters.assignedPoint) {
+                params.append('assignedPoint', filters.assignedPoint);
+            }
 
             const response = await api.get(`/attendence/export/excel?${params.toString()}`, {
                 responseType: 'blob'
@@ -420,7 +440,7 @@ const ManagerAttendance = () => {
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `team_attendance_${new Date().toISOString().split('T')[0]}.xlsx`;
+                link.download = `team_attendance_${toIstDateString(new Date())}.xlsx`;
                 document.body.appendChild(link);
                 link.click();
                 link.remove();
@@ -461,13 +481,27 @@ const ManagerAttendance = () => {
             }
 
             // Create filename with timestamp
-            const timestamp = new Date().toISOString().split('T')[0];
+            const timestamp = toIstDateString(new Date());
             const filename = `team_attendance_${timestamp}.pdf`;
 
-            // Export with team-specific data
-            await exportAttendanceToPDF(filteredData, filename, {
+            const managerName = JSON.parse(localStorage.getItem('user') || '{}').name || 'Unknown';
+            let subtitle = `Manager: ${managerName}`;
+            if (filters.assignedSite) {
+                const selectedSite = sites.find((site) => site._id === filters.assignedSite);
+                const siteName = selectedSite?.name;
+                if (siteName) {
+                    subtitle += ` | Site: ${siteName}`;
+                }
+            }
+
+            const exportData = filteredData.map((record) => ({
+                ...record,
+                reportSiteName: record.employeeId?.assignedSiteName || getLocationName(record.address) || 'Not Assigned',
+            }));
+
+            await exportAttendanceToPDF(exportData, filename, {
                 title: 'Team Attendance Report',
-                subtitle: `Manager: ${JSON.parse(localStorage.getItem('user') || '{}').name || 'Unknown'}`,
+                subtitle,
                 dateRange: filters.startDate === filters.endDate 
                     ? `Date: ${filters.startDate}` 
                     : `Date Range: ${filters.startDate} to ${filters.endDate}`,
@@ -528,10 +562,20 @@ const ManagerAttendance = () => {
                 const stepIn = params.data.stepIn;
                 return (
                     <div className="text-sm text-gray-900">
-                        {stepIn ? new Date(stepIn).toLocaleDateString() : '-'}
+                        {stepIn ? formatIstDate(stepIn) : '-'}
                     </div>
                 );
             }
+        },
+        {
+            headerName: 'Site',
+            field: 'site',
+            width: 160,
+            cellRenderer: (params) => (
+                <div className="text-sm text-gray-900 truncate">
+                    {params.data.employeeId?.assignedSiteName || 'Not Assigned'}
+                </div>
+            )
         },
         {
             headerName: 'Shift',
@@ -562,7 +606,12 @@ const ManagerAttendance = () => {
                 const stepIn = params.data.stepIn;
                 return (
                     <div className="text-sm text-gray-900">
-                        {stepIn ? new Date(stepIn).toLocaleTimeString() : '-'}
+                        {stepIn ? new Date(stepIn).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                            timeZone: 'Asia/Kolkata'
+                        }) : '-'}
                     </div>
                 );
             }
@@ -575,7 +624,12 @@ const ManagerAttendance = () => {
                 const stepOut = params.data.stepOut;
                 return (
                     <div className="text-sm text-gray-900">
-                        {stepOut ? new Date(stepOut).toLocaleTimeString() : '-'}
+                        {stepOut ? new Date(stepOut).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                            timeZone: 'Asia/Kolkata'
+                        }) : '-'}
                     </div>
                 );
             }
@@ -705,19 +759,35 @@ const ManagerAttendance = () => {
                                     <div>
                                         <p className="text-xs text-gray-500 uppercase tracking-wider">Date</p>
                                         <p className="text-sm font-medium text-gray-900">
-                                            {record.stepIn ? new Date(record.stepIn).toLocaleDateString() : '-'}
+                                            {record.stepIn ? formatIstDate(record.stepIn) : '-'}
                                         </p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-500 uppercase tracking-wider">Clock In</p>
                                         <p className="text-sm font-medium text-gray-900">
-                                            {record.stepIn ? new Date(record.stepIn).toLocaleTimeString() : '-'}
+                                            {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', {
+                                                hour: 'numeric',
+                                                minute: '2-digit',
+                                                hour12: true,
+                                                timeZone: 'Asia/Kolkata'
+                                            }) : '-'}
                                         </p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-500 uppercase tracking-wider">Clock Out</p>
                                         <p className="text-sm font-medium text-gray-900">
-                                            {record.stepOut ? new Date(record.stepOut).toLocaleTimeString() : '-'}
+                                            {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', {
+                                                hour: 'numeric',
+                                                minute: '2-digit',
+                                                hour12: true,
+                                                timeZone: 'Asia/Kolkata'
+                                            }) : '-'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase tracking-wider">Site</p>
+                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                            {employee?.assignedSiteName || 'Not Assigned'}
                                         </p>
                                     </div>
                                     <div>

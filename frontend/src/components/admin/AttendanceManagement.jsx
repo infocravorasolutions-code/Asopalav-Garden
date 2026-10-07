@@ -1297,6 +1297,49 @@ import toast from 'react-hot-toast';
 import { SHIFT_ENUM } from '../../constants/shifts';
 import { useAuth } from '../../contexts/AuthContext';
 
+const ATTENDANCE_TIME_ZONE = 'Asia/Kolkata';
+
+function toIstDateTimeLocal(value) {
+  if (!value) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: ATTENDANCE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(value));
+  const part = (type) => parts.find((item) => item.type === type)?.value || '';
+  return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
+}
+
+function fromIstDateTimeLocal(value) {
+  if (!value) return null;
+  const withSeconds = value.length === 16 ? `${value}:00` : value;
+  return new Date(`${withSeconds}+05:30`);
+}
+
+function toIstDateString(value) {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: ATTENDANCE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type)?.value || '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+function formatIstDate(value) {
+  if (!value) return 'N/A';
+  return new Date(value).toLocaleDateString('en-US', {
+    timeZone: ATTENDANCE_TIME_ZONE,
+  });
+}
 
 const AttendanceManagement = () => {
     const { user } = useAuth();
@@ -1522,62 +1565,13 @@ const AttendanceManagement = () => {
             });
         }
 
-        // Apply date range filter
+        // Apply date range filter using IST calendar dates
         if (filters.startDate) {
-            const startDate = new Date(filters.startDate);
-            startDate.setHours(0, 0, 0, 0); // Start of day
-            console.log('🔍 Date Filter Debug - Start Date:', {
-                filterStartDate: filters.startDate,
-                parsedStartDate: startDate,
-                recordCount: filtered.length
-            });
-            
-            filtered = filtered.filter(record => {
-                const recordDate = new Date(record.stepIn);
-                recordDate.setHours(0, 0, 0, 0); // Start of day for comparison
-                const isAfterStart = recordDate >= startDate;
-                
-                console.log('🔍 Date Filter Debug - Record:', {
-                    recordDate: record.stepIn,
-                    parsedRecordDate: recordDate,
-                    isAfterStart,
-                    employee: record.employeeId?.name
-                });
-                
-                return isAfterStart;
-            });
-            
-            console.log('🔍 Date Filter Debug - After Start Date Filter:', {
-                remainingRecords: filtered.length
-            });
+            filtered = filtered.filter((record) => toIstDateString(record.stepIn) >= filters.startDate);
         }
 
         if (filters.endDate) {
-            const endDate = new Date(filters.endDate);
-            endDate.setHours(23, 59, 59, 999); // End of day
-            console.log('🔍 Date Filter Debug - End Date:', {
-                filterEndDate: filters.endDate,
-                parsedEndDate: endDate,
-                recordCount: filtered.length
-            });
-            
-            filtered = filtered.filter(record => {
-                const recordDate = new Date(record.stepIn);
-                const isBeforeEnd = recordDate <= endDate;
-                
-                console.log('🔍 Date Filter Debug - Record:', {
-                    recordDate: record.stepIn,
-                    parsedRecordDate: recordDate,
-                    isBeforeEnd,
-                    employee: record.employeeId?.name
-                });
-                
-                return isBeforeEnd;
-            });
-            
-            console.log('🔍 Date Filter Debug - After End Date Filter:', {
-                remainingRecords: filtered.length
-            });
+            filtered = filtered.filter((record) => toIstDateString(record.stepIn) <= filters.endDate);
         }
 
         return filtered;
@@ -1606,7 +1600,7 @@ const AttendanceManagement = () => {
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `attendance_${new Date().toISOString().split('T')[0]}.xlsx`;
+                link.download = `attendance_${toIstDateString(new Date())}.xlsx`;
                 document.body.appendChild(link);
                 link.click();
                 link.remove();
@@ -1624,20 +1618,42 @@ const AttendanceManagement = () => {
     // Export to PDF using enhanced professional export
     const exportToPDF = async () => {
         try {
-            // Fetch ALL attendance data for PDF export (not just current page)
             setLoading(true);
             toast.success('Fetching all attendance data for PDF export...');
-            
+
             const params = new URLSearchParams();
             Object.entries(filters).forEach(([key, value]) => {
                 if (value) params.append(key, value);
             });
-            
-            // Set limit to 0 to get ALL records, not just paginated ones
             params.append('limit', '0');
 
             const response = await adminAPI.getAttendance(params);
-            const allAttendanceData = response.attendance || [];
+            let allAttendanceData = response.attendance || [];
+
+            const selectedSiteFilter = filters.assignedSite || '';
+
+            allAttendanceData = allAttendanceData.map((record) => {
+                let reportSiteName = getSelectedLocation(record.address);
+                if (reportSiteName === 'Not Assigned') {
+                    reportSiteName = record.employeeId?.assignedSiteName || '';
+                }
+                if (!reportSiteName) {
+                    reportSiteName = selectedSiteFilter || 'Not Assigned';
+                }
+                return { ...record, reportSiteName };
+            });
+
+            if (selectedSiteFilter) {
+                allAttendanceData = allAttendanceData.filter((record) => {
+                    const punchSite = getSelectedLocation(record.address);
+                    const assignedName = record.employeeId?.assignedSiteName || '';
+                    return (
+                        punchSite === selectedSiteFilter ||
+                        assignedName === selectedSiteFilter ||
+                        (selectedSiteFilter.includes(' - ') && assignedName && selectedSiteFilter.startsWith(assignedName))
+                    );
+                });
+            }
 
             if (!allAttendanceData || allAttendanceData.length === 0) {
                 toast.error('No attendance data to export');
@@ -1645,9 +1661,6 @@ const AttendanceManagement = () => {
                 return;
             }
 
-            console.log(`📊 Exporting PDF with ${allAttendanceData.length} total records`);
-
-            // Import the enhanced PDF export utility
             let exportAttendanceToPDF;
             try {
                 const pdfUtils = await import('../../utils/pdfExportUtils');
@@ -1663,21 +1676,16 @@ const AttendanceManagement = () => {
                 return;
             }
 
-            // Create filename with timestamp
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const filename = `attendance_${timestamp}.pdf`;
-
-            // Use the enhanced PDF export function with ALL data
-            await exportAttendanceToPDF(allAttendanceData, filename);
-
-            // Show success message
-            const isWebView = window.ReactNativeWebView !== undefined;
-            if (isWebView) {
-                toast.success(`Professional PDF exported successfully with ${allAttendanceData.length} records`);
-            } else {
-                toast.success(`Professional PDF exported successfully with ${allAttendanceData.length} records`);
+            const exportOptions = {};
+            if (selectedSiteFilter) {
+                exportOptions.subtitle = `Site: ${selectedSiteFilter}`;
             }
 
+            await exportAttendanceToPDF(allAttendanceData, filename, exportOptions);
+
+            toast.success(`Professional PDF exported successfully with ${allAttendanceData.length} records`);
         } catch (error) {
             console.error('Error exporting to PDF:', error);
             toast.error('Failed to export PDF: ' + error.message);
@@ -1690,8 +1698,8 @@ const AttendanceManagement = () => {
     const handleEditAttendance = (attendance) => {
         setSelectedAttendance(attendance);
         setEditForm({
-            stepIn: attendance.stepIn ? new Date(attendance.stepIn).toISOString().slice(0, 16) : '',
-            stepOut: attendance.stepOut ? new Date(attendance.stepOut).toISOString().slice(0, 16) : '',
+            stepIn: toIstDateTimeLocal(attendance.stepIn),
+            stepOut: toIstDateTimeLocal(attendance.stepOut),
             shift: attendance.shift || SHIFT_ENUM.MORNING,
             status: attendance.status || 'present',
             address: attendance.address || '',
@@ -1718,8 +1726,8 @@ const AttendanceManagement = () => {
     const handleSaveAttendance = async () => {
         try {
             const updateData = {
-                stepIn: editForm.stepIn ? new Date(editForm.stepIn) : null,
-                stepOut: editForm.stepOut ? new Date(editForm.stepOut) : null,
+                stepIn: fromIstDateTimeLocal(editForm.stepIn),
+                stepOut: fromIstDateTimeLocal(editForm.stepOut),
                 shift: editForm.shift,
                 status: editForm.status,
                 address: editForm.address,
@@ -2207,7 +2215,7 @@ const AttendanceManagement = () => {
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                                {new Date(record.stepIn).toLocaleDateString()}
+                                                                {formatIstDate(record.stepIn)}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(record.shift)}`}>
@@ -2218,14 +2226,16 @@ const AttendanceManagement = () => {
                                                                 {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', {
                                                                     hour: 'numeric',
                                                                     minute: '2-digit',
-                                                                    hour12: true
+                                                                    hour12: true,
+                                                                    timeZone: 'Asia/Kolkata'
                                                                 }) : 'N/A'}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                                 {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', {
                                                                     hour: 'numeric',
                                                                     minute: '2-digit',
-                                                                    hour12: true
+                                                                    hour12: true,
+                                                                    timeZone: 'Asia/Kolkata'
                                                                 }) : 'N/A'}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap">
@@ -2346,7 +2356,7 @@ const AttendanceManagement = () => {
                                                     <div className="flex items-center space-x-1">
                                                         <Calendar className="h-4 w-4 text-gray-400" />
                                                         <span className="text-sm text-gray-600">
-                                                            {new Date(record.stepIn).toLocaleDateString()}
+                                                            {formatIstDate(record.stepIn)}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center space-x-1">
@@ -2365,7 +2375,8 @@ const AttendanceManagement = () => {
                                                             {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', {
                                                                 hour: 'numeric',
                                                                 minute: '2-digit',
-                                                                hour12: true
+                                                                hour12: true,
+                                                                timeZone: 'Asia/Kolkata'
                                                             }) : 'N/A'}
                                                         </span>
                                                     </div>
@@ -2375,7 +2386,8 @@ const AttendanceManagement = () => {
                                                             {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', {
                                                                 hour: 'numeric',
                                                                 minute: '2-digit',
-                                                                hour12: true
+                                                                hour12: true,
+                                                                timeZone: 'Asia/Kolkata'
                                                             }) : 'N/A'}
                                                         </span>
                                                     </div>

@@ -1076,46 +1076,41 @@ const StepInStepOut = () => {
 
             {/* Mobile-Responsive Camera Modal */}
             {showCamera && (
-                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-1 sm:p-2 md:p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-lg sm:rounded-xl w-full h-full sm:h-auto max-w-full sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-full sm:max-h-[95vh] md:max-h-[90vh] shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col">
-                         {/* Mobile-Optimized Header */}
-                         <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 border-b border-gray-200 flex-shrink-0">
-                             <div className="flex-1 min-w-0">
-                                 <h3 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 truncate">
-                                     {stepType === 'step-in' ? 'Step In' : 'Step Out'} - {selectedEmployee?.name}
-                                 </h3>
-                                 <p className="text-xs sm:text-sm text-gray-600">Capture photo and enter details</p>
-                             </div>
-                             
-                             {/* Auto Location Detection Button in Modal Header */}
-                             <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-                                 <button
-                                     onClick={getCurrentLocation}
-                                     disabled={locationLoading}
-                                     className="flex items-center justify-center px-2 sm:px-3 py-2 bg-blue-600 text-white border border-blue-200 rounded-lg hover:bg-blue-700 transition-colors touch-manipulation min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px]"
-                                     title="Auto-detect current location"
-                                 >
-                                     {locationLoading ? (
-                                         <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-300">
+                    <div className="bg-white w-full sm:max-w-md md:max-w-lg lg:max-w-xl h-[100dvh] sm:h-auto sm:max-h-[90vh] rounded-t-3xl sm:rounded-2xl shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 flex flex-col overflow-hidden">
+                         <div className="flex items-start justify-between p-4 sm:p-5 border-b border-gray-200 flex-shrink-0">
+                             <div className="flex items-start gap-3 min-w-0">
+                                 <div className={`p-2.5 rounded-full flex-shrink-0 ${stepType === 'step-in' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                     {stepType === 'step-in' ? (
+                                         <LogIn className="h-5 w-5" />
                                      ) : (
-                                         <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                         </svg>
+                                         <LogOut className="h-5 w-5" />
                                      )}
-                                 </button>
-                                 
-                                 <button
-                                     onClick={() => {
-                                         setShowCamera(false);
-                                         setCapturedImage(null);
-                                         setSelectedEmployee(null);
-                                     }}
-                                     className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors touch-manipulation min-h-[36px] min-w-[36px] sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center"
-                                 >
-                                     <X className="h-4 w-4 sm:h-5 sm:w-5" />
-                                 </button>
+                                 </div>
+                                 <div className="min-w-0">
+                                     <div className="flex items-center flex-wrap gap-2">
+                                         <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                                             {stepType === 'step-in' ? 'Step In' : 'Step Out'}
+                                         </h3>
+                                         <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${stepType === 'step-in' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                                             {stepType === 'step-in' ? 'Clock in' : 'Clock out'}
+                                         </span>
+                                     </div>
+                                     <p className="text-sm text-gray-600 truncate mt-0.5">
+                                         {selectedEmployee?.name}
+                                     </p>
+                                 </div>
                              </div>
+                             <button
+                                 onClick={() => {
+                                     setShowCamera(false);
+                                     setCapturedImage(null);
+                                     setSelectedEmployee(null);
+                                 }}
+                                 className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center flex-shrink-0"
+                             >
+                                 <X className="h-5 w-5" />
+                             </button>
                          </div>
 
                         {/* Mobile-Optimized Camera Section */}
@@ -1125,87 +1120,73 @@ const StepInStepOut = () => {
                         }}>
                             <div className="relative mb-4 sm:mb-6">
                                 {!capturedImage ? (
-                                    <div className="relative w-full" style={{ aspectRatio: '4/3' }}>
+                                    <div className="relative w-full overflow-hidden rounded-2xl bg-black" style={{ aspectRatio: '4/3' }}>
                                         <Webcam
                                             ref={webcamRef}
                                             audio={false}
                                             screenshotFormat="image/jpeg"
                                             videoConstraints={videoConstraints}
-                                            className="w-full h-full object-cover rounded-lg"
+                                            className="w-full h-full object-cover"
                                             onUserMedia={() => setCameraReady(true)}
                                         />
 
-                                        {/* Mobile-Optimized Camera Controls */}
-                                        <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-2 sm:space-x-3 md:space-x-4">
-                                            <button
-                                                onClick={switchCamera}
-                                                className="p-2 sm:p-2 md:p-3 bg-white bg-opacity-90 rounded-full shadow-lg hover:bg-white transition-colors touch-manipulation min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center"
-                                                title="Switch Camera"
-                                            >
-                                                <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-gray-700" />
-                                            </button>
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <div className="w-[42%] max-w-[180px] aspect-[3/4] rounded-[50%] border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.18)]" />
+                                        </div>
 
-                                            <button
-                                                onClick={capture}
-                                                disabled={!cameraReady}
-                                                className="p-3 sm:p-3 md:p-4 bg-blue-600 rounded-full shadow-lg hover:bg-blue-700 disabled:opacity-50 transition-colors touch-manipulation min-h-[48px] min-w-[48px] sm:min-h-[56px] sm:min-w-[56px] flex items-center justify-center"
-                                                title="Capture Photo"
-                                            >
-                                                <Camera className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-white" />
-                                            </button>
+                                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-4 px-4">
+                                            <div className="flex items-center justify-center gap-5">
+                                                <button
+                                                    onClick={switchCamera}
+                                                    className="p-3 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+                                                    title="Switch Camera"
+                                                >
+                                                    <RotateCcw className="h-5 w-5 text-gray-700" />
+                                                </button>
 
-                                            <button
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="p-2 sm:p-2 md:p-3 bg-white bg-opacity-90 rounded-full shadow-lg hover:bg-white transition-colors touch-manipulation min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center"
-                                                title="Upload Photo"
-                                            >
-                                                <Upload className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-gray-700" />
-                                            </button>
+                                                <button
+                                                    onClick={capture}
+                                                    disabled={!cameraReady}
+                                                    className="p-5 bg-white rounded-full shadow-lg hover:scale-105 disabled:opacity-50 transition-all touch-manipulation min-h-[72px] min-w-[72px] flex items-center justify-center border-4 border-blue-500"
+                                                    title="Capture Photo"
+                                                >
+                                                    <Camera className="h-7 w-7 text-blue-600" />
+                                                </button>
+
+                                                <button
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="p-3 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+                                                    title="Upload Photo"
+                                                >
+                                                    <Upload className="h-5 w-5 text-gray-700" />
+                                                </button>
+                                            </div>
                                         </div>
 
                                         {!cameraReady && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                                                 <div className="flex flex-col items-center gap-2 text-white">
-                                                    <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin" />
-                                                    <p className="text-xs sm:text-sm">Initializing camera...</p>
+                                                    <Loader2 className="h-8 w-8 animate-spin" />
+                                                    <p className="text-sm">Initializing camera...</p>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="relative w-full" style={{ aspectRatio: '4/3' }}>
+                                    <div className="relative w-full overflow-hidden rounded-2xl" style={{ aspectRatio: '4/3' }}>
                                         <img
                                             src={capturedImage}
                                             alt="Captured attendance"
-                                            className="w-full h-full object-cover rounded-lg"
+                                            className="w-full h-full object-cover"
                                             onLoad={() => setImageLoading(false)}
                                         />
-
-                                        {/* Mobile-Optimized Image Controls */}
-                                        <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-2 sm:space-x-3 md:space-x-4">
-                                            <button
-                                                onClick={retake}
-                                                className="p-2 sm:p-2 md:p-3 bg-white bg-opacity-80 rounded-full shadow-lg hover:bg-white transition-colors touch-manipulation min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center"
-                                            >
-                                                <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-gray-700" />
-                                            </button>
-
-                                            <button
-                                                onClick={submitAttendance}
-                                                disabled={isSubmitting}
-                                                className="p-3 sm:p-3 md:p-4 bg-green-600 rounded-full shadow-lg hover:bg-green-700 disabled:opacity-50 transition-colors touch-manipulation min-h-[48px] min-w-[48px] sm:min-h-[56px] sm:min-w-[56px] flex items-center justify-center"
-                                            >
-                                                {isSubmitting ? (
-                                                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-white animate-spin" />
-                                                ) : (
-                                                    <Check className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-white" />
-                                                )}
-                                            </button>
-                                        </div>
-
+                                        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-600 text-white shadow">
+                                            <Check className="h-3.5 w-3.5" />
+                                            Photo ready
+                                        </span>
                                         {imageLoading && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 rounded-lg">
-                                                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-white" />
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                                <Loader2 className="h-8 w-8 animate-spin text-white" />
                                             </div>
                                         )}
                                     </div>
@@ -1311,28 +1292,22 @@ const StepInStepOut = () => {
                                                             rows="2"
                                                         />
                                                     </div>
-                                                    {/* <button
+                                                    <button
                                                         type="button"
                                                         onClick={getCurrentLocation}
                                                         disabled={locationLoading}
-                                                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2 min-w-[60px]"
+                                                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center min-w-[44px] min-h-[44px]"
                                                         title="Auto-detect current location"
                                                     >
                                                         {locationLoading ? (
-                                                            <>
-                                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                                <span className="text-sm">Detecting...</span>
-                                                            </>
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
                                                         ) : (
-                                                            <>
-                                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                </svg>
-                                                                <span className="text-sm">Auto Detect</span>
-                                                            </>
+                                                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            </svg>
                                                         )}
-                                                    </button> */}
+                                                    </button>
                                                 </div>
                                                 {location && (
                                                     <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
@@ -1410,49 +1385,39 @@ const StepInStepOut = () => {
                                                 Lng: {longitude || '...'}
                                             </span>
                                         </div>
+
+                                        {capturedImage && (
+                                            <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={retake}
+                                                    className="flex-1 px-4 py-3 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm sm:text-base touch-manipulation min-h-[44px]"
+                                                >
+                                                    <RotateCcw className="h-4 w-4 inline mr-2" />
+                                                    Retake
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={submitAttendance}
+                                                    disabled={isSubmitting}
+                                                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm sm:text-base touch-manipulation min-h-[44px]"
+                                                >
+                                                    {isSubmitting ? (
+                                                        <>
+                                                            <Loader2 className="h-4 w-4 inline mr-2 animate-spin" />
+                                                            Submitting...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Check className="h-4 w-4 inline mr-2" />
+                                                            {stepType === 'step-in' ? 'Confirm step-in' : 'Confirm step-out'}
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                        </div>
-
-                        {/* Enhanced Instructions and Actions */}
-                        <div className="p-3 sm:p-4 md:p-6 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-200 flex-shrink-0">
-                            <div className="text-center">
-                                <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
-                                    {!capturedImage
-                                        ? 'Set your location details below, then position your face in the camera and tap the camera button to capture, or upload a photo'
-                                        : 'Review your photo and location details above to confirm'
-                                    }
-                                </p>
-
-                                {capturedImage && (
-                                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
-                                        <button
-                                            onClick={retake}
-                                            className="px-4 sm:px-6 py-2 sm:py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm sm:text-base touch-manipulation min-h-[44px]"
-                                        >
-                                            <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 inline mr-2" />
-                                            Retake Photo
-                                        </button>
-                                        <button
-                                            onClick={submitAttendance}
-                                            disabled={isSubmitting}
-                                            className="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-200 font-medium text-sm sm:text-base touch-manipulation min-h-[44px]"
-                                        >
-                                            {isSubmitting ? (
-                                                <>
-                                                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 inline mr-2 animate-spin" />
-                                                    Submitting...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Check className="h-3 w-3 sm:h-4 sm:w-4 inline mr-2" />
-                                                    Submit Attendance
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
                         </div>
                     </div>
                 </div>
