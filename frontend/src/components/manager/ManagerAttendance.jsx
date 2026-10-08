@@ -29,7 +29,7 @@ import { api, exportAPI } from '../../services/api';
 import { getApiUrl } from '../../config/environment';
 import CopyCellRenderer from '../ui/CopyCellRenderer';
 import toast from 'react-hot-toast';
-import { SHIFT_ENUM } from '../../constants/shifts';
+import { SHIFT_ENUM, shortShiftName } from '../../constants/shifts';
 
 const ATTENDANCE_TIME_ZONE = 'Asia/Kolkata';
 
@@ -582,18 +582,18 @@ const ManagerAttendance = () => {
             field: 'shift',
             width: 100,
             cellRenderer: (params) => {
-                const shift = params.data.shift;
-                const getShiftColor = (shift) => {
-                    switch (shift) {
-                        case 'morning': return 'bg-blue-100 text-blue-800';
-                        case 'evening': return 'bg-orange-100 text-orange-800';
-                        case 'night': return 'bg-purple-100 text-purple-800';
+                const shiftLabel = shortShiftName(params.data.shift);
+                const getShiftColor = (label) => {
+                    switch (label) {
+                        case 'Morning': return 'bg-blue-100 text-blue-800';
+                        case 'Evening': return 'bg-orange-100 text-orange-800';
+                        case 'Night': return 'bg-purple-100 text-purple-800';
                         default: return 'bg-gray-100 text-gray-800';
                     }
                 };
                 return (
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(shift)}`}>
-                        {shift || 'N/A'}
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(shiftLabel)}`}>
+                        {shiftLabel || 'N/A'}
                     </span>
                 );
             }
@@ -718,11 +718,12 @@ const ManagerAttendance = () => {
                                 default: return 'bg-gray-100 text-gray-800 border-gray-200';
                             }
                         };
-                        const getShiftColor = (shift) => {
-                            switch (shift) {
-                                case 'morning': return 'bg-blue-100 text-blue-800';
-                                case 'evening': return 'bg-orange-100 text-orange-800';
-                                case 'night': return 'bg-purple-100 text-purple-800';
+                        const shiftLabel = shortShiftName(record.shift);
+                        const getShiftColor = (label) => {
+                            switch (label) {
+                                case 'Morning': return 'bg-blue-100 text-blue-800';
+                                case 'Evening': return 'bg-orange-100 text-orange-800';
+                                case 'Night': return 'bg-purple-100 text-purple-800';
                                 default: return 'bg-gray-100 text-gray-800';
                             }
                         };
@@ -748,8 +749,8 @@ const ManagerAttendance = () => {
                                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(record.status)}`}>
                                             {record.status || 'N/A'}
                                         </span>
-                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(record.shift)}`}>
-                                            {record.shift || 'N/A'}
+                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(shiftLabel)}`}>
+                                            {shiftLabel || 'N/A'}
                                         </span>
                                     </div>
                                 </div>

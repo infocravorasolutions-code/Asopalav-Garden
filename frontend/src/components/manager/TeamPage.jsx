@@ -5,7 +5,7 @@ import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 import StandaloneAgGrid from '../ui/StandaloneAgGrid';
 import EnhancedEmployeeModal from './EnhancedEmployeeModal';
 import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
-import { SHIFT_ENUM } from '../../constants/shifts';
+import { SHIFT_ENUM, shortShiftName } from '../../constants/shifts';
 
 const TeamPage = () => {
   const { user } = useAuth();
@@ -224,7 +224,8 @@ const TeamPage = () => {
       field: 'shift',
       width: 120,
       cellRenderer: (params) => {
-        const shift = params.value || SHIFT_ENUM.MORNING;
+        const stored = params.value || SHIFT_ENUM.MORNING;
+        const label = shortShiftName(stored);
         const shiftColors = {
           morning: 'bg-yellow-100 text-yellow-800',
           evening: 'bg-orange-100 text-orange-800',
@@ -232,8 +233,8 @@ const TeamPage = () => {
         };
         return (
           <div className="text-left">
-            <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${shiftColors[shift]}`}>
-              {shift.charAt(0).toUpperCase() + shift.slice(1)}
+            <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${shiftColors[label.toLowerCase()] || ''}`}>
+              {label}
             </span>
           </div>
         );

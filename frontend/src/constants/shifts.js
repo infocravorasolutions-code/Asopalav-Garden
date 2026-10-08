@@ -43,3 +43,12 @@ export const getShiftColor = (shift) => {
 export const isValidShift = (shift) => {
     return Object.values(SHIFT_ENUM).includes(shift);
 };
+
+export const shortShiftName = (shift) => {
+  const raw = String(shift || '').toLowerCase();
+  if (raw.includes('evening')) return 'Evening';
+  if (raw.includes('night')) return 'Night';
+  if (raw.includes('morning')) return 'Morning';
+  if (!raw) return '';
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+};

@@ -114,6 +114,42 @@ const SuperAdminProtectedRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/superadmin/login" replace />;
 };
 
+const AdminHomeRedirect = () => {
+  const { isAuthenticated, loading, user } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loading text="Loading..." size="lg" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role === 'readonly') {
+    return <Navigate to="/admin/attendance" replace />;
+  }
+
+  return <Navigate to="/admin/dashboard" replace />;
+};
+
+const AdminDashboardGate = () => {
+  const { user } = useAuth();
+
+  if (user?.role === 'readonly') {
+    return <Navigate to="/admin/attendance" replace />;
+  }
+
+  return (
+    <DashboardLayout>
+      <AdminDashboard />
+    </DashboardLayout>
+  );
+};
+
 // Main App Routes
 const AppRoutes = () => {
   return (
@@ -161,9 +197,7 @@ const AppRoutes = () => {
         path="/admin/dashboard"
         element={
           <RoleBasedRoute allowedRoles={['admin', 'readonly']}>
-            <DashboardLayout>
-              <AdminDashboard />
-            </DashboardLayout>
+            <AdminDashboardGate />
           </RoleBasedRoute>
         }
       />
@@ -325,7 +359,7 @@ const AppRoutes = () => {
 
       {/* Default redirects */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+      <Route path="/admin" element={<AdminHomeRedirect />} />
 
       {/* Catch all route */}
       <Route path="*" element={<Navigate to="/login" replace />} />

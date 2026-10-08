@@ -1294,7 +1294,7 @@ import { adminAPI, api } from '../../services/api';
 import { getApiUrl } from '../../config/environment';
 import CopyCellRenderer from '../ui/CopyCellRenderer';
 import toast from 'react-hot-toast';
-import { SHIFT_ENUM } from '../../constants/shifts';
+import { SHIFT_ENUM, shortShiftName } from '../../constants/shifts';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ATTENDANCE_TIME_ZONE = 'Asia/Kolkata';
@@ -2088,8 +2088,7 @@ const AttendanceManagement = () => {
                 </Card>
             )}
 
-            {/* Attendance Records - Hidden for readonly users */}
-            {!isReadOnlyAdmin && (
+            {/* Attendance Records */}
                 <Card className="flex-1 min-h-0">
                     <CardContent className="p-0 h-full flex flex-col">
                         {loading ? (
@@ -2144,12 +2143,16 @@ const AttendanceManagement = () => {
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                         Location
                                                     </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        Assigned Site
-                                                    </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        Actions
-                                                    </th>
+                                                    {!isReadOnlyAdmin && (
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Assigned Site
+                                                        </th>
+                                                    )}
+                                                    {!isReadOnlyAdmin && (
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Actions
+                                                        </th>
+                                                    )}
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">
@@ -2164,11 +2167,12 @@ const AttendanceManagement = () => {
                                                             default: return 'bg-gray-100 text-gray-800';
                                                         }
                                                     };
-                                                    const getShiftColor = (shift) => {
-                                                        switch (shift) {
-                                                            case 'morning': return 'bg-blue-100 text-blue-800';
-                                                            case 'evening': return 'bg-orange-100 text-orange-800';
-                                                            case 'night': return 'bg-purple-100 text-purple-800';
+                                                    const shiftLabel = shortShiftName(record.shift);
+                                                    const getShiftColor = (label) => {
+                                                        switch (label) {
+                                                            case 'Morning': return 'bg-blue-100 text-blue-800';
+                                                            case 'Evening': return 'bg-orange-100 text-orange-800';
+                                                            case 'Night': return 'bg-purple-100 text-purple-800';
                                                             default: return 'bg-gray-100 text-gray-800';
                                                         }
                                                     };
@@ -2218,8 +2222,8 @@ const AttendanceManagement = () => {
                                                                 {formatIstDate(record.stepIn)}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(record.shift)}`}>
-                                                                    {record.shift || 'N/A'}
+                                                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(shiftLabel)}`}>
+                                                                    {shiftLabel || 'N/A'}
                                                                 </span>
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -2248,15 +2252,16 @@ const AttendanceManagement = () => {
                                                                     {record.address || 'N/A'}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                                <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                                                                    {getSelectedLocation(record.address)}
-                                                                </span>
-                                                            </td>
+                                                            {!isReadOnlyAdmin && (
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                                                        {getSelectedLocation(record.address)}
+                                                                    </span>
+                                                                </td>
+                                                            )}
+                                                            {!isReadOnlyAdmin && (
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                                {/* Actions - Hidden for readonly users */}
-                                                                {!isReadOnlyAdmin && (
-                                                                    <div className="flex space-x-2">
+                                                                <div className="flex space-x-2">
                                                                         <button
                                                                             onClick={() => handleEditAttendance(record)}
                                                                             className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded text-xs"
@@ -2270,8 +2275,8 @@ const AttendanceManagement = () => {
                                                                             Delete
                                                                         </button>
                                                                     </div>
-                                                                )}
                                                             </td>
+                                                            )}
                                                         </tr>
                                                     );
                                                 })}
@@ -2293,11 +2298,12 @@ const AttendanceManagement = () => {
                                                 default: return 'bg-gray-100 text-gray-800';
                                             }
                                         };
-                                        const getShiftColor = (shift) => {
-                                            switch (shift) {
-                                                case 'morning': return 'bg-blue-100 text-blue-800';
-                                                case 'evening': return 'bg-orange-100 text-orange-800';
-                                                case 'night': return 'bg-purple-100 text-purple-800';
+                                        const shiftLabel = shortShiftName(record.shift);
+                                        const getShiftColor = (label) => {
+                                            switch (label) {
+                                                case 'Morning': return 'bg-blue-100 text-blue-800';
+                                                case 'Evening': return 'bg-orange-100 text-orange-800';
+                                                case 'Night': return 'bg-purple-100 text-purple-800';
                                                 default: return 'bg-gray-100 text-gray-800';
                                             }
                                         };
@@ -2361,8 +2367,8 @@ const AttendanceManagement = () => {
                                                     </div>
                                                     <div className="flex items-center space-x-1">
                                                         <Clock className="h-4 w-4 text-gray-400" />
-                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(record.shift)}`}>
-                                                            {record.shift || 'N/A'}
+                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getShiftColor(shiftLabel)}`}>
+                                                            {shiftLabel || 'N/A'}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -2401,13 +2407,14 @@ const AttendanceManagement = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Assigned Site */}
-                                                <div className="flex items-center space-x-2 mb-3">
-                                                    <span className="text-sm text-gray-600">Site:</span>
-                                                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                                                        {getSelectedLocation(record.address)}
-                                                    </span>
-                                                </div>
+                                                {!isReadOnlyAdmin && (
+                                                    <div className="flex items-center space-x-2 mb-3">
+                                                        <span className="text-sm text-gray-600">Site:</span>
+                                                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                                            {getSelectedLocation(record.address)}
+                                                        </span>
+                                                    </div>
+                                                )}
 
                                                 {/* Remarks */}
                                                 {record.note && (
@@ -2458,7 +2465,6 @@ const AttendanceManagement = () => {
                         )}
                     </CardContent>
                 </Card>
-            )}
 
             {/* Edit Attendance Modal - Hidden for readonly users */}
             {!isReadOnlyAdmin && editModalOpen && (

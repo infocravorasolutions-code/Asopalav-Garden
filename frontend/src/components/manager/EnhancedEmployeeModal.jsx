@@ -843,9 +843,9 @@ const EnhancedEmployeeModal = ({ isOpen, onClose, mode, employee, onSave }) => {
                     onChange={handleInputChange}
                     className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-base sm:text-sm"
                   >
-                    <option value="Morning Shift (7:00 AM - 3:00 PM)">Morning Shift (7:00 AM - 3:00 PM)</option>
-                    <option value="Evening Shift (3:00 PM - 11:00 PM)">Evening Shift (3:00 PM - 11:00 PM)</option>
-                    <option value="Night Shift (11:00 PM - 7:00 AM)">Night Shift (11:00 PM - 7:00 AM)</option>
+                    <option value="Morning Shift (7:00 AM - 3:00 PM)">Morning</option>
+                    <option value="Evening Shift (3:00 PM - 11:00 PM)">Evening</option>
+                    <option value="Night Shift (11:00 PM - 7:00 AM)">Night</option>
                   </select>
                 </div>
 
