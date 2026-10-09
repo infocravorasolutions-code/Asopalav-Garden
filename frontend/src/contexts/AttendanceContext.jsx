@@ -205,8 +205,8 @@ export const AttendanceProvider = ({ children }) => {
         record.employeeId?.name || 'N/A',
         record.employeeId?.email || 'N/A',
         record.shift?.toUpperCase() || 'N/A',
-        record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A',
-        record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A',
+        record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : 'N/A',
+        record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : 'N/A',
         record.address || 'N/A',
         record.note || 'N/A'
       ]);

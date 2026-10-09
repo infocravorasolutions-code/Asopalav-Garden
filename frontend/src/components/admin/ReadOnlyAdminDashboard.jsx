@@ -124,7 +124,9 @@ const ReadOnlyAdminDashboard = () => {
     return new Date(dateString).toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      second: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Kolkata'
     });
   };
 

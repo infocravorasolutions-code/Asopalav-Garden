@@ -478,10 +478,10 @@ const EnhancedReportsSection = () => {
                           {record.shift || 'N/A'}
                         </td>
                         <td className="border border-gray-400 px-2 py-2 text-center">
-                          {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}
+                          {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : 'N/A'}
                         </td>
                         <td className="border border-gray-400 px-2 py-2 text-center">
-                          {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}
+                          {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : 'N/A'}
                         </td>
                         <td className="border border-gray-400 px-2 py-2 text-sm">
                           {record.address || 'N/A'}

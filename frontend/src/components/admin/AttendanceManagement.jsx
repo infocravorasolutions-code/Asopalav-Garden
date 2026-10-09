@@ -2230,6 +2230,7 @@ const AttendanceManagement = () => {
                                                                 {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', {
                                                                     hour: 'numeric',
                                                                     minute: '2-digit',
+                                                                    second: '2-digit',
                                                                     hour12: true,
                                                                     timeZone: 'Asia/Kolkata'
                                                                 }) : 'N/A'}
@@ -2238,6 +2239,7 @@ const AttendanceManagement = () => {
                                                                 {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', {
                                                                     hour: 'numeric',
                                                                     minute: '2-digit',
+                                                                    second: '2-digit',
                                                                     hour12: true,
                                                                     timeZone: 'Asia/Kolkata'
                                                                 }) : 'N/A'}
@@ -2381,6 +2383,7 @@ const AttendanceManagement = () => {
                                                             {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', {
                                                                 hour: 'numeric',
                                                                 minute: '2-digit',
+                                                                second: '2-digit',
                                                                 hour12: true,
                                                                 timeZone: 'Asia/Kolkata'
                                                             }) : 'N/A'}
@@ -2392,6 +2395,7 @@ const AttendanceManagement = () => {
                                                             {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', {
                                                                 hour: 'numeric',
                                                                 minute: '2-digit',
+                                                                second: '2-digit',
                                                                 hour12: true,
                                                                 timeZone: 'Asia/Kolkata'
                                                             }) : 'N/A'}

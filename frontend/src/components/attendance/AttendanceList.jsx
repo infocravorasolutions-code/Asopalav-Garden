@@ -92,7 +92,7 @@ const AttendanceList = ({
   const formatTime = useCallback((timeString) => {
     if (!timeString) return 'N/A';
     try {
-      return format(parseISO(timeString), 'HH:mm');
+      return format(parseISO(timeString), 'HH:mm:ss');
     } catch {
       return 'Invalid';
     }

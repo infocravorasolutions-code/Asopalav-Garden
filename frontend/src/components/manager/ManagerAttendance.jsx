@@ -601,7 +601,7 @@ const ManagerAttendance = () => {
         {
             headerName: 'Clock In',
             field: 'clockIn',
-            width: 120,
+            width: 150,
             cellRenderer: (params) => {
                 const stepIn = params.data.stepIn;
                 return (
@@ -609,6 +609,7 @@ const ManagerAttendance = () => {
                         {stepIn ? new Date(stepIn).toLocaleTimeString('en-US', {
                             hour: 'numeric',
                             minute: '2-digit',
+                            second: '2-digit',
                             hour12: true,
                             timeZone: 'Asia/Kolkata'
                         }) : '-'}
@@ -619,7 +620,7 @@ const ManagerAttendance = () => {
         {
             headerName: 'Clock Out',
             field: 'clockOut',
-            width: 120,
+            width: 150,
             cellRenderer: (params) => {
                 const stepOut = params.data.stepOut;
                 return (
@@ -627,6 +628,7 @@ const ManagerAttendance = () => {
                         {stepOut ? new Date(stepOut).toLocaleTimeString('en-US', {
                             hour: 'numeric',
                             minute: '2-digit',
+                            second: '2-digit',
                             hour12: true,
                             timeZone: 'Asia/Kolkata'
                         }) : '-'}
@@ -769,6 +771,7 @@ const ManagerAttendance = () => {
                                             {record.stepIn ? new Date(record.stepIn).toLocaleTimeString('en-US', {
                                                 hour: 'numeric',
                                                 minute: '2-digit',
+                                                second: '2-digit',
                                                 hour12: true,
                                                 timeZone: 'Asia/Kolkata'
                                             }) : '-'}
@@ -780,6 +783,7 @@ const ManagerAttendance = () => {
                                             {record.stepOut ? new Date(record.stepOut).toLocaleTimeString('en-US', {
                                                 hour: 'numeric',
                                                 minute: '2-digit',
+                                                second: '2-digit',
                                                 hour12: true,
                                                 timeZone: 'Asia/Kolkata'
                                             }) : '-'}

@@ -155,6 +155,7 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     const istTimeOptions = {
       hour: 'numeric',
       minute: '2-digit',
+      second: '2-digit',
       hour12: true,
       timeZone: 'Asia/Kolkata'
     };
@@ -205,7 +206,7 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
     });
 
     // Landscape A4 column widths (mm)
-    const totalColumnWidth = 22 + 36 + 28 + 18 + 22 + 22 + 42 + 36;
+    const totalColumnWidth = 22 + 36 + 28 + 18 + 28 + 28 + 36 + 36;
     const tableLeftMargin = (pageWidth - totalColumnWidth) / 2;
 
     // Create the table with professional styling
@@ -236,9 +237,9 @@ export const createProfessionalAttendancePDF = async (data, options = {}) => {
         1: { cellWidth: 36, halign: 'left', overflow: 'linebreak' },   // Employee Name
         2: { cellWidth: 28, halign: 'left', overflow: 'linebreak' },   // Site
         3: { cellWidth: 18, halign: 'center', overflow: 'linebreak' }, // Shift
-        4: { cellWidth: 22, halign: 'center', overflow: 'linebreak' }, // Clock In
-        5: { cellWidth: 22, halign: 'center', overflow: 'linebreak' }, // Clock Out
-        6: { cellWidth: 42, halign: 'left', overflow: 'linebreak' },   // Location
+        4: { cellWidth: 28, halign: 'center', overflow: 'linebreak' }, // Clock In
+        5: { cellWidth: 28, halign: 'center', overflow: 'linebreak' }, // Clock Out
+        6: { cellWidth: 36, halign: 'left', overflow: 'linebreak' },   // Location
         7: { cellWidth: 36, halign: 'left', overflow: 'linebreak' }    // Remarks
       },
       margin: { left: tableLeftMargin, right: tableLeftMargin },

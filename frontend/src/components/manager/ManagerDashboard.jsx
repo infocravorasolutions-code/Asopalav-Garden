@@ -156,7 +156,7 @@ const ManagerDashboard = () => {
               if (isSteppedIn && attendance) {
                 // Employee is currently stepped in today
                 employee.status = 'clocked-in';
-                employee.stepInTime = new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                employee.stepInTime = new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
                 employee.stepOutTime = null;
                 employee.isOnline = true;
                 employee.lastSeen = new Date(attendance.stepIn);
@@ -164,8 +164,8 @@ const ManagerDashboard = () => {
               } else if (isCompleted && attendance) {
                 // Employee has completed attendance for today
                 employee.status = 'clocked-out';
-                employee.stepInTime = new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                employee.stepOutTime = new Date(attendance.stepOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                employee.stepInTime = new Date(attendance.stepIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+                employee.stepOutTime = new Date(attendance.stepOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
                 employee.isOnline = false;
                 employee.lastSeen = new Date(attendance.stepOut);
                 console.log(`✅ ${employee.name} has completed attendance today`);
