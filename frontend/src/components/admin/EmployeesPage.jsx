@@ -5,6 +5,7 @@ import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 import StandaloneAgGrid from '../ui/StandaloneAgGrid';
 import EmployeeModal from './EmployeeModal';
 import CopyCellRenderer from '../ui/CopyCellRenderer';
+import AutoStepInSwitch from '../ui/AutoStepInSwitch';
 import toast from 'react-hot-toast';
 import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
 
@@ -16,6 +17,7 @@ const EmployeesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [autoStepInFilter, setAutoStepInFilter] = useState('all');
 
 
 
@@ -133,6 +135,35 @@ const EmployeesPage = () => {
     fetchEmployees();
   };
 
+  const handleAutoStepInToggle = useCallback(async (employee, enabled) => {
+    const previous = employee.autoStepInEnabled === true;
+    setEmployees((prev) => prev.map((row) => (
+      row._id === employee._id ? { ...row, autoStepInEnabled: enabled } : row
+    )));
+
+    try {
+      await api.put(`/employee/${employee._id}`, { autoStepInEnabled: enabled });
+      toast.success(`Auto Step-In ${enabled ? 'on' : 'off'} for ${employee.name}`);
+    } catch (error) {
+      setEmployees((prev) => prev.map((row) => (
+        row._id === employee._id ? { ...row, autoStepInEnabled: previous } : row
+      )));
+      handleApiError(error);
+    }
+  }, []);
+
+  const filteredEmployees = useMemo(() => {
+    if (autoStepInFilter === 'on') {
+      return employees.filter((employee) => employee.autoStepInEnabled === true);
+    }
+    if (autoStepInFilter === 'off') {
+      return employees.filter((employee) => employee.autoStepInEnabled !== true);
+    }
+    return employees;
+  }, [employees, autoStepInFilter]);
+
+  const autoStepInOnCount = employees.filter((employee) => employee.autoStepInEnabled === true).length;
+  const autoStepInOffCount = employees.length - autoStepInOnCount;
 
   // Column definitions for employees
   const columnDefs = useMemo(() => [
@@ -301,6 +332,22 @@ const EmployeesPage = () => {
       hide: window.innerWidth < 768
     },
     {
+      headerName: 'Auto Step-In',
+      field: 'autoStepInEnabled',
+      width: 130,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params) => (
+        <div className="flex items-center h-full">
+          <AutoStepInSwitch
+            checked={params.data.autoStepInEnabled === true}
+            showLabel={false}
+            onChange={(enabled) => handleAutoStepInToggle(params.data, enabled)}
+          />
+        </div>
+      )
+    },
+    {
       headerName: 'Actions',
       field: 'actions',
       width: 80,
@@ -329,7 +376,7 @@ const EmployeesPage = () => {
       filter: false,
       suppressSizeToFit: true
     }
-  ], [handleEdit, handleDelete]);
+  ], [handleEdit, handleDelete, handleAutoStepInToggle]);
 
   return (
     <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
@@ -337,7 +384,7 @@ const EmployeesPage = () => {
       <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div className="min-w-0 flex-1">
           <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
-            Employees ({employees.length})
+            Employees ({filteredEmployees.length})
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">Manage company employees</p>
         </div>
@@ -388,10 +435,32 @@ const EmployeesPage = () => {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[
+          { id: 'all', label: 'All Employees', count: employees.length, hint: 'Everyone in this list' },
+          { id: 'on', label: 'Auto Step-In On', count: autoStepInOnCount, hint: 'Already switched on' },
+          { id: 'off', label: 'Still Off', count: autoStepInOffCount, hint: 'Not switched on yet' }
+        ].map((tile) => {
+          const selected = autoStepInFilter === tile.id;
+          return (
+            <button
+              key={tile.id}
+              type="button"
+              onClick={() => setAutoStepInFilter(tile.id)}
+              className={`rounded-lg border px-4 py-3 text-left transition-colors ${selected ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+            >
+              <div className={`text-2xl font-bold ${selected ? 'text-green-700' : 'text-gray-900'}`}>{tile.count}</div>
+              <div className={`text-sm font-medium ${selected ? 'text-green-800' : 'text-gray-900'}`}>{tile.label}</div>
+              <div className="text-xs text-gray-500 mt-1">{tile.hint}</div>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Standalone AG Grid */}
       <div className="flex-1 min-h-0">
         <StandaloneAgGrid
-          data={employees}
+          data={filteredEmployees}
           loading={loading}
           onEdit={handleEdit}
           onDelete={handleDelete}

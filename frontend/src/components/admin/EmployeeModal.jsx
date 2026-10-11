@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, User, Mail, Phone, MapPin, Building, Calendar, Clock, UserCheck, RotateCcw, Camera, Upload, CreditCard, FileText } from 'lucide-react';
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 import { api, handleApiError } from '../../utils/fetchInterceptor';
+import AutoStepInSwitch from '../ui/AutoStepInSwitch';
 
 const EmployeeModal = ({
   isOpen,
@@ -28,6 +29,7 @@ const EmployeeModal = ({
     ifscCode: '',
     photo: null,
     active: true,
+    autoStepInEnabled: false,
     assignedManager: '',
     assignedSite: '',
     assignedPoints: []
@@ -175,6 +177,7 @@ const EmployeeModal = ({
           ifscCode: employee.ifscCode || '',
           photo: employee.photo || null,
           active: employee.active !== undefined ? employee.active : true,
+          autoStepInEnabled: employee.autoStepInEnabled === true,
           assignedManager: employee.managerId?._id || employee.managerId || '',
           assignedSite: employee.assignedSiteId || '',
           assignedPoints: employee.assignedPoints || []
@@ -204,6 +207,7 @@ const EmployeeModal = ({
           ifscCode: '',
           photo: null,
           active: true,
+          autoStepInEnabled: false,
           assignedManager: ''
         });
         setPhotoPreview(null);
@@ -602,7 +606,8 @@ const EmployeeModal = ({
       // Map assignedSite to assignedSiteId
       assignedSiteId: formData.assignedSite || null,
       // Remove the frontend-specific field
-      assignedSite: undefined
+      assignedSite: undefined,
+      autoStepInEnabled: formData.autoStepInEnabled === true
     };
 
     // Debug logging for form submission
@@ -1261,6 +1266,16 @@ const EmployeeModal = ({
                     <option value={true}>Active</option>
                     <option value={false}>Inactive</option>
                   </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <div className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3">
+                    <AutoStepInSwitch
+                      checked={formData.autoStepInEnabled === true}
+                      onChange={(enabled) => setFormData((prev) => ({ ...prev, autoStepInEnabled: enabled }))}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Clocks this employee in at the shift start when On.</p>
+                  </div>
                 </div>
               </div>
 

@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext';
 import StandaloneAgGrid from '../ui/StandaloneAgGrid';
 import EnhancedEmployeeModal from './EnhancedEmployeeModal';
+import AutoStepInSwitch from '../ui/AutoStepInSwitch';
 import { api, handleApiError, handleApiSuccess } from '../../utils/fetchInterceptor';
 import { SHIFT_ENUM, shortShiftName } from '../../constants/shifts';
 
@@ -141,6 +142,22 @@ const TeamPage = () => {
     fetchTeam();
   };
 
+  const handleAutoStepInToggle = useCallback(async (employee, enabled) => {
+    const previous = employee.autoStepInEnabled === true;
+    setEmployees((prev) => prev.map((row) => (
+      row._id === employee._id ? { ...row, autoStepInEnabled: enabled } : row
+    )));
+
+    try {
+      await api.put(`/employee/${employee._id}`, { autoStepInEnabled: enabled });
+      handleApiSuccess(`Auto Step-In ${enabled ? 'on' : 'off'} for ${employee.name}`);
+    } catch (error) {
+      setEmployees((prev) => prev.map((row) => (
+        row._id === employee._id ? { ...row, autoStepInEnabled: previous } : row
+      )));
+      handleApiError(error);
+    }
+  }, []);
 
   // Column definitions for team members
   const columnDefs = useMemo(() => [
@@ -282,6 +299,22 @@ const TeamPage = () => {
       }
     },
     {
+      headerName: 'Auto Step-In',
+      field: 'autoStepInEnabled',
+      width: 130,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params) => (
+        <div className="flex items-center h-full">
+          <AutoStepInSwitch
+            checked={params.data.autoStepInEnabled === true}
+            showLabel={false}
+            onChange={(enabled) => handleAutoStepInToggle(params.data, enabled)}
+          />
+        </div>
+      )
+    },
+    {
       headerName: 'Actions',
       field: 'actions',
       width: 100,
@@ -307,7 +340,7 @@ const TeamPage = () => {
       sortable: false,
       filter: false
     }
-  ], [handleEdit, handleDelete]);
+  ], [handleEdit, handleDelete, handleAutoStepInToggle]);
 
   return (
     <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
